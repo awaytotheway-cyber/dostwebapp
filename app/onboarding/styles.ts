@@ -1,0 +1,141 @@
+import { StyleSheet } from 'react-native';
+
+export const onboardingStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  content: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 28,
+  },
+  contentTop: {
+    flex: 1,
+    paddingHorizontal: 28,
+    paddingTop: 24,
+  },
+  heading: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#0f172a',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  headingLeft: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#0f172a',
+    marginBottom: 16,
+  },
+  copy: {
+    fontSize: 18,
+    lineHeight: 26,
+    color: '#0f172a',
+    textAlign: 'center',
+    marginBottom: 28,
+  },
+  copyLeft: {
+    fontSize: 18,
+    lineHeight: 26,
+    color: '#0f172a',
+    marginBottom: 16,
+  },
+  helper: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: '#64748b',
+    marginTop: 8,
+    marginBottom: 24,
+  },
+  fieldLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#334155',
+    marginTop: 12,
+    marginBottom: 6,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: '#0f172a',
+    backgroundColor: '#fff',
+  },
+  textArea: {
+    minHeight: 88,
+    textAlignVertical: 'top',
+  },
+  button: {
+    alignSelf: 'center',
+    backgroundColor: '#2563eb',
+    borderRadius: 20,
+    paddingHorizontal: 28,
+    paddingVertical: 12,
+    minWidth: 160,
+    alignItems: 'center',
+  },
+  buttonDisabled: {
+    opacity: 0.4,
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  footer: {
+    paddingHorizontal: 28,
+    paddingTop: 12,
+  },
+  option: {
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginBottom: 8,
+  },
+  optionSelected: {
+    borderColor: '#2563eb',
+    backgroundColor: '#eff6ff',
+  },
+  optionText: {
+    fontSize: 16,
+    color: '#0f172a',
+  },
+  question: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#0f172a',
+    marginBottom: 8,
+    marginTop: 8,
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 16,
+    marginBottom: 8,
+    gap: 12,
+  },
+  toggleLabel: {
+    flex: 1,
+    fontSize: 16,
+    color: '#0f172a',
+  },
+  dateButton: {
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    marginBottom: 12,
+  },
+  dateButtonText: {
+    fontSize: 16,
+    color: '#0f172a',
+  },
+});

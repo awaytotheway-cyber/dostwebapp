@@ -1,0 +1,26 @@
+# DOST — Supabase config for Edge Functions
+project_id = "dost-app"
+
+[functions.chat]
+enabled = true
+verify_jwt = true
+
+[functions.embed-modules]
+enabled = true
+verify_jwt = false
+
+[functions.update-memory]
+enabled = true
+verify_jwt = true
+
+[functions.export-data]
+enabled = true
+verify_jwt = true
+
+[functions.delete-conversations]
+enabled = true
+verify_jwt = true
+
+[functions.delete-account]
+enabled = true
+verify_jwt = true
