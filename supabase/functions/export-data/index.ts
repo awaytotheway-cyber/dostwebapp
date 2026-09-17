@@ -148,7 +148,7 @@ async function applyRateLimit(
 
 async function loadProfile(admin: SupabaseClient, userId: string) {
   const full =
-    "name, intention, dosha, reflection_time, dob, dob_time, created_at";
+    "name, intention, dosha, reflection_time, dob, dob_time, birth_city, birth_district, birth_state, birth_country, created_at";
   const core = "name, intention, dosha, dob, dob_time";
 
   let { data, error } = await admin

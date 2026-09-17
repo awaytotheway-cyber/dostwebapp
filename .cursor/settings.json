@@ -1,0 +1,10 @@
+{
+  "plugins": {
+    "figma": {
+      "enabled": true
+    },
+    "treg": {
+      "enabled": true
+    }
+  }
+}

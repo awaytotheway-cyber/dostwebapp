@@ -31,6 +31,7 @@ function messageForStatus(status: number | undefined, isNetwork: boolean, kind: 
   }
   if (status === 400 && kind === 'delete') return 'Type DELETE to confirm.';
   if (isNetwork) return GENTLE_ERROR;
+  // Never show raw HTTP codes (500) or FunctionsHttpError text.
   return GENTLE_ERROR;
 }
 

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
-  Pressable,
+  ScrollView,
   Text,
   TextInput,
   View,
@@ -11,6 +11,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { OnboardingStackParamList } from './types';
 import { onboardingStyles as styles } from './styles';
+import OnboardingProgress from './OnboardingProgress';
+import { colors, spacing } from '../../lib/theme';
+import GentlePressable from '../GentlePressable';
 
 const MAX_INTENTION = 200;
 
@@ -21,40 +24,55 @@ export default function IntentionScreen({ navigation, route }: Props) {
   const [intention, setIntention] = useState('');
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom + 8 }]}>
+    <View
+      style={[
+        styles.container,
+        { paddingTop: insets.top, paddingBottom: insets.bottom + spacing.sm },
+      ]}
+    >
+      <OnboardingProgress />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <View style={styles.content}>
-          <Text style={styles.headingLeft}>What would you like to reflect on, gently?</Text>
-          <TextInput
-            style={[styles.input, styles.textArea]}
-            value={intention}
-            onChangeText={(value) => setIntention(value.slice(0, MAX_INTENTION))}
-            placeholder="A few words are enough"
-            placeholderTextColor="#888"
-            maxLength={MAX_INTENTION}
-            multiline
-            numberOfLines={3}
-            blurOnSubmit={false}
-            textAlignVertical="top"
-            underlineColorAndroid="transparent"
-          />
-          <Text style={styles.helper}>You can change this anytime.</Text>
-        </View>
+        <ScrollView
+          style={styles.contentTop}
+          contentContainerStyle={styles.centeredScrollContent}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+        >
+          <View>
+            <Text accessibilityRole="header" style={styles.headingLeft}>
+              What would you like to reflect on, gently?
+            </Text>
+            <TextInput
+              style={[styles.input, styles.textArea]}
+              value={intention}
+              onChangeText={(value) => setIntention(value.slice(0, MAX_INTENTION))}
+              placeholder="A few words are enough"
+              placeholderTextColor={colors.clay}
+              maxLength={MAX_INTENTION}
+              multiline
+              numberOfLines={3}
+              blurOnSubmit={false}
+              textAlignVertical="top"
+              underlineColorAndroid="transparent"
+            />
+            <Text style={styles.helper}>You can change this anytime.</Text>
+          </View>
+        </ScrollView>
         <View style={styles.footer}>
-          <Pressable
+          <GentlePressable
             onPress={() =>
               navigation.navigate('Birth', {
                 name: route.params.name,
                 intention: intention.trim(),
               })
             }
-            style={styles.button}
+            style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
           >
             <Text style={styles.buttonText}>Continue</Text>
-          </Pressable>
+          </GentlePressable>
         </View>
       </KeyboardAvoidingView>
     </View>

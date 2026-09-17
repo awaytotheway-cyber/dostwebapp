@@ -4,8 +4,22 @@ import { supabase } from './supabase';
 import { ONBOARDING_COMPLETE_KEY } from './onboardingStorage';
 
 export type Dosha = 'vata' | 'pitta' | 'kapha' | 'mixed';
+export type DailyRhythm = 'day' | 'flexible' | 'night';
+export type Hobby =
+  | 'reading'
+  | 'music'
+  | 'movement'
+  | 'nature'
+  | 'art'
+  | 'cooking'
+  | 'travel'
+  | 'games'
+  | 'spiritual_practice';
+export type SocialStyle = 'introvert' | 'ambivert' | 'extrovert';
 
 const PROFILE_SELECT =
+  'id, name, intention, dob, dob_time, dosha, dosha_scores, birth_city, birth_district, birth_state, birth_country, daily_rhythm, hobbies, social_style';
+const PROFILE_SELECT_WITH_PLACE =
   'id, name, intention, dob, dob_time, dosha, dosha_scores, birth_city, birth_district, birth_state, birth_country';
 const PROFILE_SELECT_LEGACY = 'id, name, intention, dob, dob_time, dosha, dosha_scores';
 
@@ -21,6 +35,9 @@ export type ProfileRow = {
   birth_district: string | null;
   birth_state: string | null;
   birth_country: string | null;
+  daily_rhythm: DailyRhythm | null;
+  hobbies: Hobby[];
+  social_style: SocialStyle | null;
 };
 
 export type ProfileLoad =
@@ -40,6 +57,9 @@ export type ProfileInput = {
   birthCountry: string;
   dosha: Dosha;
   doshaScores: Record<string, 'vata' | 'pitta' | 'kapha'>;
+  dailyRhythm: DailyRhythm;
+  hobbies: Hobby[];
+  socialStyle: SocialStyle;
 };
 
 function asDosha(value: unknown): Dosha | null {
@@ -50,6 +70,33 @@ function asDosha(value: unknown): Dosha | null {
 
 function asText(value: unknown): string | null {
   return typeof value === 'string' ? value : null;
+}
+
+function asDailyRhythm(value: unknown): DailyRhythm | null {
+  return value === 'day' || value === 'flexible' || value === 'night' ? value : null;
+}
+
+const HOBBIES: Hobby[] = [
+  'reading',
+  'music',
+  'movement',
+  'nature',
+  'art',
+  'cooking',
+  'travel',
+  'games',
+  'spiritual_practice',
+];
+
+function asHobbies(value: unknown): Hobby[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is Hobby => HOBBIES.includes(item as Hobby));
+}
+
+function asSocialStyle(value: unknown): SocialStyle | null {
+  return value === 'introvert' || value === 'ambivert' || value === 'extrovert'
+    ? value
+    : null;
 }
 
 function mapProfile(data: Record<string, unknown>): ProfileRow | null {
@@ -67,14 +114,20 @@ function mapProfile(data: Record<string, unknown>): ProfileRow | null {
     birth_district: asText(data.birth_district),
     birth_state: asText(data.birth_state),
     birth_country: asText(data.birth_country),
+    daily_rhythm: asDailyRhythm(data.daily_rhythm),
+    hobbies: asHobbies(data.hobbies),
+    social_style: asSocialStyle(data.social_style),
   };
 }
 
 export async function loadMyProfile(): Promise<ProfileLoad> {
   const first = await supabase.from('profiles').select(PROFILE_SELECT).maybeSingle();
-  const result = first.error
-    ? await supabase.from('profiles').select(PROFILE_SELECT_LEGACY).maybeSingle()
+  const withPlace = first.error
+    ? await supabase.from('profiles').select(PROFILE_SELECT_WITH_PLACE).maybeSingle()
     : first;
+  const result = withPlace.error
+    ? await supabase.from('profiles').select(PROFILE_SELECT_LEGACY).maybeSingle()
+    : withPlace;
 
   if (result.error) return { ok: false };
   if (!result.data || typeof result.data !== 'object') return { ok: true, profile: null };
@@ -175,6 +228,9 @@ export async function saveMyProfile(input: ProfileInput): Promise<ProfileWrite> 
     dob_time: input.dobTime,
     dosha: input.dosha,
     dosha_scores: input.doshaScores,
+    daily_rhythm: input.dailyRhythm,
+    hobbies: input.hobbies.slice(0, 5),
+    social_style: input.socialStyle,
   };
 
   const withPlace = {

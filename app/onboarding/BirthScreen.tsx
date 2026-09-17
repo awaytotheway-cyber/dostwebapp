@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Platform, Pressable, Switch, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, Switch, Text, View } from 'react-native';
 import DateTimePicker, {
   type DateTimePickerEvent,
 } from '@react-native-community/datetimepicker';
@@ -7,6 +7,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { OnboardingStackParamList } from './types';
 import { onboardingStyles as styles } from './styles';
+import OnboardingProgress from './OnboardingProgress';
+import { colors, spacing } from '../../lib/theme';
+import GentlePressable from '../GentlePressable';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'Birth'>;
 
@@ -77,26 +80,55 @@ export default function BirthScreen({ navigation, route }: Props) {
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom + 8 }]}>
-      <View style={styles.contentTop}>
-        <Text style={styles.headingLeft}>When were you born?</Text>
+    <View
+      style={[
+        styles.container,
+        { paddingTop: insets.top, paddingBottom: insets.bottom + spacing.sm },
+      ]}
+    >
+      <OnboardingProgress />
+      <ScrollView
+        style={styles.contentTop}
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
+        <Text accessibilityRole="header" style={styles.headingLeft}>
+          When were you born?
+        </Text>
 
         {Platform.OS === 'android' ? (
-          <Pressable onPress={() => setShowDatePicker(true)} style={styles.dateButton}>
+          <Pressable
+            onPress={() => setShowDatePicker(true)}
+            style={({ pressed }) => [styles.dateButton, pressed && styles.optionSelected]}
+          >
             <Text style={styles.dateButtonText}>{dateLabel}</Text>
           </Pressable>
         ) : (
           <Text style={styles.copyLeft}>{dateLabel}</Text>
         )}
 
-        {showDatePicker ? (
+        {showDatePicker && Platform.OS === 'android' ? (
           <DateTimePicker
             value={date}
             mode="date"
-            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            display="default"
             onChange={onDateChange}
             maximumDate={new Date()}
           />
+        ) : null}
+        {Platform.OS === 'ios' ? (
+          <View style={styles.pickerFrame}>
+            <DateTimePicker
+              value={date}
+              mode="date"
+              display="spinner"
+              onChange={onDateChange}
+              maximumDate={new Date()}
+              textColor={colors.cream}
+              accentColor={colors.gold}
+              themeVariant="light"
+            />
+          </View>
         ) : null}
 
         <View style={styles.toggleRow}>
@@ -107,12 +139,18 @@ export default function BirthScreen({ navigation, route }: Props) {
               setUnknownTime(value);
               if (value) setShowTimePicker(false);
             }}
+            trackColor={{ false: colors.divider, true: colors.olive }}
+            thumbColor={unknownTime ? colors.onPrimary : colors.sand}
+            ios_backgroundColor={colors.divider}
           />
         </View>
 
         {!unknownTime ? (
           Platform.OS === 'android' ? (
-            <Pressable onPress={() => setShowTimePicker(true)} style={styles.dateButton}>
+            <Pressable
+              onPress={() => setShowTimePicker(true)}
+              style={({ pressed }) => [styles.dateButton, pressed && styles.optionSelected]}
+            >
               <Text style={styles.dateButtonText}>{timeLabel}</Text>
             </Pressable>
           ) : (
@@ -120,19 +158,35 @@ export default function BirthScreen({ navigation, route }: Props) {
           )
         ) : null}
 
-        {!unknownTime && (showTimePicker || Platform.OS === 'ios') ? (
+        {!unknownTime && showTimePicker && Platform.OS === 'android' ? (
           <DateTimePicker
             value={time}
             mode="time"
-            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            display="default"
             onChange={onTimeChange}
           />
         ) : null}
-      </View>
+        {!unknownTime && Platform.OS === 'ios' ? (
+          <View style={styles.pickerFrame}>
+            <DateTimePicker
+              value={time}
+              mode="time"
+              display="spinner"
+              onChange={onTimeChange}
+              textColor={colors.cream}
+              accentColor={colors.gold}
+              themeVariant="light"
+            />
+          </View>
+        ) : null}
+      </ScrollView>
       <View style={styles.footer}>
-        <Pressable onPress={onContinue} style={styles.button}>
+        <GentlePressable
+          onPress={onContinue}
+          style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
+        >
           <Text style={styles.buttonText}>Continue</Text>
-        </Pressable>
+        </GentlePressable>
       </View>
     </View>
   );

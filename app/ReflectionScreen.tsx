@@ -4,6 +4,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -17,6 +18,8 @@ import {
   requestNotificationPermission,
   scheduleMorningNoticings,
 } from '../lib/notifications';
+import { colors, radius, spacing, type } from '../lib/theme';
+import GentlePressable from './GentlePressable';
 
 type Props = NativeStackScreenProps<ChatStackParamList, 'Reflection'>;
 
@@ -71,99 +74,317 @@ export default function ReflectionScreen({ navigation, route }: Props) {
       style={[styles.container, { paddingTop: insets.top }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <View style={[styles.flex, { paddingBottom: insets.bottom + 8 }]}>
+      <View style={styles.flex}>
         <View style={styles.topBar}>
-          <Pressable onPress={() => navigation.goBack()} hitSlop={8}>
-            <Text style={styles.back}>Back</Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+            onPress={() => navigation.goBack()}
+            hitSlop={spacing.sm}
+            style={({ pressed }) => pressed && styles.controlPressed}
+          >
+            <Text style={styles.back}>
+              {mode === 'noticings' ? 'Evening reflection' : 'Evening reflection'}
+            </Text>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Not tonight"
+            onPress={onNotTonight}
+            hitSlop={spacing.sm}
+            style={({ pressed }) => pressed && styles.controlPressed}
+          >
+            <Text style={styles.notTonight}>Not tonight</Text>
           </Pressable>
         </View>
 
-        {mode === 'prompt' ? (
-          <View style={styles.content}>
-            <Text style={styles.heading}>Would you like to reflect on today?</Text>
-            <Pressable onPress={onYes} style={styles.button}>
-              <Text style={styles.buttonText}>Yes</Text>
-            </Pressable>
-            <Pressable onPress={onNotTonight} style={styles.secondary}>
-              <Text style={styles.secondaryText}>Not tonight</Text>
-            </Pressable>
-          </View>
-        ) : (
-          <View style={styles.content}>
-            <Text style={styles.heading}>Two things to notice tomorrow</Text>
-            <Text style={styles.copy}>Name two small things you'd like to notice.</Text>
-            <TextInput
-              style={styles.input}
-              value={one}
-              onChangeText={(value) => setOne(value.slice(0, 120))}
-              placeholder="First noticing"
-              placeholderTextColor="#888"
-              maxLength={120}
-              editable={!saving}
-              autoCapitalize="sentences"
-              underlineColorAndroid="transparent"
-            />
-            <TextInput
-              style={styles.input}
-              value={two}
-              onChangeText={(value) => setTwo(value.slice(0, 120))}
-              placeholder="Second noticing"
-              placeholderTextColor="#888"
-              maxLength={120}
-              editable={!saving}
-              autoCapitalize="sentences"
-              underlineColorAndroid="transparent"
-            />
-            <Pressable
-              onPress={() => void onSave()}
-              disabled={!canSave}
-              style={[styles.button, !canSave && styles.buttonDisabled]}
-            >
-              <Text style={styles.buttonText}>{saving ? 'Saving…' : 'Save'}</Text>
-            </Pressable>
-          </View>
-        )}
+        <ScrollView
+          contentContainerStyle={[
+            styles.scrollContent,
+            mode === 'prompt' ? styles.promptContent : styles.noticingsContent,
+            { paddingBottom: insets.bottom + spacing['2xl'] },
+          ]}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {mode === 'prompt' ? (
+            <>
+              <View style={styles.promptBlock}>
+                <Text style={styles.eyebrow}>EVENING REFLECTION</Text>
+                <Text style={styles.prompt}>Would you like to reflect on today?</Text>
+                <View style={styles.promptRule} />
+                <Text style={styles.promptNote}>A quiet moment is enough.</Text>
+              </View>
+
+              <View style={styles.actions}>
+                <GentlePressable
+                  accessibilityRole="button"
+                  onPress={onYes}
+                  style={({ pressed }) => [
+                    styles.primaryButton,
+                    pressed && styles.controlPressed,
+                  ]}
+                >
+                  <Text style={styles.primaryButtonText}>Yes</Text>
+                </GentlePressable>
+                <GentlePressable
+                  accessibilityRole="button"
+                  onPress={onNotTonight}
+                  style={({ pressed }) => [
+                    styles.secondaryButton,
+                    pressed && styles.controlPressed,
+                  ]}
+                >
+                  <Text style={styles.secondaryButtonText}>Not tonight</Text>
+                </GentlePressable>
+              </View>
+            </>
+          ) : (
+            <View>
+              <Text style={styles.eyebrow}>FOR TOMORROW</Text>
+              <Text style={styles.heading}>Two things to notice tomorrow</Text>
+              <Text style={styles.copy}>Name two small things you'd like to notice.</Text>
+
+              <View style={styles.noticingList}>
+                <View style={styles.noticingCard}>
+                  <View style={styles.noticingMark}>
+                    <Text style={styles.noticingNumber}>01</Text>
+                    <View style={styles.noticingRule} />
+                  </View>
+                  <View style={styles.noticingField}>
+                    <Text style={styles.inputLabel}>FIRST NOTICING</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={one}
+                      onChangeText={(value) => setOne(value.slice(0, 120))}
+                      placeholder="First noticing"
+                      placeholderTextColor={colors.clay}
+                      maxLength={120}
+                      editable={!saving}
+                      autoCapitalize="sentences"
+                      underlineColorAndroid="transparent"
+                    />
+                  </View>
+                </View>
+
+                <View style={styles.noticingCard}>
+                  <View style={styles.noticingMark}>
+                    <Text style={styles.noticingNumber}>02</Text>
+                    <View style={styles.noticingRule} />
+                  </View>
+                  <View style={styles.noticingField}>
+                    <Text style={styles.inputLabel}>SECOND NOTICING</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={two}
+                      onChangeText={(value) => setTwo(value.slice(0, 120))}
+                      placeholder="Second noticing"
+                      placeholderTextColor={colors.clay}
+                      maxLength={120}
+                      editable={!saving}
+                      autoCapitalize="sentences"
+                      underlineColorAndroid="transparent"
+                    />
+                  </View>
+                </View>
+              </View>
+
+              <GentlePressable
+                accessibilityRole="button"
+                accessibilityState={{ disabled: !canSave }}
+                onPress={() => void onSave()}
+                disabled={!canSave}
+                style={({ pressed }) => [
+                  styles.primaryButton,
+                  styles.saveButton,
+                  !canSave && styles.buttonDisabled,
+                  pressed && canSave && styles.controlPressed,
+                ]}
+              >
+                <Text style={styles.primaryButtonText}>{saving ? 'Saving…' : 'Save'}</Text>
+              </GentlePressable>
+            </View>
+          )}
+        </ScrollView>
       </View>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+  container: {
+    flex: 1,
+    backgroundColor: colors.parchment,
+  },
   flex: { flex: 1 },
-  topBar: { paddingHorizontal: 20, paddingVertical: 8 },
-  back: { fontSize: 16, color: '#2563eb', fontWeight: '600' },
-  content: { flex: 1, paddingHorizontal: 28, paddingTop: 12 },
-  heading: { fontSize: 24, fontWeight: '700', color: '#0f172a', marginBottom: 16 },
-  copy: { fontSize: 18, lineHeight: 26, color: '#0f172a', marginBottom: 20 },
-  input: {
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 16,
-    color: '#0f172a',
-    backgroundColor: '#fff',
-    marginBottom: 12,
-  },
-  button: {
-    alignSelf: 'center',
-    backgroundColor: '#2563eb',
-    borderRadius: 20,
-    paddingHorizontal: 28,
-    paddingVertical: 12,
-    minWidth: 160,
+  topBar: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 8,
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
   },
-  buttonDisabled: { opacity: 0.4 },
-  buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  secondary: {
+  back: {
+    ...type.label,
+    color: colors.inkMuted,
+    paddingVertical: spacing.sm,
+  },
+  notTonight: {
+    ...type.label,
+    color: colors.inkLight,
+    paddingVertical: spacing.sm,
+  },
+  topBarRule: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: colors.parchmentDivider,
+    marginTop: spacing.sm,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: spacing['2xl'],
+  },
+  promptContent: {
+    justifyContent: 'space-between',
+    paddingTop: spacing['5xl'],
+  },
+  noticingsContent: {
+    justifyContent: 'center',
+    paddingTop: spacing['3xl'],
+  },
+  promptBlock: {
+    maxWidth: 420,
+    paddingTop: spacing.lg,
+  },
+  eyebrow: {
+    ...type.label,
+    color: colors.inkMuted,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+    marginBottom: spacing.xl,
+  },
+  prompt: {
+    ...type.reflectivePrompt,
+    color: colors.inkDark,
+    fontSize: 28,
+    lineHeight: 40,
+    maxWidth: 340,
+  },
+  promptRule: {
+    width: spacing['5xl'],
+    height: 1,
+    backgroundColor: colors.parchmentBorder,
+    marginTop: spacing['3xl'],
+    marginBottom: spacing.lg,
+  },
+  promptNote: {
+    ...type.body,
+    color: colors.inkMuted,
+  },
+  actions: {
+    width: '100%',
+    maxWidth: 420,
     alignSelf: 'center',
-    paddingHorizontal: 28,
-    paddingVertical: 12,
-    marginTop: 12,
+    gap: spacing.md,
+    paddingTop: spacing['5xl'],
   },
-  secondaryText: { color: '#0f172a', fontSize: 16, fontWeight: '600' },
+  primaryButton: {
+    minHeight: 52,
+    borderRadius: radius.cta,
+    paddingHorizontal: spacing['2xl'],
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.terracotta,
+  },
+  primaryButtonText: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 16,
+    lineHeight: 22,
+    color: colors.onTerracotta,
+  },
+  secondaryButton: {
+    minHeight: 48,
+    borderRadius: radius.full,
+    paddingHorizontal: spacing['2xl'],
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  secondaryButtonText: {
+    ...type.body,
+    color: colors.inkMuted,
+  },
+  controlPressed: {
+    opacity: 0.68,
+  },
+  heading: {
+    fontFamily: 'Fraunces_500Medium',
+    fontSize: 32,
+    lineHeight: 38,
+    color: colors.inkDark,
+    maxWidth: 360,
+    marginBottom: spacing.md,
+  },
+  copy: {
+    ...type.body,
+    color: colors.inkMuted,
+    maxWidth: 360,
+  },
+  noticingList: {
+    gap: spacing.lg,
+    marginTop: spacing['3xl'],
+  },
+  noticingCard: {
+    minHeight: 72,
+    flexDirection: 'row',
+    backgroundColor: 'transparent',
+    borderRadius: 0,
+    borderWidth: 0,
+    borderBottomWidth: 1,
+    borderColor: colors.parchmentBorder,
+    paddingVertical: spacing.md,
+    paddingHorizontal: 0,
+  },
+  noticingMark: {
+    width: spacing['4xl'],
+    marginRight: spacing.md,
+    alignItems: 'flex-start',
+    paddingTop: 2,
+  },
+  noticingNumber: {
+    ...type.caption,
+    fontFamily: type.label.fontFamily,
+    color: colors.inkLight,
+    letterSpacing: 1,
+  },
+  noticingRule: {
+    width: spacing.xl,
+    height: 1,
+    backgroundColor: colors.parchmentBorder,
+    marginTop: spacing.sm,
+  },
+  noticingField: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  inputLabel: {
+    ...type.caption,
+    color: colors.inkLight,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    marginBottom: spacing.xs,
+  },
+  input: {
+    ...type.body,
+    color: colors.inkDark,
+    paddingHorizontal: spacing.none,
+    paddingVertical: spacing.sm,
+  },
+  saveButton: {
+    marginTop: spacing['3xl'],
+  },
+  buttonDisabled: {
+    opacity: 0.42,
+  },
 });

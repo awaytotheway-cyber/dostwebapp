@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="title">
+  <title id="title">DOST companion mark foreground</title>
+  <!-- Outer upward cradle (transparent cut via evenodd) -->
+  <path
+    fill="#606C38"
+    fill-rule="evenodd"
+    d="M220 720c28-210 140-360 292-360s264 150 292 360c-42-120-148-200-292-200S262 600 220 720Zm72 0c22-160 110-276 220-276s198 116 220 276c-34-92-116-156-220-156S326 628 292 720Z"
+  />
+  <!-- Inner upward cradle -->
+  <path
+    fill="#606C38"
+    fill-rule="evenodd"
+    d="M330 680c20-150 96-256 182-256s162 106 182 256c-30-88-96-148-182-148s-152 60-182 148Zm62 0c16-110 72-188 120-188s104 78 120 188c-22-64-66-108-120-108s-98 44-120 108Z"
+  />
+  <!-- Presence center -->
+  <circle cx="512" cy="430" r="86" fill="#C96F53"/>
+</svg>

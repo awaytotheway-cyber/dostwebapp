@@ -14,7 +14,7 @@ const MORNING_ID = 'dost-morning-noticings';
 
 const EVENING_BODY = "A quiet moment, if you'd like it. — DOST";
 
-type PendingScreen = 'Reflection';
+type PendingScreen = 'Chat' | 'Reflection';
 let pendingScreen: PendingScreen | null = null;
 const navListeners = new Set<(screen: PendingScreen) => void>();
 let routingStarted = false;
@@ -34,29 +34,34 @@ try {
   // Native module may be unavailable until a rebuild.
 }
 
-export function requestOpenReflection() {
+function requestOpenScreen(screen: PendingScreen) {
   if (navListeners.size === 0) {
-    pendingScreen = 'Reflection';
+    pendingScreen = screen;
     return;
   }
-  navListeners.forEach((listener) => listener('Reflection'));
+  navListeners.forEach((listener) => listener(screen));
+}
+
+export function requestOpenReflection() {
+  requestOpenScreen('Reflection');
 }
 
 export function subscribeReflectionNav(listener: (screen: PendingScreen) => void): () => void {
   navListeners.add(listener);
-  if (pendingScreen === 'Reflection') {
+  if (pendingScreen) {
+    const screen = pendingScreen;
     pendingScreen = null;
-    listener('Reflection');
+    listener(screen);
   }
   return () => {
     navListeners.delete(listener);
   };
 }
 
-function isReflectionData(data: unknown): boolean {
-  if (!data || typeof data !== 'object') return false;
+function notificationScreen(data: unknown): PendingScreen | null {
+  if (!data || typeof data !== 'object') return null;
   const screen = (data as { screen?: unknown }).screen;
-  return screen === 'Reflection';
+  return screen === 'Chat' || screen === 'Reflection' ? screen : null;
 }
 
 async function ensureAndroidChannel() {
@@ -73,9 +78,8 @@ export async function initNotificationRouting() {
 
   try {
     Notifications.addNotificationResponseReceivedListener((response) => {
-      if (isReflectionData(response.notification.request.content.data)) {
-        requestOpenReflection();
-      }
+      const screen = notificationScreen(response.notification.request.content.data);
+      if (screen) requestOpenScreen(screen);
     });
   } catch {
     // Expo Go / missing native module — in-app Reflect still works.
@@ -83,9 +87,12 @@ export async function initNotificationRouting() {
 
   try {
     const last = await Notifications.getLastNotificationResponseAsync();
-    if (!consumedLaunchResponse && last && isReflectionData(last.notification.request.content.data)) {
+    const screen = last
+      ? notificationScreen(last.notification.request.content.data)
+      : null;
+    if (!consumedLaunchResponse && screen) {
       consumedLaunchResponse = true;
-      requestOpenReflection();
+      requestOpenScreen(screen);
       const clear = (Notifications as { clearLastNotificationResponseAsync?: () => Promise<void> })
         .clearLastNotificationResponseAsync;
       if (typeof clear === 'function') {
@@ -211,7 +218,7 @@ export async function scheduleEveningCheckIn(time: HmTime): Promise<{ scheduled:
       return {
         scheduled: false,
         warning:
-          'Saved the time, but reminders may not fire in Expo Go. Use Reflect in the chat header to try the check-in.',
+          'Saved the time, but reminders may not fire in Expo Go. Use Evening check-in in the chat header to try the check-in.',
       };
     }
 
@@ -220,7 +227,7 @@ export async function scheduleEveningCheckIn(time: HmTime): Promise<{ scheduled:
     return {
       scheduled: false,
       warning:
-        'Saved the time, but reminders may not fire in Expo Go. Use Reflect in the chat header to try the check-in.',
+        'Saved the time, but reminders may not fire in Expo Go. Use Evening check-in in the chat header to try the check-in.',
     };
   }
 }

@@ -7,8 +7,17 @@ import IntentionScreen from './IntentionScreen';
 import BirthScreen from './BirthScreen';
 import BirthPlaceScreen from './BirthPlaceScreen';
 import DoshaScreen from './DoshaScreen';
+import EnneagramScreen from './EnneagramScreen';
+import NumerologyScreen from './NumerologyScreen';
+import TCMScreen from './TCMScreen';
+import MBTIScreen from './MBTIScreen';
+import RhythmScreen from './RhythmScreen';
+import HobbiesScreen from './HobbiesScreen';
+import SocialEnergyScreen from './SocialEnergyScreen';
 import ConfirmScreen from './ConfirmScreen';
 import type { OnboardingStackParamList } from './types';
+import { colors } from '../../lib/theme';
+import { useReducedMotion } from '../../lib/useReducedMotion';
 
 const Stack = createNativeStackNavigator<OnboardingStackParamList>();
 
@@ -17,11 +26,16 @@ type Props = {
 };
 
 export default function OnboardingNavigator({ onFinished }: Props) {
+  const reduceMotion = useReducedMotion();
   return (
     <NavigationContainer>
       <Stack.Navigator
         initialRouteName="Welcome"
-        screenOptions={{ headerShown: false, animation: 'slide_from_right' }}
+        screenOptions={{
+          headerShown: false,
+          animation: reduceMotion ? 'none' : 'fade',
+          contentStyle: { backgroundColor: colors.base },
+        }}
       >
         <Stack.Screen name="Welcome" component={WelcomeScreen} />
         <Stack.Screen name="Name" component={NameScreen} />
@@ -29,6 +43,13 @@ export default function OnboardingNavigator({ onFinished }: Props) {
         <Stack.Screen name="Birth" component={BirthScreen} />
         <Stack.Screen name="BirthPlace" component={BirthPlaceScreen} />
         <Stack.Screen name="Dosha" component={DoshaScreen} />
+        <Stack.Screen name="Enneagram" component={EnneagramScreen} />
+        <Stack.Screen name="Numerology" component={NumerologyScreen} />
+        <Stack.Screen name="TCM" component={TCMScreen} />
+        <Stack.Screen name="MBTI" component={MBTIScreen} />
+        <Stack.Screen name="Rhythm" component={RhythmScreen} />
+        <Stack.Screen name="Hobbies" component={HobbiesScreen} />
+        <Stack.Screen name="SocialEnergy" component={SocialEnergyScreen} />
         <Stack.Screen name="Confirm">
           {(props) => <ConfirmScreen {...props} onFinished={onFinished} />}
         </Stack.Screen>

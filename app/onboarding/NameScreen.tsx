@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
-  Pressable,
+  ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   View,
@@ -10,7 +11,10 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { OnboardingStackParamList } from './types';
-import { onboardingStyles as styles } from './styles';
+import { onboardingStyles as shared } from './styles';
+import OnboardingProgress from './OnboardingProgress';
+import { colors, spacing } from '../../lib/theme';
+import GentlePressable from '../GentlePressable';
 
 const MAX_NAME = 40;
 
@@ -22,37 +26,79 @@ export default function NameScreen({ navigation }: Props) {
   const canContinue = name.trim().length > 0;
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom + 8 }]}>
+    <View
+      style={[
+        shared.container,
+        { paddingTop: insets.top, paddingBottom: insets.bottom + spacing.sm },
+      ]}
+    >
+      <OnboardingProgress />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <View style={styles.content}>
-          <Text style={styles.headingLeft}>What should I call you?</Text>
-          <TextInput
-            style={styles.input}
-            value={name}
-            onChangeText={(value) => setName(value.slice(0, MAX_NAME))}
-            placeholder="Your name"
-            placeholderTextColor="#888"
-            maxLength={MAX_NAME}
-            autoCapitalize="words"
-            autoCorrect={false}
-            textContentType="name"
-            autoComplete="name"
-            underlineColorAndroid="transparent"
-          />
-        </View>
-        <View style={styles.footer}>
-          <Pressable
+        <ScrollView
+          style={shared.contentTop}
+          contentContainerStyle={shared.centeredScrollContent}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+        >
+          <View>
+            <Text accessibilityRole="header" style={shared.headingLeft}>
+              What should Dost{'\n'}call you?
+            </Text>
+            <Text style={styles.subCopy}>
+              Just a first name is fine. You can change it any time.
+            </Text>
+            <TextInput
+              style={shared.input}
+              value={name}
+              onChangeText={(value) => setName(value.slice(0, MAX_NAME))}
+              placeholder="Your name"
+              placeholderTextColor={colors.inkLight}
+              maxLength={MAX_NAME}
+              autoCapitalize="words"
+              autoCorrect={false}
+              textContentType="name"
+              autoComplete="name"
+              underlineColorAndroid="transparent"
+              autoFocus
+            />
+          </View>
+        </ScrollView>
+        <View style={shared.footer}>
+          <GentlePressable
             onPress={() => navigation.navigate('Intention', { name: name.trim() })}
             disabled={!canContinue}
-            style={[styles.button, !canContinue && styles.buttonDisabled]}
+            style={({ pressed }) => [
+              shared.button,
+              pressed && shared.buttonPressed,
+              !canContinue && shared.buttonDisabled,
+            ]}
           >
-            <Text style={styles.buttonText}>Continue</Text>
-          </Pressable>
+            <Text style={shared.buttonText}>Continue</Text>
+          </GentlePressable>
+          <Text style={styles.privacyNote}>Everything you write stays private to your account.</Text>
         </View>
       </KeyboardAvoidingView>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  subCopy: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 15,
+    lineHeight: 22,
+    color: colors.inkMuted,
+    marginBottom: spacing.xl,
+  },
+  privacyNote: {
+    fontFamily: 'Inter_400Regular',
+    fontSize: 12,
+    lineHeight: 18,
+    color: colors.inkLight,
+    textAlign: 'center',
+    marginTop: spacing.md,
+  },
+});

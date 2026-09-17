@@ -11,30 +11,38 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#F9F6F0"
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.dost.app"
+      "bundleIdentifier": "com.dost.app",
+      "infoPlist": {
+        "NSSpeechRecognitionUsageDescription": "DOST uses your device to convert speech to text. Nothing is recorded or stored.",
+        "NSMicrophoneUsageDescription": "DOST uses your device to convert speech to text. Nothing is recorded or stored."
+      }
     },
     "androidNavigationBar": {
-      "backgroundColor": "#ffffff",
+      "backgroundColor": "#F9F6F0",
       "barStyle": "dark-content"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#F9F6F0"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "softwareKeyboardLayoutMode": "resize",
-      "package": "com.dost.app"
+      "package": "com.dost.app",
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
+      "expo-dev-client",
       "@react-native-community/datetimepicker",
       "expo-notifications",
       [
@@ -43,7 +51,33 @@
           "microphonePermission": "DOST uses your device to convert speech to text. Nothing is recorded or stored.",
           "speechRecognitionPermission": "DOST uses your device to convert speech to text. Nothing is recorded or stored."
         }
+      ],
+      "expo-sqlite",
+      "expo-font",
+      "expo-web-browser",
+      [
+        "react-native-android-widget",
+        {
+          "widgets": [
+            {
+              "name": "DostLauncher",
+              "label": "DOST",
+              "minWidth": "180dp",
+              "minHeight": "110dp",
+              "description": "Tap to reflect with DOST",
+              "previewImage": "./assets/widget-preview.png",
+              "targetCellWidth": 2,
+              "targetCellHeight": 1,
+              "updatePeriodMillis": 0
+            }
+          ]
+        }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "7e95c78c-365d-40ce-b0f2-7cc31d5d8f3e"
+      }
+    }
   }
 }

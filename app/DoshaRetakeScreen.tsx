@@ -7,6 +7,8 @@ import type { DoshaPick } from './onboarding/types';
 import { DOSHA_QUESTIONS, scoreDosha } from './onboarding/DoshaScreen';
 import { onboardingStyles as styles } from './onboarding/styles';
 import type { ChatStackParamList } from './chatTypes';
+import { colors } from '../lib/theme';
+import GentlePressable from './GentlePressable';
 
 type Props = NativeStackScreenProps<ChatStackParamList, 'DoshaRetake'>;
 
@@ -42,7 +44,7 @@ export default function DoshaRetakeScreen({ navigation }: Props) {
     <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom + 8 }]}>
       <View style={{ paddingHorizontal: 28, paddingVertical: 8 }}>
         <Pressable onPress={() => navigation.goBack()} hitSlop={8}>
-          <Text style={{ fontSize: 16, color: '#2563eb', fontWeight: '600' }}>Back</Text>
+          <Text style={{ fontSize: 16, color: colors.gold, fontWeight: '600' }}>Back</Text>
         </Pressable>
       </View>
       <ScrollView style={styles.contentTop} contentContainerStyle={{ paddingBottom: 24 }}>
@@ -68,13 +70,13 @@ export default function DoshaRetakeScreen({ navigation }: Props) {
         ))}
       </ScrollView>
       <View style={styles.footer}>
-        <Pressable
+        <GentlePressable
           onPress={() => void onSave()}
           disabled={!complete || saving}
           style={[styles.button, (!complete || saving) && styles.buttonDisabled]}
         >
           <Text style={styles.buttonText}>{saving ? 'Saving…' : 'Save dosha'}</Text>
-        </Pressable>
+        </GentlePressable>
       </View>
     </View>
   );

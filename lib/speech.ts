@@ -4,11 +4,16 @@ const MIC_RATIONALE =
   'DOST uses your device to convert speech to text. Nothing is recorded or stored.';
 
 export const SPEECH_UNAVAILABLE_TITLE = 'Voice needs a one-time install';
+export const EXPO_GO_VOICE_MESSAGE = 'Voice input is available in the DOST app.';
 export const SPEECH_UNAVAILABLE_MESSAGE =
-  'The Expo Go app cannot convert speech to text. Chat still works if you type. To use the mic, install a custom DOST app (Dev Client) — about 15 minutes. Your notes from this step explain how.';
+  'Voice input is unavailable in this build. You can still type.';
 
 export const MIC_PERMISSION_DENIED =
   'Microphone permission is off. You can type instead, or turn it on in your phone settings.';
+
+export const MIC_BUSY_MESSAGE = 'One moment — finishing the last listen.';
+export const MIC_START_FAIL = 'Could not start listening. Try again, or type.';
+export const MIC_NO_SPEECH = "Didn't catch that — try again or type.";
 
 type PermissionResult = {
   granted: boolean;
@@ -42,8 +47,16 @@ type SpeechPackage = {
   ExpoSpeechRecognitionModule: SpeechNativeModule;
 };
 
+export type MicPermissionState =
+  | { status: 'granted' }
+  | { status: 'denied'; canAskAgain: boolean }
+  | { status: 'unknown' };
+
 export function isExpoGo(): boolean {
-  return Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+  return (
+    Constants.executionEnvironment === ExecutionEnvironment.StoreClient ||
+    Constants.appOwnership === 'expo'
+  );
 }
 
 export function loadSpeechModule(): SpeechNativeModule | null {
@@ -57,7 +70,7 @@ export function loadSpeechModule(): SpeechNativeModule | null {
 }
 
 export function speechUnavailableReason(mod: SpeechNativeModule | null): string | null {
-  if (isExpoGo()) return SPEECH_UNAVAILABLE_MESSAGE;
+  if (isExpoGo()) return EXPO_GO_VOICE_MESSAGE;
   if (!mod) return SPEECH_UNAVAILABLE_MESSAGE;
   try {
     if (typeof mod.isRecognitionAvailable === 'function' && !mod.isRecognitionAvailable()) {
@@ -69,11 +82,37 @@ export function speechUnavailableReason(mod: SpeechNativeModule | null): string 
   return null;
 }
 
+export async function getMicPermissionState(
+  mod: SpeechNativeModule,
+): Promise<MicPermissionState> {
+  try {
+    if (typeof mod.getPermissionsAsync === 'function') {
+      const current = await mod.getPermissionsAsync();
+      if (current.granted) return { status: 'granted' };
+      return {
+        status: 'denied',
+        canAskAgain: current.canAskAgain !== false,
+      };
+    }
+  } catch {
+    // Fall through to request.
+  }
+  return { status: 'unknown' };
+}
+
 export async function requestMicPermission(
   mod: SpeechNativeModule,
-): Promise<{ granted: boolean; denied: boolean }> {
-  const result = await mod.requestPermissionsAsync();
-  return { granted: Boolean(result.granted), denied: !result.granted };
+): Promise<{ granted: boolean; denied: boolean; canAskAgain: boolean }> {
+  try {
+    const result = await mod.requestPermissionsAsync();
+    return {
+      granted: Boolean(result.granted),
+      denied: !result.granted,
+      canAskAgain: result.canAskAgain !== false,
+    };
+  } catch {
+    return { granted: false, denied: true, canAskAgain: true };
+  }
 }
 
 export function startDictation(mod: SpeechNativeModule): void {
@@ -81,7 +120,7 @@ export function startDictation(mod: SpeechNativeModule): void {
     lang: 'en-IN',
     interimResults: true,
     maxAlternatives: 1,
-    continuous: true,
+    continuous: false,
     // OS speech APIs only — do not persist microphone audio on disk.
     requiresOnDeviceRecognition: false,
     addsPunctuation: true,
@@ -100,6 +139,47 @@ export function stopDictation(mod: SpeechNativeModule): void {
       // Native stop can throw if recognition already ended.
     }
   }
+}
+
+export function abortDictation(mod: SpeechNativeModule): void {
+  try {
+    mod.abort?.();
+  } catch {
+    try {
+      mod.stop();
+    } catch {
+      // Already stopped.
+    }
+  }
+}
+
+function friendlySpeechError(event: SpeechErrorEvent): string | null {
+  const code = (event.error ?? '').toLowerCase();
+  if (
+    code === 'aborted' ||
+    code === 'cancelled' ||
+    code === 'canceled' ||
+    code === 'client'
+  ) {
+    return null;
+  }
+  if (code === 'no-speech' || code === 'speech-timeout') {
+    return MIC_NO_SPEECH;
+  }
+  if (code === 'not-allowed' || code === 'permission-denied' || code === 'audio-capture') {
+    return MIC_PERMISSION_DENIED;
+  }
+  if (code === 'network') {
+    return 'Voice needs a connection right now. You can still type.';
+  }
+  if (code === 'busy' || code === 'already-started') {
+    return MIC_BUSY_MESSAGE;
+  }
+  const msg = typeof event.message === 'string' ? event.message.trim() : '';
+  if (msg && !/\b500\b|exception|stack|native/i.test(msg)) {
+    return msg.length > 120 ? MIC_NO_SPEECH : msg;
+  }
+  return MIC_NO_SPEECH;
 }
 
 export function subscribeSpeech(
@@ -124,11 +204,12 @@ export function subscribeSpeech(
   listeners.push(
     mod.addListener('error', (raw) => {
       const event = raw as SpeechErrorEvent;
-      if (event.error === 'aborted' || event.error === 'no-speech') {
+      const friendly = friendlySpeechError(event);
+      if (friendly === null) {
         handlers.onEnd?.();
         return;
       }
-      handlers.onError?.(event.message || 'Could not hear that. Try again, or type.');
+      handlers.onError?.(friendly);
     }),
   );
   return () => {

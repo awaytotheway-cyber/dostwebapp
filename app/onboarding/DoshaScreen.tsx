@@ -5,6 +5,10 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { Dosha } from '../../lib/profile';
 import type { DoshaPick, OnboardingStackParamList } from './types';
 import { onboardingStyles as styles } from './styles';
+import OnboardingProgress from './OnboardingProgress';
+import DoshaGlyph from './DoshaGlyph';
+import { spacing } from '../../lib/theme';
+import GentlePressable from '../GentlePressable';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'Dosha'>;
 
@@ -84,7 +88,7 @@ export default function DoshaScreen({ navigation, route }: Props) {
   const onContinue = () => {
     if (!complete) return;
     const filled = answers as Record<string, DoshaPick>;
-    navigation.navigate('Confirm', {
+    navigation.navigate('Enneagram', {
       ...route.params,
       dosha: scoreDosha(filled),
       doshaScores: filled,
@@ -92,8 +96,18 @@ export default function DoshaScreen({ navigation, route }: Props) {
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom + 8 }]}>
-      <ScrollView style={styles.contentTop} contentContainerStyle={{ paddingBottom: 24 }}>
+    <View
+      style={[
+        styles.container,
+        { paddingTop: insets.top, paddingBottom: insets.bottom + spacing.sm },
+      ]}
+    >
+      <OnboardingProgress />
+      <ScrollView
+        style={styles.contentTop}
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
         {DOSHA_QUESTIONS.map((question) => (
           <View key={question.key}>
             <Text style={styles.question}>{question.prompt}</Text>
@@ -105,8 +119,18 @@ export default function DoshaScreen({ navigation, route }: Props) {
                   onPress={() =>
                     setAnswers((prev) => ({ ...prev, [question.key]: option.value }))
                   }
-                  style={[styles.option, selected && styles.optionSelected]}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected }}
+                  accessibilityLabel={option.label}
+                  style={({ pressed }) => [
+                    styles.option,
+                    selected && styles.optionSelected,
+                    pressed && styles.optionSelected,
+                  ]}
                 >
+                  <View style={styles.doshaGlyphFrame}>
+                    <DoshaGlyph dosha={option.value} selected={selected} />
+                  </View>
                   <Text style={styles.optionText}>{option.label}</Text>
                 </Pressable>
               );
@@ -115,13 +139,17 @@ export default function DoshaScreen({ navigation, route }: Props) {
         ))}
       </ScrollView>
       <View style={styles.footer}>
-        <Pressable
+        <GentlePressable
           onPress={onContinue}
           disabled={!complete}
-          style={[styles.button, !complete && styles.buttonDisabled]}
+          style={({ pressed }) => [
+            styles.button,
+            pressed && styles.buttonPressed,
+            !complete && styles.buttonDisabled,
+          ]}
         >
           <Text style={styles.buttonText}>Continue</Text>
-        </Pressable>
+        </GentlePressable>
       </View>
     </View>
   );

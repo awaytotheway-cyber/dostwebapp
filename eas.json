@@ -10,6 +10,30 @@
       "android": {
         "buildType": "apk"
       }
+    },
+    "preview": {
+      "developmentClient": false,
+      "distribution": "internal",
+      "environment": "production",
+      "android": {
+        "buildType": "apk"
+      },
+      "ios": {
+        "simulator": true
+      }
+    },
+    "simulator": {
+      "ios": {
+        "simulator": true
+      }
+    },
+    "testflight": {
+      "distribution": "store",
+      "environment": "production"
+    },
+    "production": {
+      "distribution": "store",
+      "environment": "production"
     }
   }
 }

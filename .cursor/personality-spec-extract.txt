@@ -1,0 +1,400 @@
+# Cursor Prompt — DOST Expanded Onboarding: Personality Profile
+
+## Overview
+
+You are extending DOST's onboarding flow to collect a richer personality profile — Enneagram (mini-quiz), Numerology (auto-computed from birthdate, zero extra input), TCM Element (2 dropdowns), and an optional MBTI self-report field. All of this is grounded in `Body_composition-AEA_profiling_with_coding.docx`. Every module is skippable — onboarding can be completed with just the existing Dosha step if the user wants. The resulting profile is stored server-side and injected as context into DOST's system prompt so responses are personalized.
+
+DOST is an Expo app (Dev Client + EAS Build), React Native, TypeScript, Supabase backend. Existing onboarding already collects: name, intention, birth date, place of birth, Dosha tendency. This build adds new steps to that existing flow — it does not replace it.
+
+The user (Pratik) is NOT a coder. Work in Agent mode. **ONE STEP PER MESSAGE.** After each step, STOP and wait for "next" or "Step X". Never batch. Show all code before running. If anything errors, plain-English explanation, then stop. Match Dawn Earth design system throughout (Fraunces serif for DOST's voice/headers, Inter sans for form controls, `#1A1614` base, `#EDE4D3` cream, `#D9A857` gold, `#C9B79C` sand, `#241E1B` surface).
+
+**Non-negotiable:** every new onboarding step must have a visible, easy "Skip for now" option. Nothing here should ever feel like a gate the user must pass through to reach DOST. This matches DOST's core ethos — invitation, never requirement.
+
+---
+
+## What's being added, in plain terms
+
+1. **Enneagram** — a short 8-question quiz (not 27+ question professional tests) that gives a reasonable-confidence primary type. If the user already knows their type, they can just self-report it instead of taking the quiz.
+2. **Numerology (Life Path Number)** — computed automatically from the birthdate already collected. Zero new questions. Just a calculation + a short reveal screen.
+3. **TCM Element** — 2 simple dropdown questions (dominant emotional state, preferred climate) mapped to one of 5 elements.
+4. **MBTI (optional, self-report only)** — a single text field: "If you know your Myers-Briggs type, share it here" with examples. No quiz built for this — only for users who already know it.
+
+All four join the existing Dosha in a `personality_profile` table, and the whole profile gets serialized into DOST's system prompt as personalization context.
+
+---
+
+## Build sequence
+
+### STEP 1 — Create the personality_profile table
+
+In Supabase SQL Editor:
+
+```sql
+create table if not exists personality_profile (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+
+  -- Existing (already collected elsewhere — this table centralizes it)
+  dosha_body text,
+  dosha_mind text,
+
+  -- Enneagram
+  enneagram_type int check (enneagram_type between 1 and 9),
+  enneagram_source text check (enneagram_source in ('quiz', 'self_report')),
+
+  -- Numerology (computed, not user-entered)
+  life_path_number int,
+
+  -- TCM
+  tcm_element text check (tcm_element in ('Wood', 'Fire', 'Earth', 'Metal', 'Water')),
+  tcm_emotional_state text,
+  tcm_climate_preference text,
+
+  -- MBTI (optional self-report)
+  mbti_type text,
+
+  -- Tracking what's been completed vs skipped
+  completed_modules text[] default '{}',
+  skipped_modules text[] default '{}',
+
+  updated_at timestamptz default now()
+);
+
+alter table personality_profile enable row level security;
+create policy "own profile read" on personality_profile for select using (auth.uid() = user_id);
+create policy "own profile insert" on personality_profile for insert with check (auth.uid() = user_id);
+create policy "own profile update" on personality_profile for update using (auth.uid() = user_id);
+```
+
+Explain to the user: this is a single-row-per-user table (unlike `message_emotions` which has many rows). Every field is nullable — an empty profile is valid, since everything is skippable.
+
+STOP and say: **"Step 1 done — personality_profile table created. Say 'next' for Step 2."**
+
+---
+
+### STEP 2 — Build the Enneagram mini-quiz screen
+
+Create `screens/onboarding/EnneagramStep.tsx`. This is an 8-question forced-choice quiz (each question offers 2-3 short statements, user picks the one that resonates most). Keep questions short, conversational, not clinical.
+
+**Quiz questions (use these exactly — they're calibrated to map cleanly to your existing emotion taxonomy):**
+
+```typescript
+const ENNEAGRAM_QUESTIONS = [
+  {
+    id: 'q1',
+    prompt: 'When something goes wrong, my first instinct is to...',
+    options: [
+      { text: 'Figure out what I did wrong and fix it', type: 1 },
+      { text: 'Make sure everyone else is okay first', type: 2 },
+      { text: 'Find a way to still come out looking good', type: 3 },
+    ],
+  },
+  {
+    id: 'q2',
+    prompt: 'I feel most myself when...',
+    options: [
+      { text: 'I\'m creating something meaningful, even if it\'s messy', type: 4 },
+      { text: 'I understand something deeply before acting', type: 5 },
+      { text: 'I know exactly what to expect next', type: 6 },
+    ],
+  },
+  {
+    id: 'q3',
+    prompt: 'My biggest fear is...',
+    options: [
+      { text: 'Being ordinary or forgettable', type: 4 },
+      { text: 'Being trapped, controlled, or missing out', type: 7 },
+      { text: 'Being weak or controlled by others', type: 8 },
+    ],
+  },
+  {
+    id: 'q4',
+    prompt: 'In conflict, I tend to...',
+    options: [
+      { text: 'Avoid it and hope it resolves itself', type: 9 },
+      { text: 'Confront it directly, head-on', type: 8 },
+      { text: 'Worry about it long after it\'s over', type: 6 },
+    ],
+  },
+  {
+    id: 'q5',
+    prompt: 'People who know me well would say I\'m...',
+    options: [
+      { text: 'Principled, sometimes hard on myself', type: 1 },
+      { text: 'Warm, always there for others', type: 2 },
+      { text: 'Driven, always achieving something', type: 3 },
+    ],
+  },
+  {
+    id: 'q6',
+    prompt: 'When I\'m stressed, I...',
+    options: [
+      { text: 'Withdraw and go quiet', type: 5 },
+      { text: 'Keep myself busy so I don\'t have to feel it', type: 7 },
+      { text: 'Go along with whatever keeps the peace', type: 9 },
+    ],
+  },
+  {
+    id: 'q7',
+    prompt: 'What I want most from others is...',
+    options: [
+      { text: 'To be truly understood, not just liked', type: 4 },
+      { text: 'To be trusted and given space to think', type: 5 },
+      { text: 'To be respected, not controlled', type: 8 },
+    ],
+  },
+  {
+    id: 'q8',
+    prompt: 'My relationship with rules and structure is...',
+    options: [
+      { text: 'I hold myself to a high standard, often higher than others', type: 1 },
+      { text: 'I like having options open, structure can feel confining', type: 7 },
+      { text: 'I go with the flow, structure doesn\'t matter much to me', type: 9 },
+    ],
+  },
+];
+```
+
+**Scoring logic:** tally which `type` number was picked most across all 8 answers. The type with the highest count is the result. Handle ties by picking the first-encountered type among the tied ones (simple, good enough for a self-awareness tool, not a clinical instrument).
+
+```typescript
+function scoreEnneagram(answers: Record<string, number>): number {
+  const counts: Record<number, number> = {};
+  Object.values(answers).forEach((type) => {
+    counts[type] = (counts[type] || 0) + 1;
+  });
+  const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  return parseInt(sorted[0][0], 10);
+}
+```
+
+**UI:** one question per screen, large tappable option cards (not tiny radio buttons), gentle progress indicator ("3 of 8"), and a **"I already know my type"** link at the top that skips straight to a simple 1-9 picker with brief type names (e.g. "Type 4 — The Individualist") if the user prefers to self-report.
+
+**Skip option:** a clear "Skip this for now" at the bottom of the first question screen.
+
+At the end, show the result warmly: *"You show up most like Type 4 — someone who longs for depth and meaning, often feeling like an outsider looking in. This isn't a box — just one lens DOST can use to understand you better."* Save `enneagram_type` and `enneagram_source` ('quiz' or 'self_report') to `personality_profile`.
+
+STOP and say: **"Step 2 done — Enneagram quiz built. Say 'next' for Step 3."**
+
+---
+
+### STEP 3 — Auto-compute Numerology (Life Path Number)
+
+No new screen needed for input — this uses the birthdate already collected earlier in onboarding. Create `lib/personality/numerology.ts`:
+
+```typescript
+export function calculateLifePathNumber(birthDateISO: string): number {
+  // birthDateISO format: "YYYY-MM-DD"
+  const digits = birthDateISO.replace(/[^0-9]/g, '').split('').map(Number);
+  let sum = digits.reduce((a, b) => a + b, 0);
+
+  // Reduce to single digit, except master numbers 11 and 22
+  while (sum > 9 && sum !== 11 && sum !== 22) {
+    sum = sum.toString().split('').map(Number).reduce((a, b) => a + b, 0);
+  }
+  return sum;
+}
+
+export const LIFE_PATH_THEMES: Record<number, string> = {
+  1: 'the independent leader — driven, pioneering, sometimes needing to learn to lean on others',
+  2: 'the harmonizer — sensitive, cooperative, often the peacekeeper in relationships',
+  3: 'the expressive creative — communicative, joyful, sometimes scattered by too many ideas',
+  4: 'the steady builder — practical, disciplined, sometimes rigid under pressure',
+  5: 'the free spirit — adventurous, adaptable, sometimes restless or avoidant of commitment',
+  6: 'the nurturer — responsible, caring, sometimes overextending for others at their own cost',
+  7: 'the seeker — introspective, analytical, drawn to meaning beneath the surface',
+  8: 'the achiever — ambitious, capable, sometimes equating worth with accomplishment',
+  9: 'the humanitarian — compassionate, idealistic, sometimes carrying more than their share',
+  11: 'the intuitive — highly sensitive, visionary, often feeling things more intensely than most',
+  22: 'the master builder — capable of turning big dreams into real, lasting structures',
+};
+```
+
+**UI:** a simple reveal screen (no quiz, no input) shown right after Enneagram: *"Your Life Path Number is 7 — the seeker: introspective, analytical, drawn to meaning beneath the surface."* Include a **"Skip / I'd rather not see this"** option even though it's just a reveal — some people don't want numerology framing at all, respect that.
+
+Save `life_path_number` to `personality_profile`.
+
+STOP and say: **"Step 3 done — Numerology auto-computation built. Say 'next' for Step 4."**
+
+---
+
+### STEP 4 — Build the TCM Element step
+
+Create `screens/onboarding/TCMStep.tsx`. Two simple dropdown/picker questions:
+
+```typescript
+const TCM_EMOTIONAL_STATES = [
+  { label: 'I tend to feel anger or frustration first', element: 'Wood' },
+  { label: 'I tend to feel joy or overexcitement first', element: 'Fire' },
+  { label: 'I tend to feel worry or overthinking first', element: 'Earth' },
+  { label: 'I tend to feel grief or sadness first', element: 'Metal' },
+  { label: 'I tend to feel fear or anxiety first', element: 'Water' },
+];
+
+const TCM_CLIMATE_PREFERENCES = [
+  { label: 'Warm and dry', element: 'Fire' },
+  { label: 'Cool and breezy', element: 'Wood' },
+  { label: 'Humid and mild', element: 'Earth' },
+  { label: 'Crisp and clear', element: 'Metal' },
+  { label: 'Cold, I run warm naturally', element: 'Water' },
+];
+```
+
+**Scoring:** if both answers point to the same element, that's the result. If they differ, weight the emotional-state answer more heavily (it's the primary signal) — result = emotional state's element.
+
+```typescript
+function scoreTCM(emotionalStateElement: string, climateElement: string): string {
+  return emotionalStateElement; // emotional state is primary signal
+}
+```
+
+**UI:** two quick single-select screens, same calm card style as Enneagram. Skip option present.
+
+Reveal: *"Your dominant element is Fire — expressive, warm, and quick to feel joy, but prone to burning out when overextended."* (Use a short description per element, similar tone to the Life Path descriptions.)
+
+Save `tcm_element`, `tcm_emotional_state`, `tcm_climate_preference` to `personality_profile`.
+
+STOP and say: **"Step 4 done — TCM step built. Say 'next' for Step 5."**
+
+---
+
+### STEP 5 — Add optional MBTI self-report field
+
+Create `screens/onboarding/MBTIStep.tsx`. This is the lightest step — a single text input, clearly optional, clearly framed as "only if you already know it."
+
+**UI:**
+- Header: *"Do you know your Myers-Briggs type?"*
+- Subtext: *"If you've taken this before (like INFP, ESTJ, etc.), share it here. If not, no worries — just skip."*
+- Text input, auto-uppercase, validate against the 16 real MBTI codes (INTJ, INTP, ENTJ, ENTP, INFJ, INFP, ENFJ, ENFP, ISTJ, ISFJ, ESTJ, ESFJ, ISTP, ISFP, ESTP, ESFP) — if what they type doesn't match, show a gentle inline note rather than blocking: *"That doesn't look like a standard type — you can still save it, or skip."*
+- Clear **Skip** button, equally prominent as the save button — this is the most skippable of all four modules since it requires the user to already have outside knowledge.
+
+Save `mbti_type` to `personality_profile` if provided.
+
+STOP and say: **"Step 5 done — MBTI field built. Say 'next' for Step 6."**
+
+---
+
+### STEP 6 — Wire the new steps into the onboarding flow
+
+Update your onboarding navigator to insert the new steps after the existing Dosha step:
+
+```
+Welcome → Name → Intention → Birth Date/Place → Dosha (existing)
+   → Enneagram (new) → Numerology reveal (new) → TCM (new) → MBTI (new, optional)
+   → Confirmation / Complete
+```
+
+Each step writes to `personality_profile` as the user progresses (upsert on `user_id`), so if they abandon onboarding partway and return later, whatever they completed is saved — they aren't forced to redo it.
+
+Add a **progress indicator** across all new steps (e.g., "Step 6 of 9") so users understand there's a defined end, not an infinite series of forms. Also add a single **"Skip all remaining personality steps"** link visible from the Enneagram step onward, for users who want to jump straight past all four new modules at once and land in the app with just Dosha.
+
+STOP and say: **"Step 6 done — onboarding flow updated. Say 'next' for Step 7."**
+
+---
+
+### STEP 7 — Build a Settings screen to complete/edit the profile later
+
+Since everything is skippable, users need a way to come back and fill in what they skipped. Create `screens/PersonalityProfileScreen.tsx`, accessible from Settings.
+
+**Layout:** a simple list showing each module's status:
+- ✅ Dosha: Vata-Pitta (tap to edit)
+- ✅ Enneagram: Type 4 (tap to edit)
+- ⚪ Numerology: not calculated (tap to reveal — this one has no "skip" really, since it's automatic, just offer to show it)
+- ⚪ TCM Element: skipped (tap to complete)
+- ⚪ MBTI: not provided (tap to add)
+
+Tapping any incomplete module re-opens that step's screen (reused from onboarding) so users complete it in-app without going through the whole onboarding flow again.
+
+STOP and say: **"Step 7 done — Settings profile screen built. Say 'next' for Step 8."**
+
+---
+
+### STEP 8 — Serialize the profile into DOST's system prompt (the personalization mechanism)
+
+This is where the profile actually changes DOST's behavior. In your chat edge function, add a function that builds a personalization context block from whatever the user has filled in — gracefully handling any combination of completed/skipped modules.
+
+```typescript
+function buildPersonalityContext(profile: PersonalityProfile | null): string {
+  if (!profile) return '';
+
+  const parts: string[] = [];
+
+  if (profile.dosha_body || profile.dosha_mind) {
+    parts.push(`Constitution (Ayurveda): ${profile.dosha_body || 'unknown'} body, ${profile.dosha_mind || 'unknown'} mind tendency.`);
+  }
+
+  if (profile.enneagram_type) {
+    parts.push(`Enneagram: Type ${profile.enneagram_type}.`);
+  }
+
+  if (profile.life_path_number) {
+    parts.push(`Numerology Life Path: ${profile.life_path_number}.`);
+  }
+
+  if (profile.tcm_element) {
+    parts.push(`TCM dominant element: ${profile.tcm_element}.`);
+  }
+
+  if (profile.mbti_type) {
+    parts.push(`MBTI: ${profile.mbti_type}.`);
+  }
+
+  if (parts.length === 0) return '';
+
+  return `
+PERSON'S CONSTITUTIONAL PROFILE (use gently, as subtle context for tone and pacing — never mention these labels directly to the person, never let this override their actual words in this conversation):
+${parts.join('\n')}
+`;
+}
+```
+
+Add this block into the existing system prompt construction (alongside the KB context, synthetic dialogue examples, and conversation stage from the Revolution build):
+
+```typescript
+const personalityContext = buildPersonalityContext(userProfile);
+
+const systemPrompt = `
+${DOST_CORE_PROMPT}
+
+${DOST_SAMPLE_CONVERSATIONS}
+
+${personalityContext}
+
+CURRENT STAGE: ${emotionResult.conversation_stage}
+...
+`;
+```
+
+**Critical instruction to add to DOST_CORE_PROMPT itself** (append this section):
+
+```
+USING THE PERSON'S CONSTITUTIONAL PROFILE:
+If provided, let it quietly shape your tone and pacing — never your content or method. For example: someone with more Vata tendency or an Enneagram Type 4 orientation may benefit from more spaciousness and less urgency in your pacing. Someone with more Pitta or Type 8 orientation may respond better to slightly more directness. NEVER mention Dosha, Enneagram, MBTI, Numerology, or TCM labels to the person directly — this is your private lens, not something to narrate. The person's actual words in this conversation always take priority over any profile inference.
+```
+
+STOP and say: **"Step 8 done — personalization wired into DOST's responses. Say 'next' for Step 9."**
+
+---
+
+### STEP 9 — Test the personalization
+
+1. Complete onboarding with a full profile (all four new modules filled in) on one test account. Have a conversation, note DOST's pacing and tone.
+2. Complete onboarding with everything skipped except Dosha on another test account (or by resetting). Have the same conversation. Compare — the difference should be SUBTLE (pacing, warmth, directness) not dramatic, and DOST should never mention "since you're a Type 4..." or similar direct labeling.
+3. Confirm a user who skipped everything gets a completely normal DOST experience — no broken prompt, no empty-context errors, no degraded quality.
+4. Confirm the Settings → Personality Profile screen correctly shows completed vs skipped state and lets users fill in gaps later.
+
+STOP and say: **"Step 9 done — personalization tested. Report what you noticed."**
+
+---
+
+## For you (Cursor) — critical reminders
+
+- ONE STEP PER MESSAGE. Wait for "next" or "Step X".
+- Every module needs a visible, easy skip option. Test that skipping actually works cleanly (no crashes, no forced re-entry).
+- The personality profile changes TONE and PACING only, never DOST's core method or the rhythm rules from DOST_CORE_PROMPT. Those rules always win.
+- Never let DOST narrate personality labels to the user ("as a Type 4...") — this breaks the non-judgmental, unlabeled quality of the whole product.
+- Match Dawn Earth palette exactly: `#1A1614` base, `#241E1B` surface, `#EDE4D3` cream, `#C9B79C` sand, `#D9A857` gold.
+- Reuse existing onboarding step UI patterns (progress indicator, card-based option selection) rather than inventing a new visual style for these new steps.
+- The Enneagram quiz scoring is intentionally simple (most-frequent-type wins) — this is a self-awareness tool, not a certified psychometric instrument. Don't over-engineer the scoring.
+
+Start with STEP 1 now. also the emotion detection bubbles are not yet appearing in conversation... fix that too.
+</user_query>

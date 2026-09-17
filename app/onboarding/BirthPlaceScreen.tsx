@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   ScrollView,
   Text,
   TextInput,
@@ -10,10 +9,13 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { emptyBirthPlace } from '../../lib/birthPlace';
-import CountryPicker from '../CountryPicker';
+import { DEFAULT_BIRTH_COUNTRY, emptyBirthPlace } from '../../lib/birthPlace';
 import type { OnboardingStackParamList } from './types';
 import { onboardingStyles as styles } from './styles';
+import OnboardingProgress from './OnboardingProgress';
+import OnboardingCountryPicker from './OnboardingCountryPicker';
+import { colors, spacing } from '../../lib/theme';
+import GentlePressable from '../GentlePressable';
 
 const FIELD_MAX = 80;
 
@@ -32,23 +34,31 @@ export default function BirthPlaceScreen({ navigation, route }: Props) {
       birthCity: place.birthCity.trim(),
       birthDistrict: place.birthDistrict.trim(),
       birthState: place.birthState.trim(),
-      birthCountry: place.birthCountry.trim() || 'India',
+      birthCountry: place.birthCountry.trim() || DEFAULT_BIRTH_COUNTRY,
     });
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom + 8 }]}>
+    <View
+      style={[
+        styles.container,
+        { paddingTop: insets.top, paddingBottom: insets.bottom + spacing.sm },
+      ]}
+    >
+      <OnboardingProgress />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView
           style={styles.contentTop}
-          contentContainerStyle={{ paddingBottom: 24 }}
+          contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
         >
-          <Text style={styles.headingLeft}>Where were you born?</Text>
+          <Text accessibilityRole="header" style={styles.headingLeft}>
+            Where were you born?
+          </Text>
           <Text style={styles.helper}>
             Optional, but it helps. You can skip any field and change this later in Settings.
           </Text>
@@ -61,7 +71,7 @@ export default function BirthPlaceScreen({ navigation, route }: Props) {
               setPlace((prev) => ({ ...prev, birthCity: value.slice(0, FIELD_MAX) }))
             }
             placeholder="City"
-            placeholderTextColor="#888"
+            placeholderTextColor={colors.clay}
             maxLength={FIELD_MAX}
             autoCapitalize="words"
             underlineColorAndroid="transparent"
@@ -75,7 +85,7 @@ export default function BirthPlaceScreen({ navigation, route }: Props) {
               setPlace((prev) => ({ ...prev, birthDistrict: value.slice(0, FIELD_MAX) }))
             }
             placeholder="District"
-            placeholderTextColor="#888"
+            placeholderTextColor={colors.clay}
             maxLength={FIELD_MAX}
             autoCapitalize="words"
             underlineColorAndroid="transparent"
@@ -89,22 +99,25 @@ export default function BirthPlaceScreen({ navigation, route }: Props) {
               setPlace((prev) => ({ ...prev, birthState: value.slice(0, FIELD_MAX) }))
             }
             placeholder="State"
-            placeholderTextColor="#888"
+            placeholderTextColor={colors.clay}
             maxLength={FIELD_MAX}
             autoCapitalize="words"
             underlineColorAndroid="transparent"
           />
 
           <Text style={styles.fieldLabel}>Country</Text>
-          <CountryPicker
+          <OnboardingCountryPicker
             value={place.birthCountry}
             onChange={(birthCountry) => setPlace((prev) => ({ ...prev, birthCountry }))}
           />
         </ScrollView>
         <View style={styles.footer}>
-          <Pressable onPress={onContinue} style={styles.button}>
+          <GentlePressable
+            onPress={onContinue}
+            style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
+          >
             <Text style={styles.buttonText}>Continue</Text>
-          </Pressable>
+          </GentlePressable>
         </View>
       </KeyboardAvoidingView>
     </View>

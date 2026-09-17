@@ -1,3 +1,5 @@
+import { DEFAULT_COUNTRY_NAME } from './countries';
+
 export type BirthPlace = {
   birthCity: string;
   birthDistrict: string;
@@ -5,22 +7,7 @@ export type BirthPlace = {
   birthCountry: string;
 };
 
-export const DEFAULT_BIRTH_COUNTRY = 'India';
-
-export const COUNTRIES = [
-  'India',
-  'Nepal',
-  'Bangladesh',
-  'Sri Lanka',
-  'Pakistan',
-  'United Arab Emirates',
-  'United States',
-  'United Kingdom',
-  'Canada',
-  'Australia',
-  'Singapore',
-  'Other',
-] as const;
+export const DEFAULT_BIRTH_COUNTRY = DEFAULT_COUNTRY_NAME;
 
 const FIELD_MAX = 80;
 
