@@ -28,3 +28,7 @@ verify_jwt = true
 [functions.extract-emotions]
 enabled = true
 verify_jwt = true
+
+[functions.nightly-consolidation]
+enabled = true
+verify_jwt = false

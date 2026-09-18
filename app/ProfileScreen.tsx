@@ -439,6 +439,10 @@ export default function ProfileScreen({ navigation, onStartOver }: Props) {
           <Divider />
           <SubHeader title="Personality profile" hint="Enneagram, Life Path, TCM, and MBTI — complete what you skipped, or update what you shared." />
           <SecondaryButton onPress={() => navigation.navigate('PersonalityProfile')} disabled={busy} label="Open personality profile" />
+
+          <Divider />
+          <SubHeader title="What DOST has noticed" hint="A quiet, evolving sense of your emotional patterns — always transparent, always yours to reset." />
+          <SecondaryButton onPress={() => navigation.navigate('Understanding')} disabled={busy} label="See what DOST has noticed" />
         </View>
 
         {/* ══ Reminders section ═══════════════════════════════ */}

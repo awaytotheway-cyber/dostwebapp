@@ -556,6 +556,26 @@ export default function SettingsScreen({ navigation, onStartOver }: Props) {
                 <Text style={styles.secondaryButtonText}>Open personality profile</Text>
               </Pressable>
             </View>
+
+            <View style={styles.subsection}>
+              <Text style={styles.subheading}>What DOST has noticed</Text>
+              <Text style={styles.helperInline}>
+                A quiet, evolving sense of your emotional patterns — always transparent, always yours to reset.
+              </Text>
+              <Pressable
+                onPress={() => navigation.navigate('Understanding')}
+                disabled={busy}
+                accessibilityRole="button"
+                accessibilityLabel="See what DOST has noticed"
+                style={({ pressed }) => [
+                  styles.secondaryButton,
+                  pressed && styles.pressed,
+                  busy && styles.buttonDisabled,
+                ]}
+              >
+                <Text style={styles.secondaryButtonText}>See what DOST has noticed</Text>
+              </Pressable>
+            </View>
           </View>
 
           <View style={styles.sectionBlock}>

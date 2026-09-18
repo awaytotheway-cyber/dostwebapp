@@ -13,6 +13,7 @@ import PastReflectionsScreen from './PastReflectionsScreen';
 import YourJourneyScreen from './YourJourneyScreen';
 import ProfileScreen from './ProfileScreen';
 import PersonalityProfileScreen from './PersonalityProfileScreen';
+import UnderstandingScreen from './UnderstandingScreen';
 import EnneagramScreen from './onboarding/EnneagramScreen';
 import NumerologyScreen from './onboarding/NumerologyScreen';
 import TCMScreen from './onboarding/TCMScreen';
@@ -112,6 +113,7 @@ export default function ChatNavigator({ onStartOver }: Props) {
         <Stack.Screen name="VoiceNoteDetail" component={VoiceNoteDetailScreen} />
         <Stack.Screen name="PastReflections" component={PastReflectionsScreen} />
         <Stack.Screen name="YourJourney" component={YourJourneyScreen} />
+        <Stack.Screen name="Understanding" component={UnderstandingScreen} />
         <Stack.Screen name="Profile">
           {(props) => (
             <ProfileScreen {...props} onStartOver={() => onStartOverRef.current()} />

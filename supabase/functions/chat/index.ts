@@ -469,11 +469,12 @@ async function handleRequest(req: Request): Promise<Response> {
       return json(429, { error: GENERIC_RATE_LIMIT });
     }
 
-    const [history, profile, memory, personalityProfile] = await Promise.all([
+    const [history, profile, memory, personalityProfile, userUnderstanding] = await Promise.all([
       loadHistory(userClient, userId),
       loadProfile(userClient, userId),
       loadMemory(userClient, userId),
       loadPersonalityProfile(userClient, userId),
+      loadUserUnderstanding(userClient, userId),
     ]);
 
     const { data: userRow, error: userInsertError } = await admin
@@ -565,6 +566,7 @@ async function handleRequest(req: Request): Promise<Response> {
         ? { ...emotionSnapshot, conversation_stage: conversationStage }
         : null,
       personalityProfile,
+      userUnderstanding,
     );
 
     let assistantText: string;
@@ -1299,6 +1301,65 @@ async function loadPersonalityProfile(
   }
 }
 
+type UserUnderstanding = {
+  understanding_text: string;
+  effective_approaches: string[];
+  ineffective_approaches: string[];
+  pacing_preference: string | null;
+  unresolved_threads: string[];
+};
+
+async function loadUserUnderstanding(
+  userClient: SupabaseClient,
+  userId: string,
+): Promise<UserUnderstanding | null> {
+  try {
+    const { data, error } = await userClient
+      .from("user_understanding")
+      .select(
+        "understanding_text, effective_approaches, ineffective_approaches, pacing_preference, unresolved_threads",
+      )
+      .eq("user_id", userId)
+      .order("version", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error || !data || typeof data !== "object") return null;
+    if (typeof data.understanding_text !== "string" || !data.understanding_text.trim()) return null;
+
+    return {
+      understanding_text: data.understanding_text,
+      effective_approaches: Array.isArray(data.effective_approaches) ? data.effective_approaches : [],
+      ineffective_approaches: Array.isArray(data.ineffective_approaches) ? data.ineffective_approaches : [],
+      pacing_preference: typeof data.pacing_preference === "string" ? data.pacing_preference : null,
+      unresolved_threads: Array.isArray(data.unresolved_threads) ? data.unresolved_threads : [],
+    };
+  } catch {
+    return null;
+  }
+}
+
+function buildUnderstandingContext(understanding: UserUnderstanding | null): string {
+  if (!understanding) return "";
+
+  const lines = [
+    "EVOLVING UNDERSTANDING OF THIS PERSON (private, never recite to them directly, never let it override what they're actually saying right now):",
+    understanding.understanding_text,
+    "",
+    `Things that have helped them open up: ${understanding.effective_approaches.length > 0 ? understanding.effective_approaches.join("; ") : "not yet known"}`,
+    `Things that tend to close them off: ${understanding.ineffective_approaches.length > 0 ? understanding.ineffective_approaches.join("; ") : "not yet known"}`,
+    `Pacing: ${understanding.pacing_preference || "not yet known"}`,
+  ];
+
+  if (understanding.unresolved_threads.length > 0) {
+    lines.push(
+      `Threads that have surfaced repeatedly without resolving: ${understanding.unresolved_threads.join("; ")} — you may gently create space for these if it feels natural, never force it.`,
+    );
+  }
+
+  return lines.join("\n");
+}
+
 function sanitizeInject(value: string, max: number): string {
   return value.replace(/[{}]/g, "").trim().slice(0, max);
 }
@@ -1399,6 +1460,7 @@ function buildSystemPrompt(
   emotionalState: string | null,
   extracted: EmotionSnapshot | null = null,
   personalityProfile: PersonalityPromptProfile | null = null,
+  userUnderstanding: UserUnderstanding | null = null,
 ): string {
   const stage = extracted?.conversation_stage ?? "meeting";
   const themeRepeatNote =
@@ -1409,11 +1471,13 @@ function buildSystemPrompt(
   const kbContext = kbBlock.trim();
   const dialogueExamples = "";
   const personalityContext = buildPersonalityContext(personalityProfile);
+  const understandingContext = buildUnderstandingContext(userUnderstanding);
 
   const sections = [
     DOST_CORE_PROMPT.trim(),
     DOST_SAMPLE_CONVERSATIONS.trim(),
     personalityContext.trim(),
+    understandingContext.trim(),
     `CURRENT STAGE: ${stage}`,
     themeRepeatNote,
     buildUserContextSection(profile, memory),
