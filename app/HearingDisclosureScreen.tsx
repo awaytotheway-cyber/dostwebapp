@@ -1,0 +1,211 @@
+import React from 'react';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import theme from '../lib/theme';
+import GentlePressable from './GentlePressable';
+
+type Props = {
+  onContinue: () => void;
+  onDecline: () => void;
+};
+
+export default function HearingDisclosureScreen({ onContinue, onDecline }: Props) {
+  const insets = useSafeAreaInsets();
+
+  return (
+    <ScrollView
+      style={[styles.container, { paddingTop: insets.top }]}
+      contentContainerStyle={[
+        styles.scrollContent,
+        { paddingBottom: insets.bottom + theme.spacing.lg },
+      ]}
+      keyboardShouldPersistTaps="handled"
+    >
+      <View style={styles.card}>
+        <Text style={styles.eyebrow}>Before we begin</Text>
+        <Text accessibilityRole="header" style={styles.heading}>
+          DOST can listen
+        </Text>
+        <Text style={styles.copy}>
+          When you start a listening session, DOST captures audio from your
+          microphone to understand the emotional texture of how you speak —
+          your energy, pace, and tone.
+        </Text>
+
+        <View style={styles.divider} />
+
+        <Text style={styles.sectionLabel}>What happens to your voice</Text>
+        <View style={styles.bulletList}>
+          <Bullet>
+            Audio is processed entirely on your phone. It never leaves your device.
+          </Bullet>
+          <Bullet>
+            Recordings are never saved. Audio exists only in memory for a few
+            seconds, then is discarded.
+          </Bullet>
+          <Bullet>
+            Only anonymous signals — like energy level and speaking pace — and
+            emotional themes are stored.
+          </Bullet>
+          <Bullet>
+            You start and stop each session yourself. DOST never listens in the
+            background.
+          </Bullet>
+        </View>
+
+        <View style={styles.divider} />
+
+        <Text style={styles.notice}>
+          Please note: anyone speaking near your phone during a session may be
+          captured. Only start a session when you&#39;re comfortable with who&#39;s
+          around you.
+        </Text>
+
+        <View style={styles.actions}>
+          <GentlePressable
+            accessibilityRole="button"
+            onPress={onContinue}
+            style={({ pressed }) => [
+              styles.primaryButton,
+              pressed && styles.primaryButtonPressed,
+            ]}
+          >
+            <Text style={styles.primaryButtonText}>I understand — continue</Text>
+          </GentlePressable>
+          <GentlePressable
+            accessibilityRole="button"
+            onPress={onDecline}
+            style={({ pressed }) => [
+              styles.secondaryButton,
+              pressed && styles.secondaryButtonPressed,
+            ]}
+          >
+            <Text style={styles.secondaryButtonText}>Not now</Text>
+          </GentlePressable>
+        </View>
+      </View>
+    </ScrollView>
+  );
+}
+
+function Bullet({ children }: { children: React.ReactNode }) {
+  return (
+    <View style={styles.bulletRow}>
+      <Text style={styles.bulletDot}>•</Text>
+      <Text style={styles.bulletText}>{children}</Text>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: theme.colors.base,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingHorizontal: theme.spacing['2xl'],
+    paddingTop: theme.spacing.lg,
+  },
+  card: {
+    width: '100%',
+    maxWidth: 460,
+    alignSelf: 'center',
+    borderWidth: 1,
+    borderColor: theme.colors.divider,
+    borderRadius: theme.radius.xl,
+    backgroundColor: theme.colors.surface,
+    paddingHorizontal: theme.spacing['2xl'],
+    paddingVertical: theme.spacing['3xl'],
+  },
+  eyebrow: {
+    ...theme.type.label,
+    color: theme.colors.gold,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    marginBottom: theme.spacing.sm,
+  },
+  heading: {
+    ...theme.type.heading,
+    color: theme.colors.cream,
+    marginBottom: theme.spacing.md,
+  },
+  copy: {
+    ...theme.type.body,
+    color: theme.colors.sand,
+  },
+  sectionLabel: {
+    ...theme.type.label,
+    color: theme.colors.cream,
+    marginBottom: theme.spacing.md,
+  },
+  bulletList: {
+    gap: theme.spacing.sm,
+  },
+  bulletRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  bulletDot: {
+    ...theme.type.body,
+    color: theme.colors.gold,
+    width: theme.spacing.lg,
+    lineHeight: theme.type.body.lineHeight,
+  },
+  bulletText: {
+    ...theme.type.body,
+    color: theme.colors.sand,
+    flex: 1,
+  },
+  divider: {
+    width: '100%',
+    height: 1,
+    backgroundColor: theme.colors.divider,
+    marginVertical: theme.spacing['2xl'],
+  },
+  notice: {
+    ...theme.type.body,
+    color: theme.colors.clay,
+    fontStyle: 'italic',
+  },
+  actions: {
+    marginTop: theme.spacing['2xl'],
+    gap: theme.spacing.md,
+  },
+  primaryButton: {
+    minHeight: theme.spacing['5xl'],
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: theme.radius.cta,
+    backgroundColor: theme.colors.gold,
+    paddingHorizontal: theme.spacing['2xl'],
+    paddingVertical: theme.spacing.md,
+  },
+  primaryButtonPressed: {
+    backgroundColor: theme.colors.goldSoft,
+  },
+  primaryButtonText: {
+    ...theme.type.label,
+    color: theme.colors.onPrimary,
+    fontSize: theme.type.body.fontSize,
+  },
+  secondaryButton: {
+    minHeight: theme.spacing['4xl'],
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: theme.radius.cta,
+    borderWidth: 1,
+    borderColor: theme.colors.borderStrong,
+    paddingHorizontal: theme.spacing['2xl'],
+    paddingVertical: theme.spacing.sm,
+  },
+  secondaryButtonPressed: {
+    backgroundColor: theme.colors.logoutWash,
+  },
+  secondaryButtonText: {
+    ...theme.type.label,
+    color: theme.colors.sand,
+    fontSize: theme.type.body.fontSize,
+  },
+});
