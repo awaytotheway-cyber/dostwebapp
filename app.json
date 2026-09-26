@@ -35,7 +35,11 @@
       "softwareKeyboardLayoutMode": "resize",
       "package": "com.dost.app",
       "permissions": [
-        "android.permission.RECORD_AUDIO"
+        "RECORD_AUDIO",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_MICROPHONE",
+        "POST_NOTIFICATIONS",
+        "WAKE_LOCK"
       ]
     },
     "web": {
