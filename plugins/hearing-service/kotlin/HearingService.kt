@@ -51,9 +51,22 @@ class HearingService : Service() {
     const val MIN_SEGMENT_MS = 1500
     const val SILENCE_HANGOVER_MS = 800
 
-    // Baseline energy VAD; Step 5 tunes / may replace with WebRTC VAD.
-    const val VAD_ENERGY_THRESHOLD = 0.012
-    const val VAD_MIN_SPEECH_FRAMES = 3
+    // Native VAD (energy + adaptive noise floor). Chose this over shipping
+    // a WebRTC VAD JNI binding: no maintained AAR on Maven Central, and an
+    // in-service energy gate already keeps silent frames off the JS bridge
+    // — the whole point of native VAD for battery. Aggressiveness follows
+    // WebRTC VAD's 0..3 convention: 0 permissive, 3 strict. Default 2.
+    const val VAD_AGGRESSIVENESS = 2
+    const val VAD_ABSOLUTE_MIN_RMS = 0.006
+
+    // ~500 ms noise floor calibration at session start. Threshold is then
+    // max(noiseFloor * multiplier, VAD_ABSOLUTE_MIN_RMS).
+    const val NOISE_FLOOR_CALIBRATION_MS = 500
+    const val NOISE_FLOOR_MULTIPLIER = 2.5
+
+    // Speech onset: N speech-labeled frames in a row before entering a
+    // segment. Onset stiffness scales with aggressiveness.
+    const val VAD_MIN_SPEECH_FRAMES_BASE = 2
 
     private const val TAG = "HearingService"
 
@@ -79,6 +92,13 @@ class HearingService : Service() {
   private var speechFrames: Long = 0
   private var segmentsEmitted: Int = 0
   private var sessionStartMs: Long = 0
+
+  // Adaptive noise floor: seeded from the first ~500 ms of the session,
+  // then slowly tracked during silence.
+  private var noiseFloorRms: Double = 0.0
+  private var noiseFloorFrames: Int = 0
+  private var noiseFloorCalibrated: Boolean = false
+  private val calibrationFramesTarget: Int = NOISE_FLOOR_CALIBRATION_MS / FRAME_MS
 
   override fun onBind(intent: Intent?): IBinder? = null
 
@@ -153,6 +173,9 @@ class HearingService : Service() {
     totalFrames = 0
     speechFrames = 0
     segmentsEmitted = 0
+    noiseFloorRms = 0.0
+    noiseFloorFrames = 0
+    noiseFloorCalibrated = false
 
     val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
     wakeLock = pm.newWakeLock(
@@ -225,13 +248,35 @@ class HearingService : Service() {
       sumSq += v * v
     }
     val rms = kotlin.math.sqrt(sumSq / len)
-    val isSpeech = rms >= VAD_ENERGY_THRESHOLD
+
+    // Adaptive noise floor. First ~500ms of the session seeds it as the
+    // mean RMS; afterwards, silent frames slowly nudge it toward the
+    // current ambient level so a room getting louder doesn't clip speech.
+    if (!noiseFloorCalibrated) {
+      noiseFloorRms += rms
+      noiseFloorFrames++
+      if (noiseFloorFrames >= calibrationFramesTarget) {
+        noiseFloorRms = noiseFloorRms / noiseFloorFrames
+        noiseFloorCalibrated = true
+      }
+      // Skip VAD entirely during calibration.
+      maybeEmitTick(false, rms)
+      return
+    }
+
+    val threshold = maxOf(
+      VAD_ABSOLUTE_MIN_RMS,
+      noiseFloorRms * NOISE_FLOOR_MULTIPLIER
+    )
+    val isSpeech = rms >= threshold
+
+    val onsetFrames = VAD_MIN_SPEECH_FRAMES_BASE + VAD_AGGRESSIVENESS
 
     if (isSpeech) {
       speechFrames++
       speechFramesInRow++
       silenceMs = 0
-      if (!inSpeech && speechFramesInRow >= VAD_MIN_SPEECH_FRAMES) {
+      if (!inSpeech && speechFramesInRow >= onsetFrames) {
         inSpeech = true
         segmentBuffer = ShortArray(RING_SIZE)
         segmentLength = 0
@@ -243,14 +288,24 @@ class HearingService : Service() {
         appendToSegment(frame, len)
         silenceMs += FRAME_MS
         if (silenceMs >= SILENCE_HANGOVER_MS) finalizeSegment()
+      } else {
+        // Slowly track ambient upward drift; never let it climb into the
+        // speech band by biasing the update to a small step.
+        noiseFloorRms = (noiseFloorRms * 0.98) + (rms * 0.02)
       }
     }
 
+    maybeEmitTick(isSpeech, rms)
+  }
+
+  private fun maybeEmitTick(isSpeech: Boolean, rms: Double) {
     // Light heartbeat every ~500ms for the UI dot.
     if (totalFrames % 25L == 0L) {
       emitEvent("HearingTick", Arguments.createMap().apply {
         putBoolean("speech", isSpeech)
         putDouble("rms", rms)
+        putDouble("noiseFloor", noiseFloorRms)
+        putBoolean("calibrating", !noiseFloorCalibrated)
         putDouble("totalMs", (totalFrames * FRAME_MS).toDouble())
         putDouble("speechMs", (speechFrames * FRAME_MS).toDouble())
       })
