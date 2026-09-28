@@ -1,0 +1,394 @@
+import { supabase } from '../supabase';
+import { extractAcousticFeatures } from './acousticFeatures';
+import type { AcousticFeatures } from './acousticFeatures';
+import { inferAcousticState } from './acousticInference';
+import {
+  isSessionActive as nativeIsSessionActive,
+  startSession as nativeStartSession,
+  stopSession as nativeStopSession,
+  subscribeHearing,
+  type HearingSessionStopped,
+  type HearingSpeechSegment,
+  type HearingStartError,
+  type HearingTick,
+} from './hearingBridge';
+import { redactPII } from './redaction';
+import { disposeTranscription, transcribeSegment } from './transcription';
+
+/**
+ * Full hearing pipeline.
+ *
+ * Session start
+ *   → create voice_sessions row
+ *   → start the native foreground service
+ *   → subscribe to native events
+ *
+ * For each VAD-detected speech segment:
+ *   → extract acoustic features (real signal processing)
+ *   → transcribe on-device with Whisper (fails soft)
+ *   → redact PII from the transcript
+ *   → call hearing-extract-emotions (fails soft)
+ *   → compute mock acoustic inference, stamped inference_source='mock'
+ *   → insert one voice_signals row
+ *   → drop the PCM buffer and transcript from the local scope
+ *
+ * Session stop
+ *   → stop the native service
+ *   → update the voice_sessions row with totals
+ *
+ * Memory hygiene: PCM buffers are local to processSegment(). Nothing
+ * accumulates across the session — even in balanced/light modes,
+ * queued segments are processed then dropped, not aggregated.
+ */
+
+export type BatteryMode = 'attentive' | 'balanced' | 'light';
+
+export type PipelineState =
+  | { status: 'idle' }
+  | {
+      status: 'active';
+      sessionId: string;
+      userId: string;
+      startedAt: number;
+      batteryMode: BatteryMode;
+      segmentsProcessed: number;
+      segmentsPending: number;
+      totalMs: number;
+      speechMs: number;
+      calibrating: boolean;
+      lastSpeech: boolean;
+      lastRms: number;
+    };
+
+type Listener = (state: PipelineState) => void;
+
+const listeners = new Set<Listener>();
+let state: PipelineState = { status: 'idle' };
+
+function setState(next: PipelineState) {
+  state = next;
+  for (const l of listeners) l(state);
+}
+
+export function getPipelineState(): PipelineState {
+  return state;
+}
+
+export function subscribePipeline(cb: Listener): () => void {
+  listeners.add(cb);
+  cb(state);
+  return () => {
+    listeners.delete(cb);
+  };
+}
+
+// ─── session lifecycle ────────────────────────────────────────────
+
+type SessionCtx = {
+  sessionId: string;
+  userId: string;
+  batteryMode: BatteryMode;
+  startedAt: number;
+  segmentsProcessed: number;
+  segmentIndex: number; // increments per received segment, for 'light' sampling
+  activeTasks: number;
+  unsubscribe: () => void;
+  lastSummary?: HearingSessionStopped;
+};
+
+let ctx: SessionCtx | null = null;
+
+export async function startHearingSession(
+  batteryMode: BatteryMode = 'balanced',
+): Promise<void> {
+  if (ctx) return; // already running
+
+  const { data: userData, error: userErr } = await supabase.auth.getUser();
+  if (userErr || !userData?.user) {
+    throw new Error('Sign in required to start a listening session');
+  }
+  const userId = userData.user.id;
+
+  const { data: sessionRow, error: sessErr } = await supabase
+    .from('voice_sessions')
+    .insert({ user_id: userId, battery_mode: batteryMode })
+    .select('id, started_at')
+    .single();
+  if (sessErr || !sessionRow) {
+    throw new Error(`Failed to create voice_sessions row: ${sessErr?.message ?? 'unknown'}`);
+  }
+
+  const sessionId = sessionRow.id as string;
+  const startedAt = new Date(sessionRow.started_at as string).getTime();
+
+  const unsubscribe = subscribeHearing({
+    onSegment: (seg) => {
+      if (!ctx) return;
+      ctx.segmentIndex++;
+
+      // Battery mode: 'light' processes 1 in 3 segments (sampled coverage).
+      if (ctx.batteryMode === 'light' && ctx.segmentIndex % 3 !== 1) {
+        // Explicit drop: don't retain the pcm reference.
+        return;
+      }
+
+      // Balanced: cap concurrency to 1 (serialize). Attentive: unbounded.
+      if (ctx.batteryMode === 'balanced' && ctx.activeTasks > 0) {
+        // Queue-of-one: skip this segment rather than accumulate. The
+        // spec forbids growing a segment buffer across the session.
+        return;
+      }
+
+      void processSegment(ctx, seg);
+    },
+    onTick: (t) => {
+      if (!ctx) return;
+      if (state.status !== 'active') return;
+      setState({
+        ...state,
+        totalMs: t.totalMs,
+        speechMs: t.speechMs,
+        calibrating: t.calibrating,
+        lastSpeech: t.speech,
+        lastRms: t.rms,
+      });
+    },
+    onStopped: (s) => {
+      if (ctx) ctx.lastSummary = s;
+    },
+    onStartError: (e: HearingStartError) => {
+      // Native side couldn't start capture. Roll back the session row.
+      void abortSession(e.reason).catch(() => {});
+    },
+  });
+
+  ctx = {
+    sessionId,
+    userId,
+    batteryMode,
+    startedAt,
+    segmentsProcessed: 0,
+    segmentIndex: 0,
+    activeTasks: 0,
+    unsubscribe,
+  };
+
+  setState({
+    status: 'active',
+    sessionId,
+    userId,
+    startedAt,
+    batteryMode,
+    segmentsProcessed: 0,
+    segmentsPending: 0,
+    totalMs: 0,
+    speechMs: 0,
+    calibrating: true,
+    lastSpeech: false,
+    lastRms: 0,
+  });
+
+  try {
+    await nativeStartSession();
+  } catch (err) {
+    ctx.unsubscribe();
+    ctx = null;
+    setState({ status: 'idle' });
+    await supabase.from('voice_sessions').delete().eq('id', sessionId);
+    throw err;
+  }
+}
+
+export async function stopHearingSession(): Promise<void> {
+  if (!ctx) return;
+  const active = ctx;
+
+  try {
+    await nativeStopSession();
+  } catch {
+    // fall through and still update the DB
+  }
+
+  // Give any in-flight tasks a brief chance to finish so their rows land
+  // before we write the session summary.
+  await waitForTasks(active, 3000);
+
+  const totalMs = active.lastSummary?.totalMs ?? 0;
+  const speechMs = active.lastSummary?.speechMs ?? 0;
+  const endedAt = active.lastSummary?.endedAt ?? Date.now();
+
+  await supabase
+    .from('voice_sessions')
+    .update({
+      ended_at: new Date(endedAt).toISOString(),
+      total_duration_seconds: totalMs / 1000,
+      speech_duration_seconds: speechMs / 1000,
+      segments_processed: active.segmentsProcessed,
+    })
+    .eq('id', active.sessionId);
+
+  active.unsubscribe();
+  ctx = null;
+  setState({ status: 'idle' });
+}
+
+async function abortSession(reason: string): Promise<void> {
+  const active = ctx;
+  if (!active) return;
+  try { active.unsubscribe(); } catch {}
+  try { await nativeStopSession(); } catch {}
+  await supabase.from('voice_sessions').delete().eq('id', active.sessionId);
+  ctx = null;
+  setState({ status: 'idle' });
+  if (__DEV__) console.warn('[hearing] session aborted:', reason);
+}
+
+async function waitForTasks(active: SessionCtx, timeoutMs: number): Promise<void> {
+  const start = Date.now();
+  while (active.activeTasks > 0 && Date.now() - start < timeoutMs) {
+    await sleep(50);
+  }
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+// ─── per-segment pipeline ─────────────────────────────────────────
+
+async function processSegment(
+  active: SessionCtx,
+  seg: HearingSpeechSegment,
+): Promise<void> {
+  active.activeTasks++;
+  publishPending();
+
+  // Locally-scoped references. When this function returns, both go out
+  // of scope and become GC-eligible. Explicitly null them below as
+  // belt-and-braces for large PCM arrays.
+  let pcm: Float32Array | null = seg.pcm;
+  let transcript: string | null = null;
+  let redacted: string | null = null;
+
+  try {
+    const durationSeconds = seg.durationMs / 1000;
+
+    // 1. Acoustic features — real signal processing.
+    const features: AcousticFeatures = extractAcousticFeatures(
+      pcm,
+      seg.sampleRate,
+      '', // transcript for WPM added after Whisper below
+      durationSeconds,
+    );
+
+    // 2. On-device transcription — fails soft, returns ''.
+    transcript = await transcribeSegment(pcm);
+
+    // Drop the PCM as soon as Whisper is done with it.
+    pcm = null;
+
+    // Recompute speaking_rate_wpm now that we have a word count.
+    const withRate: AcousticFeatures = {
+      ...features,
+      speaking_rate_wpm: computeWpm(transcript, durationSeconds),
+    };
+
+    // 3. Redact PII before it leaves the device.
+    redacted = redactPII(transcript);
+    transcript = null;
+
+    // 4. Semantic emotions from Phase 5 pipeline — fails soft.
+    let semantic: SemanticTags | null = null;
+    if (redacted && redacted.trim().length > 3) {
+      semantic = await extractHearingEmotions(redacted);
+    }
+    redacted = null;
+
+    // 5. Mock acoustic inference — stamped inference_source='mock'.
+    const inference = inferAcousticState(withRate);
+
+    // 6. Insert one voice_signals row.
+    await supabase.from('voice_signals').insert({
+      user_id: active.userId,
+      session_id: active.sessionId,
+      captured_at: new Date(seg.capturedAt).toISOString(),
+      segment_duration_seconds: durationSeconds,
+
+      rms_energy: withRate.rms_energy,
+      pitch_mean_hz: withRate.pitch_mean_hz,
+      pitch_variability: withRate.pitch_variability,
+      speaking_rate_wpm: withRate.speaking_rate_wpm,
+      silence_ratio: withRate.silence_ratio,
+      vocal_stress_index: withRate.vocal_stress_index,
+
+      primary_emotion: semantic?.primary_emotion ?? null,
+      secondary_emotions: semantic?.secondary_emotions ?? null,
+      underlying_need: semantic?.underlying_need ?? null,
+      semantic_confidence: semantic?.semantic_confidence ?? null,
+
+      acoustic_arousal: inference.acoustic_arousal,
+      acoustic_valence: inference.acoustic_valence,
+      inference_source: inference.inference_source,
+    });
+
+    active.segmentsProcessed++;
+    if (state.status === 'active') {
+      setState({ ...state, segmentsProcessed: active.segmentsProcessed });
+    }
+  } catch (err) {
+    if (__DEV__) console.warn('[hearing] segment processing failed:', err);
+  } finally {
+    // Belt-and-braces: even a thrown exception clears our locals here.
+    pcm = null;
+    transcript = null;
+    redacted = null;
+    active.activeTasks--;
+    publishPending();
+  }
+}
+
+function publishPending() {
+  if (state.status !== 'active' || !ctx) return;
+  setState({ ...state, segmentsPending: ctx.activeTasks });
+}
+
+function computeWpm(text: string, durationSeconds: number): number {
+  if (durationSeconds <= 0) return 0;
+  const words = text.trim().split(/\s+/).filter(Boolean).length;
+  return (words / durationSeconds) * 60;
+}
+
+// ─── semantic emotions leg ────────────────────────────────────────
+
+type SemanticTags = {
+  primary_emotion: string;
+  secondary_emotions: string[];
+  underlying_need: string;
+  semantic_confidence: number;
+};
+
+async function extractHearingEmotions(text: string): Promise<SemanticTags | null> {
+  try {
+    const { data, error } = await supabase.functions.invoke<SemanticTags>(
+      'hearing-extract-emotions',
+      { body: { text } },
+    );
+    if (error || !data) return null;
+    if (typeof data.primary_emotion !== 'string') return null;
+    return data;
+  } catch (err) {
+    if (__DEV__) console.warn('[hearing] extract-emotions failed:', err);
+    return null;
+  }
+}
+
+// ─── convenience passthroughs ─────────────────────────────────────
+
+export async function isSessionActive(): Promise<boolean> {
+  return nativeIsSessionActive();
+}
+
+/** Release the on-device Whisper model when leaving the feature. */
+export async function releaseHearingResources(): Promise<void> {
+  await disposeTranscription();
+}
