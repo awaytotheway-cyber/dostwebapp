@@ -1,16 +1,36 @@
 import React from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import theme from '../lib/theme';
 import GentlePressable from './GentlePressable';
+import type { ChatStackParamList } from './chatTypes';
 
-type Props = {
-  onContinue: () => void;
-  onDecline: () => void;
-};
+export const HEARING_DISCLOSURE_ACK_KEY = 'dost.hearing.disclosure.ack.v1';
 
-export default function HearingDisclosureScreen({ onContinue, onDecline }: Props) {
+type Props = NativeStackScreenProps<ChatStackParamList, 'HearingDisclosure'>;
+
+export default function HearingDisclosureScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
+  const returnTo = route.params?.returnTo;
+
+  const onContinue = async () => {
+    try {
+      await AsyncStorage.setItem(HEARING_DISCLOSURE_ACK_KEY, new Date().toISOString());
+    } catch {
+      // ignore — user can re-ack next time
+    }
+    if (returnTo === 'ListeningSession') {
+      navigation.replace('ListeningSession');
+    } else {
+      navigation.goBack();
+    }
+  };
+
+  const onDecline = () => {
+    navigation.goBack();
+  };
 
   return (
     <ScrollView

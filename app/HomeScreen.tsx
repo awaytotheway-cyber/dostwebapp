@@ -187,6 +187,38 @@ export default function HomeScreen({ navigation }: Props) {
           </GentlePressable>
         </View>
 
+        {/* ── Listening session ── */}
+        <GentlePressable
+          accessibilityRole="button"
+          accessibilityLabel="Listening session — let DOST hear how you speak"
+          onPress={() => navigation.navigate('ListeningSession')}
+          style={({ pressed }) => [styles.journeyRow, pressed && styles.cardPressed]}
+        >
+          <View style={styles.journeyLeft}>
+            <Svg width={18} height={18} viewBox="0 0 28 28" accessible={false} focusable={false}>
+              <Path
+                d="M14 6c-2 0-3.6 1.6-3.6 3.6v6.8c0 2 1.6 3.6 3.6 3.6s3.6-1.6 3.6-3.6V9.6C17.6 7.6 16 6 14 6Z"
+                fill="none"
+                stroke={home.muted}
+                strokeWidth={1.5}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <Path
+                d="M8 14a6 6 0 0 0 12 0"
+                fill="none"
+                stroke={home.muted}
+                strokeWidth={1.5}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <Line x1="14" y1="20" x2="14" y2="23" stroke={home.muted} strokeWidth={1.5} strokeLinecap="round" />
+            </Svg>
+            <Text style={styles.journeyLabel}>Listening session</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={16} color={home.muted} />
+        </GentlePressable>
+
         {/* ── Your Journey ── */}
         <GentlePressable
           accessibilityRole="button"

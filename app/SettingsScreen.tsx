@@ -38,6 +38,7 @@ import { supabase } from '../lib/supabase';
 import { purgeUserDatabase } from '../lib/localDb';
 import { colors, radius, spacing, type as typography } from '../lib/theme';
 import { useReducedMotion } from '../lib/useReducedMotion';
+import HearingSettingsSection from './HearingSettingsSection';
 
 type Props = NativeStackScreenProps<ChatStackParamList, 'Settings'> & {
   onStartOver: () => void;
@@ -630,6 +631,8 @@ export default function SettingsScreen({ navigation, onStartOver }: Props) {
               </Text>
             </Pressable>
           </View>
+
+          <HearingSettingsSection />
 
           <View style={styles.sectionBlock}>
             <Text style={styles.section}>Privacy & account</Text>
