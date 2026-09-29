@@ -2,6 +2,7 @@ import { supabase } from '../supabase';
 import { extractAcousticFeatures } from './acousticFeatures';
 import type { AcousticFeatures } from './acousticFeatures';
 import { inferAcousticState } from './acousticInference';
+import { loadReferenceVoiceprint } from './enrollment';
 import {
   isSessionActive as nativeIsSessionActive,
   startSession as nativeStartSession,
@@ -13,6 +14,13 @@ import {
   type HearingTick,
 } from './hearingBridge';
 import { redactPII } from './redaction';
+import { getSensitivity } from './sensitivity';
+import { extractVoiceprint, type Voiceprint } from './speakerFingerprint';
+import {
+  verifySpeaker,
+  type Sensitivity,
+  type VerificationResult,
+} from './speakerVerification';
 import { disposeTranscription, transcribeSegment } from './transcription';
 
 /**
@@ -51,8 +59,12 @@ export type PipelineState =
       userId: string;
       startedAt: number;
       batteryMode: BatteryMode;
+      sensitivity: Sensitivity;
       segmentsProcessed: number;
       segmentsPending: number;
+      segmentsMatched: number;
+      segmentsDiscardedOtherSpeaker: number;
+      segmentsDiscardedAmbiguous: number;
       totalMs: number;
       speechMs: number;
       calibrating: boolean;
@@ -88,9 +100,14 @@ type SessionCtx = {
   sessionId: string;
   userId: string;
   batteryMode: BatteryMode;
+  sensitivity: Sensitivity;
+  referenceVoiceprint: Voiceprint;
   startedAt: number;
   segmentsProcessed: number;
   segmentIndex: number; // increments per received segment, for 'light' sampling
+  segmentsMatched: number;
+  segmentsDiscardedOtherSpeaker: number;
+  segmentsDiscardedAmbiguous: number;
   activeTasks: number;
   unsubscribe: () => void;
   lastSummary?: HearingSessionStopped;
@@ -108,6 +125,17 @@ export async function startHearingSession(
     throw new Error('Sign in required to start a listening session');
   }
   const userId = userData.user.id;
+
+  // Phase 2 gate prerequisite: fetch the enrolled reference voiceprint
+  // once at session start. Sessions cannot run without one — the UI's
+  // enrollment gate is the primary defense, this is the safety net.
+  const referenceVoiceprint = await loadReferenceVoiceprint();
+  if (!referenceVoiceprint) {
+    throw new Error(
+      'You need to enroll your voice before starting a listening session.',
+    );
+  }
+  const sensitivity = await getSensitivity();
 
   const { data: sessionRow, error: sessErr } = await supabase
     .from('voice_sessions')
@@ -127,18 +155,44 @@ export async function startHearingSession(
       ctx.segmentIndex++;
 
       // Battery mode: 'light' processes 1 in 3 segments (sampled coverage).
+      // Note: 'light' drops are separate from speaker-gate discards —
+      // they don't count as "other speaker" or "ambiguous."
       if (ctx.batteryMode === 'light' && ctx.segmentIndex % 3 !== 1) {
-        // Explicit drop: don't retain the pcm reference.
+        seg.pcm.fill(0); // release native-backed bytes
         return;
       }
 
       // Balanced: cap concurrency to 1 (serialize). Attentive: unbounded.
+      // A queued segment would grow across the session; drop instead.
       if (ctx.batteryMode === 'balanced' && ctx.activeTasks > 0) {
-        // Queue-of-one: skip this segment rather than accumulate. The
-        // spec forbids growing a segment buffer across the session.
+        seg.pcm.fill(0);
         return;
       }
 
+      // ─── Phase 2 speaker gate ──────────────────────────────────
+      // Extract this segment's voiceprint and compare to the enrolled
+      // reference. On match: proceed. On mismatch or ambiguous: drop
+      // the segment without any downstream processing (no acoustic
+      // features, no transcription, no DB insert). Rule 5.
+      const segVoiceprint = extractVoiceprint(seg.pcm, seg.sampleRate);
+      const gate = verifySpeaker(
+        segVoiceprint,
+        ctx.referenceVoiceprint,
+        ctx.sensitivity,
+      );
+      if (gate.result !== 'match') {
+        if (gate.result === 'mismatch') {
+          ctx.segmentsDiscardedOtherSpeaker++;
+        } else {
+          ctx.segmentsDiscardedAmbiguous++;
+        }
+        seg.pcm.fill(0);
+        publishCounters();
+        return;
+      }
+
+      ctx.segmentsMatched++;
+      publishCounters();
       void processSegment(ctx, seg);
     },
     onTick: (t) => {
@@ -166,9 +220,14 @@ export async function startHearingSession(
     sessionId,
     userId,
     batteryMode,
+    sensitivity,
+    referenceVoiceprint,
     startedAt,
     segmentsProcessed: 0,
     segmentIndex: 0,
+    segmentsMatched: 0,
+    segmentsDiscardedOtherSpeaker: 0,
+    segmentsDiscardedAmbiguous: 0,
     activeTasks: 0,
     unsubscribe,
   };
@@ -179,8 +238,12 @@ export async function startHearingSession(
     userId,
     startedAt,
     batteryMode,
+    sensitivity,
     segmentsProcessed: 0,
     segmentsPending: 0,
+    segmentsMatched: 0,
+    segmentsDiscardedOtherSpeaker: 0,
+    segmentsDiscardedAmbiguous: 0,
     totalMs: 0,
     speechMs: 0,
     calibrating: true,
@@ -224,6 +287,9 @@ export async function stopHearingSession(): Promise<void> {
       total_duration_seconds: totalMs / 1000,
       speech_duration_seconds: speechMs / 1000,
       segments_processed: active.segmentsProcessed,
+      segments_matched: active.segmentsMatched,
+      segments_discarded_other_speaker: active.segmentsDiscardedOtherSpeaker,
+      segments_discarded_ambiguous: active.segmentsDiscardedAmbiguous,
     })
     .eq('id', active.sessionId);
 
@@ -350,6 +416,16 @@ async function processSegment(
 function publishPending() {
   if (state.status !== 'active' || !ctx) return;
   setState({ ...state, segmentsPending: ctx.activeTasks });
+}
+
+function publishCounters() {
+  if (state.status !== 'active' || !ctx) return;
+  setState({
+    ...state,
+    segmentsMatched: ctx.segmentsMatched,
+    segmentsDiscardedOtherSpeaker: ctx.segmentsDiscardedOtherSpeaker,
+    segmentsDiscardedAmbiguous: ctx.segmentsDiscardedAmbiguous,
+  });
 }
 
 function computeWpm(text: string, durationSeconds: number): number {
