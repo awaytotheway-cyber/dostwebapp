@@ -41,6 +41,9 @@ type SessionSummary = {
   totalMs: number;
   speechMs: number;
   segmentsProcessed: number;
+  segmentsMatched: number;
+  segmentsDiscardedOtherSpeaker: number;
+  segmentsDiscardedAmbiguous: number;
   avgPitchHz: number | null;
   avgWpm: number | null;
   avgPitchVariability: number | null;
@@ -396,6 +399,21 @@ function SummaryView({
         </Text>
       </View>
 
+      <View style={styles.summaryCard}>
+        <Text style={styles.summarySubheading}>Speaker gate</Text>
+        <SummaryRow
+          label="Segments matched to your voice"
+          value={String(summary.segmentsMatched)}
+        />
+        <SummaryRow
+          label="Segments skipped (other speaker or unclear)"
+          value={String(
+            summary.segmentsDiscardedOtherSpeaker +
+              summary.segmentsDiscardedAmbiguous,
+          )}
+        />
+      </View>
+
       {summary.emotions.length > 0 && (
         <View style={styles.themeCard}>
           <Text style={styles.themeHeading}>What DOST heard, in themes</Text>
@@ -494,7 +512,9 @@ function acousticSummarySentence(s: SessionSummary): string {
 async function loadSessionSummary(sessionId: string): Promise<SessionSummary> {
   const { data: sess } = await supabase
     .from('voice_sessions')
-    .select('total_duration_seconds, speech_duration_seconds, segments_processed')
+    .select(
+      'total_duration_seconds, speech_duration_seconds, segments_processed, segments_matched, segments_discarded_other_speaker, segments_discarded_ambiguous',
+    )
     .eq('id', sessionId)
     .maybeSingle();
 
@@ -539,6 +559,9 @@ async function loadSessionSummary(sessionId: string): Promise<SessionSummary> {
     totalMs: Number(sess?.total_duration_seconds ?? 0) * 1000,
     speechMs: Number(sess?.speech_duration_seconds ?? 0) * 1000,
     segmentsProcessed: Number(sess?.segments_processed ?? rows.length),
+    segmentsMatched: Number(sess?.segments_matched ?? 0),
+    segmentsDiscardedOtherSpeaker: Number(sess?.segments_discarded_other_speaker ?? 0),
+    segmentsDiscardedAmbiguous: Number(sess?.segments_discarded_ambiguous ?? 0),
     avgWpm: mean(wpmVals),
     avgPitchHz: mean(pitchVals),
     avgPitchVariability: mean(pitchVarVals),
@@ -741,6 +764,13 @@ const styles = StyleSheet.create({
     color: theme.colors.clay,
     fontStyle: 'italic',
     marginTop: theme.spacing.md,
+  },
+  summarySubheading: {
+    ...theme.type.label,
+    color: theme.colors.cream,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    marginBottom: theme.spacing.sm,
   },
   themeCard: {
     borderWidth: 1,
