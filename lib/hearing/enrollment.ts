@@ -29,75 +29,261 @@ import {
  */
 
 const ENROLLMENT_ACK_KEY = 'dost.hearing.enrollment.complete.v1';
+const ENROLLMENT_LANGS_KEY = 'dost.hearing.enrollment.languages.v1';
 
 // Method identifier used by upserts. Matches the check constraint on
 // speaker_enrollment.enrollment_method.
 const ENROLLMENT_METHOD: 'mfcc_fingerprint' | 'embedding_model' = 'mfcc_fingerprint';
 const MODEL_VERSION = 'mfcc-13-v1';
 
+export type EnrollmentLanguage = 'en' | 'hi' | 'mr';
+
+export const ENROLLMENT_LANGUAGES: readonly EnrollmentLanguage[] = ['en', 'hi', 'mr'];
+
 export type EnrollmentPrompt = {
   id: string;
-  language: 'en' | 'hi' | 'mr';
+  language: EnrollmentLanguage;
   primary: string;      // shown large
   transliteration?: string; // shown small, muted (for Devanagari lines)
   gloss: string;        // shown small (translation, for the reader's confidence)
 };
 
 /**
- * Five short prompts (~10-15s each read aloud) covering English, Hindi
- * and Marathi. Chosen for phonetic variety — vowels, plosives,
+ * Prompt bank grouped by language. Each language has 5 short prompts
+ * (~10–15 s spoken) chosen for phonetic variety — vowels, plosives,
  * fricatives, nasals, retroflex consonants in the Indic prompts.
+ *
+ * selectPromptsFor(languages, TARGET_CLIP_COUNT) picks 5 total,
+ * interleaved across whichever languages the user actually speaks so
+ * the enrolled voiceprint covers the phonetic space that will show up
+ * in real listening sessions.
  */
+const PROMPT_BANK: Record<EnrollmentLanguage, EnrollmentPrompt[]> = {
+  en: [
+    {
+      id: 'en-1',
+      language: 'en',
+      primary:
+        'The quick brown fox jumps over the lazy dog, while children play under the bright moonlight.',
+      gloss: 'English',
+    },
+    {
+      id: 'en-2',
+      language: 'en',
+      primary:
+        'She reads philosophy in the evening, drinks lemon tea, and writes long thoughtful letters to her sister.',
+      gloss: 'English',
+    },
+    {
+      id: 'en-3',
+      language: 'en',
+      primary:
+        'Every morning the baker measures flour, kneads the dough, and slides warm loaves out of the oven.',
+      gloss: 'English',
+    },
+    {
+      id: 'en-4',
+      language: 'en',
+      primary:
+        'Across the wooden bridge, the traveller paused to watch fish glide beneath the still, cold water.',
+      gloss: 'English',
+    },
+    {
+      id: 'en-5',
+      language: 'en',
+      primary:
+        'Late at night, thunder rolled through the valley while gentle rain tapped against the tin roof.',
+      gloss: 'English',
+    },
+  ],
+  hi: [
+    {
+      id: 'hi-1',
+      language: 'hi',
+      primary:
+        'आज सुबह मैंने खिड़की से बाहर देखा, आसमान में हल्के बादल थे और हवा में ठंडक थी।',
+      transliteration:
+        'Aaj subah maine khidki se baahar dekha, aasmaan mein halke baadal the aur hawa mein thandak thi.',
+      gloss:
+        'This morning I looked out the window; there were light clouds in the sky and coolness in the air.',
+    },
+    {
+      id: 'hi-2',
+      language: 'hi',
+      primary:
+        'मुझे किताबें पढ़ना बहुत पसंद है, खासकर बारिश के दिनों में जब हवा में मिट्टी की खुशबू होती है।',
+      transliteration:
+        'Mujhe kitaabein padhna bahut pasand hai, khaaskar baarish ke dinon mein jab hawa mein mitti ki khushboo hoti hai.',
+      gloss:
+        'I love reading books, especially on rainy days when the air smells of wet earth.',
+    },
+    {
+      id: 'hi-3',
+      language: 'hi',
+      primary:
+        'शाम को माँ ने चाय बनाई, अदरक और इलायची की महक पूरे घर में फैल गई।',
+      transliteration:
+        'Shaam ko maa ne chaay banai, adrak aur ilaaychi ki mehak poore ghar mein phail gayi.',
+      gloss:
+        'In the evening mother made tea; the scent of ginger and cardamom spread through the whole house.',
+    },
+    {
+      id: 'hi-4',
+      language: 'hi',
+      primary:
+        'बचपन में हम गली में क्रिकेट खेलते थे, और शाम तक धूल में लिपटे घर लौटते थे।',
+      transliteration:
+        'Bachpan mein hum gali mein cricket khelte the, aur shaam tak dhool mein lipte ghar lautte the.',
+      gloss:
+        'In childhood we played cricket in the street and came home covered in dust by evening.',
+    },
+    {
+      id: 'hi-5',
+      language: 'hi',
+      primary:
+        'छत पर बैठकर तारे देखना मुझे शांति देता है, दुनिया की हर बात कुछ देर के लिए रुक जाती है।',
+      transliteration:
+        'Chhat par baithkar taare dekhna mujhe shaanti deta hai, duniya ki har baat kuch der ke liye ruk jaati hai.',
+      gloss:
+        'Sitting on the roof watching the stars gives me peace; the world pauses for a little while.',
+    },
+  ],
+  mr: [
+    {
+      id: 'mr-1',
+      language: 'mr',
+      primary:
+        'आपल्या घरातलं जुनं झाड आज खूप हिरवं दिसतंय, आणि त्यावर पक्षी शांतपणे बसले आहेत.',
+      transliteration:
+        'Aaplyaa gharaatlan juna zaad aaj khoop hiravan disatanya, aani tyaavar pakshi shaantpane basale aahet.',
+      gloss:
+        'The old tree in our house looks very green today, and birds are sitting quietly on it.',
+    },
+    {
+      id: 'mr-2',
+      language: 'mr',
+      primary:
+        'सकाळी आईने चहा केला आणि गरम गरम पोहे बनवले, ती चव अजून आठवते.',
+      transliteration:
+        'Sakaali aaine chahaa kelaa aani garam garam pohe banavale, ti chav ajun aathvate.',
+      gloss:
+        'In the morning mother made tea and hot poha; I still remember that taste.',
+    },
+    {
+      id: 'mr-3',
+      language: 'mr',
+      primary:
+        'पावसाळ्यात आमच्या अंगणात मोर येतात, त्यांचा नाच पाहणं म्हणजे लहानपणाची आठवण.',
+      transliteration:
+        'Paavasaalyaat aamchya angnaat mor yetaat, tyaancha naach paahne mhanje lahanpanaachi aathvan.',
+      gloss:
+        'In the monsoon peacocks come to our courtyard; watching them dance is a memory of childhood.',
+    },
+    {
+      id: 'mr-4',
+      language: 'mr',
+      primary:
+        'रात्री गच्चीवर बसून तारे मोजायचे, आणि आजी सांगायच्या जुन्या गोष्टी.',
+      transliteration:
+        'Raatri gachivar basun taare mojaayche, aani aaji saangaaychya junyaa goshti.',
+      gloss:
+        'At night we would sit on the terrace counting stars, and grandmother would tell old stories.',
+    },
+    {
+      id: 'mr-5',
+      language: 'mr',
+      primary:
+        'समुद्राच्या किनाऱ्यावर वाळू पायांना गरम लागते, पण लाटांचा आवाज मन शांत करतो.',
+      transliteration:
+        'Samudraachyaa kinaaryaavar vaalu paayaanna garam laagte, pan laataancha aavaaj man shaant karto.',
+      gloss:
+        'On the seashore the sand feels hot on our feet, but the sound of the waves calms the mind.',
+    },
+  ],
+};
+
+/** The total number of clips collected during enrollment. Kept fixed
+ * regardless of how many languages the user picks — a longer sample
+ * gives a more robust averaged voiceprint. */
+export const TARGET_CLIP_COUNT = 5;
+
+/** Full unified prompt list (used only for tests / debug — the UI
+ * always calls selectPromptsFor with the user's language pick). */
 export const ENROLLMENT_PROMPTS: EnrollmentPrompt[] = [
-  {
-    id: 'en-1',
-    language: 'en',
-    primary:
-      'The quick brown fox jumps over the lazy dog, while children play under the bright moonlight.',
-    gloss: 'English',
-  },
-  {
-    id: 'hi-1',
-    language: 'hi',
-    primary:
-      'आज सुबह मैंने खिड़की से बाहर देखा, आसमान में हल्के बादल थे और हवा में ठंडक थी।',
-    transliteration:
-      'Aaj subah maine khidki se baahar dekha, aasmaan mein halke baadal the aur hawa mein thandak thi.',
-    gloss:
-      'This morning I looked out the window; there were light clouds in the sky and coolness in the air.',
-  },
-  {
-    id: 'mr-1',
-    language: 'mr',
-    primary:
-      'आपल्या घरातलं जुनं झाड आज खूप हिरवं दिसतंय, आणि त्यावर पक्षी शांतपणे बसले आहेत.',
-    transliteration:
-      'Aaplyaa gharaatlan juna zaad aaj khoop hiravan disatanya, aani tyaavar pakshi shaantpane basale aahet.',
-    gloss:
-      'The old tree in our house looks very green today, and birds are sitting quietly on it.',
-  },
-  {
-    id: 'en-2',
-    language: 'en',
-    primary:
-      'She reads philosophy in the evening, drinks lemon tea, and writes long thoughtful letters to her sister.',
-    gloss: 'English',
-  },
-  {
-    id: 'hi-2',
-    language: 'hi',
-    primary:
-      'मुझे किताबें पढ़ना बहुत पसंद है, खासकर बारिश के दिनों में जब हवा में मिट्टी की खुशबू होती है।',
-    transliteration:
-      'Mujhe kitaabein padhna bahut pasand hai, khaaskar baarish ke dinon mein jab hawa mein mitti ki khushboo hoti hai.',
-    gloss:
-      'I love reading books, especially on rainy days when the air smells of wet earth.',
-  },
+  ...PROMPT_BANK.en,
+  ...PROMPT_BANK.hi,
+  ...PROMPT_BANK.mr,
 ];
+
+/**
+ * Pick `count` prompts interleaved across the user's chosen languages.
+ * Round-robins through the selected languages so the enrollment
+ * doesn't clump — e.g., en → hi → en → hi → en for a 2-language pick.
+ *
+ * Requires at least one language; returns [] otherwise.
+ */
+export function selectPromptsFor(
+  languages: readonly EnrollmentLanguage[],
+  count: number = TARGET_CLIP_COUNT,
+): EnrollmentPrompt[] {
+  const langs = languages.filter((l) => ENROLLMENT_LANGUAGES.includes(l));
+  if (langs.length === 0 || count <= 0) return [];
+  const out: EnrollmentPrompt[] = [];
+  const cursors: Record<EnrollmentLanguage, number> = { en: 0, hi: 0, mr: 0 };
+  let i = 0;
+  while (out.length < count) {
+    const lang = langs[i % langs.length];
+    const bank = PROMPT_BANK[lang];
+    const c = cursors[lang];
+    if (c < bank.length) {
+      out.push(bank[c]);
+      cursors[lang] = c + 1;
+    } else {
+      // This language ran out; if every language is exhausted, stop.
+      const anyLeft = langs.some((l) => cursors[l] < PROMPT_BANK[l].length);
+      if (!anyLeft) break;
+    }
+    i++;
+  }
+  return out;
+}
 
 // Recommended clip duration in ms. Comfortably fits any of the prompts
 // above at a natural reading pace with a moment of leeway on each end.
 export const ENROLLMENT_CLIP_MS = 12_000;
+
+// ─── language-preference persistence ─────────────────────────────
+
+/** Reads the last-picked enrollment languages, or the default of all
+ * three if the user hasn't chosen yet. */
+export async function getEnrollmentLanguages(): Promise<EnrollmentLanguage[]> {
+  try {
+    const raw = await AsyncStorage.getItem(ENROLLMENT_LANGS_KEY);
+    if (!raw) return ['en', 'hi', 'mr'];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return ['en', 'hi', 'mr'];
+    const cleaned = parsed.filter(
+      (v: unknown): v is EnrollmentLanguage =>
+        typeof v === 'string' && (ENROLLMENT_LANGUAGES as readonly string[]).includes(v),
+    );
+    return cleaned.length > 0 ? cleaned : ['en', 'hi', 'mr'];
+  } catch {
+    return ['en', 'hi', 'mr'];
+  }
+}
+
+export async function saveEnrollmentLanguages(
+  languages: readonly EnrollmentLanguage[],
+): Promise<void> {
+  try {
+    await AsyncStorage.setItem(
+      ENROLLMENT_LANGS_KEY,
+      JSON.stringify(Array.from(new Set(languages))),
+    );
+  } catch {
+    // best-effort
+  }
+}
 
 // ─── native passthrough ───────────────────────────────────────────
 

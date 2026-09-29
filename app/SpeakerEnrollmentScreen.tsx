@@ -16,9 +16,14 @@ import {
   cancelEnrollmentCapture,
   captureEnrollmentClip,
   ENROLLMENT_CLIP_MS,
-  ENROLLMENT_PROMPTS,
+  ENROLLMENT_LANGUAGES,
+  getEnrollmentLanguages,
   saveEnrollment,
+  saveEnrollmentLanguages,
+  selectPromptsFor,
+  TARGET_CLIP_COUNT,
   voiceprintFromClip,
+  type EnrollmentLanguage,
   type EnrollmentPrompt,
 } from '../lib/hearing/enrollment';
 import type { Voiceprint } from '../lib/hearing/speakerFingerprint';
@@ -26,6 +31,7 @@ import type { Voiceprint } from '../lib/hearing/speakerFingerprint';
 type Props = NativeStackScreenProps<ChatStackParamList, 'SpeakerEnrollment'>;
 
 type Phase =
+  | { kind: 'languages' }
   | { kind: 'intro' }
   | { kind: 'prompt'; index: number }
   | { kind: 'recording'; index: number; startedAt: number }
@@ -35,13 +41,27 @@ type Phase =
 
 export default function SpeakerEnrollmentScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
-  const [phase, setPhase] = useState<Phase>({ kind: 'intro' });
+  const [phase, setPhase] = useState<Phase>({ kind: 'languages' });
   const [tick, setTick] = useState<number>(0);
+  const [languages, setLanguages] = useState<EnrollmentLanguage[]>([
+    'en',
+    'hi',
+    'mr',
+  ]);
+  const [prompts, setPrompts] = useState<EnrollmentPrompt[]>([]);
   const voiceprints = useRef<Voiceprint[]>([]);
   const returnTo = route.params?.returnTo;
 
-  const totalClips = ENROLLMENT_PROMPTS.length;
+  const totalClips = prompts.length || TARGET_CLIP_COUNT;
   const clipMs = ENROLLMENT_CLIP_MS;
+
+  // Load previously-picked languages so re-enrollment defaults to the
+  // user's usual choice.
+  useEffect(() => {
+    void getEnrollmentLanguages().then((prev) => {
+      if (prev.length > 0) setLanguages(prev);
+    });
+  }, []);
 
   // Cheap re-render tick while recording so the countdown updates.
   useEffect(() => {
@@ -55,6 +75,25 @@ export default function SpeakerEnrollmentScreen({ navigation, route }: Props) {
       // Best-effort: if the screen unmounts mid-capture, tell native.
       void cancelEnrollmentCapture();
     };
+  }, []);
+
+  const onLanguagesContinue = useCallback(async () => {
+    if (languages.length === 0) {
+      Alert.alert(
+        'Pick at least one language',
+        'DOST needs to know which languages you speak so it can show only those prompts.',
+      );
+      return;
+    }
+    await saveEnrollmentLanguages(languages);
+    setPrompts(selectPromptsFor(languages, TARGET_CLIP_COUNT));
+    setPhase({ kind: 'intro' });
+  }, [languages]);
+
+  const toggleLanguage = useCallback((lang: EnrollmentLanguage) => {
+    setLanguages((prev) =>
+      prev.includes(lang) ? prev.filter((l) => l !== lang) : [...prev, lang],
+    );
   }, []);
 
   const onBegin = useCallback(async () => {
@@ -150,20 +189,35 @@ export default function SpeakerEnrollmentScreen({ navigation, route }: Props) {
         <Text style={styles.eyebrow}>Voice enrollment</Text>
       </View>
 
-      {phase.kind === 'intro' && <IntroView totalClips={totalClips} clipMs={clipMs} onBegin={onBegin} />}
+      {phase.kind === 'languages' && (
+        <LanguageSelectView
+          languages={languages}
+          toggle={toggleLanguage}
+          onContinue={onLanguagesContinue}
+        />
+      )}
 
-      {phase.kind === 'prompt' && (
+      {phase.kind === 'intro' && (
+        <IntroView
+          totalClips={totalClips}
+          clipMs={clipMs}
+          languages={languages}
+          onBegin={onBegin}
+        />
+      )}
+
+      {phase.kind === 'prompt' && prompts[phase.index] && (
         <PromptView
-          prompt={ENROLLMENT_PROMPTS[phase.index]}
+          prompt={prompts[phase.index]}
           index={phase.index}
           total={totalClips}
           onRecord={() => onRecord(phase.index)}
         />
       )}
 
-      {phase.kind === 'recording' && (
+      {phase.kind === 'recording' && prompts[phase.index] && (
         <RecordingView
-          prompt={ENROLLMENT_PROMPTS[phase.index]}
+          prompt={prompts[phase.index]}
           index={phase.index}
           total={totalClips}
           startedAt={phase.startedAt}
@@ -187,16 +241,84 @@ export default function SpeakerEnrollmentScreen({ navigation, route }: Props) {
 
 // ─── views ────────────────────────────────────────────────────────
 
+function LanguageSelectView({
+  languages,
+  toggle,
+  onContinue,
+}: {
+  languages: EnrollmentLanguage[];
+  toggle: (lang: EnrollmentLanguage) => void;
+  onContinue: () => void;
+}) {
+  const canContinue = languages.length > 0;
+  return (
+    <View style={styles.column}>
+      <Text style={styles.title}>Which languages do you speak most?</Text>
+      <Text style={styles.subtitle}>
+        Pick one or more. DOST will only ask you to read in these languages
+        during enrollment — nothing else.
+      </Text>
+
+      <View style={styles.langRow}>
+        {ENROLLMENT_LANGUAGES.map((lang) => (
+          <GentlePressable
+            key={lang}
+            accessibilityRole="button"
+            accessibilityLabel={`Toggle ${languageLabel(lang)}`}
+            onPress={() => toggle(lang)}
+            style={({ pressed }) => [
+              styles.langChip,
+              languages.includes(lang) && styles.langChipActive,
+              pressed && { opacity: 0.7 },
+            ]}
+          >
+            <Text
+              style={[
+                styles.langChipText,
+                languages.includes(lang) && styles.langChipTextActive,
+              ]}
+            >
+              {languageLabel(lang)}
+            </Text>
+          </GentlePressable>
+        ))}
+      </View>
+
+      <Text style={styles.helper}>
+        {languages.length === 0
+          ? 'Pick at least one language to continue.'
+          : `Selected: ${languages.map(languageLabel).join(', ')}.`}
+      </Text>
+
+      <GentlePressable
+        accessibilityRole="button"
+        accessibilityLabel="Continue to enrollment"
+        onPress={onContinue}
+        style={({ pressed }) => [
+          styles.primaryButton,
+          !canContinue && { opacity: 0.5 },
+          pressed && styles.primaryButtonPressed,
+        ]}
+      >
+        <Text style={styles.primaryButtonText}>Continue</Text>
+      </GentlePressable>
+    </View>
+  );
+}
+
 function IntroView({
   totalClips,
   clipMs,
+  languages,
   onBegin,
 }: {
   totalClips: number;
   clipMs: number;
+  languages: EnrollmentLanguage[];
   onBegin: () => void;
 }) {
   const approxSeconds = Math.round((totalClips * clipMs) / 1000);
+  const langList = languages.map(languageLabel).join(', ');
   return (
     <View style={styles.column}>
       <Text style={styles.title}>Before DOST can listen for just you</Text>
@@ -211,9 +333,9 @@ function IntroView({
           fingerprint, then the audio is discarded.
         </InfoRow>
         <InfoRow>
-          You&#39;ll read {totalClips} short lines, in English, Hindi, and
-          Marathi. That way DOST hears the shape of your voice across the
-          languages you actually use.
+          You&#39;ll read {totalClips} short lines, all in {langList}. That way
+          DOST hears the shape of your voice across the languages you
+          actually use.
         </InfoRow>
         <InfoRow>
           You can re-record this anytime in Settings → Listening.
@@ -524,4 +646,24 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: theme.colors.gold,
   },
+  langRow: {
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.md,
+  },
+  langChip: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: theme.colors.divider,
+    borderRadius: theme.radius.full,
+    backgroundColor: theme.colors.surface,
+    paddingVertical: theme.spacing.md,
+    alignItems: 'center',
+  },
+  langChipActive: {
+    borderColor: theme.colors.gold,
+    backgroundColor: theme.colors.goldWash,
+  },
+  langChipText: { ...theme.type.label, color: theme.colors.sand, fontSize: 15 },
+  langChipTextActive: { color: theme.colors.gold },
 });
