@@ -5,6 +5,8 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import theme from '../lib/theme';
 import { supabase } from '../lib/supabase';
 import { deleteEnrollment, isEnrolled } from '../lib/hearing/enrollment';
+import { getSensitivity, setSensitivity } from '../lib/hearing/sensitivity';
+import type { Sensitivity } from '../lib/hearing/speakerVerification';
 import type { ChatStackParamList } from './chatTypes';
 
 type NavProp = NativeStackNavigationProp<ChatStackParamList>;
@@ -23,6 +25,7 @@ export default function HearingSettingsSection() {
   const [totalMs, setTotalMs] = useState<number | null>(null);
   const [sessionCount, setSessionCount] = useState<number>(0);
   const [enrolled, setEnrolled] = useState<boolean | null>(null);
+  const [sensitivity, setLocalSensitivity] = useState<Sensitivity>('balanced');
   const [busy, setBusy] = useState(false);
 
   const loadTotals = useCallback(async () => {
@@ -46,6 +49,7 @@ export default function HearingSettingsSection() {
   useEffect(() => {
     void loadTotals();
     void refreshEnrollment();
+    void getSensitivity().then(setLocalSensitivity);
     // Refresh on focus so the row reflects a fresh enrollment done
     // via the Listening screen or the row itself.
     const unsub = navigation.addListener('focus', () => {
@@ -53,6 +57,11 @@ export default function HearingSettingsSection() {
     });
     return unsub;
   }, [loadTotals, refreshEnrollment, navigation]);
+
+  const onSelectSensitivity = (next: Sensitivity) => {
+    setLocalSensitivity(next);
+    void setSensitivity(next);
+  };
 
   const onDeleteEnrollment = () => {
     Alert.alert(
@@ -155,6 +164,33 @@ export default function HearingSettingsSection() {
         </View>
       </View>
 
+      <Text style={styles.subheading}>Speaker sensitivity</Text>
+      <View style={styles.sensRow}>
+        {(['strict', 'balanced', 'lenient'] as Sensitivity[]).map((s) => (
+          <Pressable
+            key={s}
+            onPress={() => onSelectSensitivity(s)}
+            accessibilityRole="button"
+            accessibilityLabel={`Sensitivity: ${s}`}
+            style={({ pressed }) => [
+              styles.sensChip,
+              sensitivity === s && styles.sensChipActive,
+              pressed && { opacity: 0.7 },
+            ]}
+          >
+            <Text
+              style={[
+                styles.sensChipText,
+                sensitivity === s && styles.sensChipTextActive,
+              ]}
+            >
+              {s[0].toUpperCase() + s.slice(1)}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+      <Text style={styles.sensHint}>{sensitivityHint(sensitivity)}</Text>
+
       <Pressable
         onPress={() => navigation.navigate('SpeakerEnrollment', { returnTo: undefined })}
         accessibilityRole="button"
@@ -207,6 +243,17 @@ export default function HearingSettingsSection() {
       </Pressable>
     </View>
   );
+}
+
+function sensitivityHint(s: Sensitivity): string {
+  switch (s) {
+    case 'strict':
+      return 'DOST is more likely to skip your own speech in noisy conditions. Best when others are often nearby.';
+    case 'balanced':
+      return 'The default. Most segments of your speech are matched; strangers’ speech is filtered.';
+    case 'lenient':
+      return 'DOST is more likely to accept borderline segments. Best when you’re usually alone but voice conditions vary.';
+  }
 }
 
 function formatTotal(ms: number): string {
@@ -315,5 +362,37 @@ const styles = StyleSheet.create({
     ...theme.type.label,
     color: theme.colors.error,
     fontSize: 14,
+  },
+  subheading: {
+    ...theme.type.label,
+    color: theme.colors.cream,
+    marginBottom: theme.spacing.sm,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+  },
+  sensRow: {
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.sm,
+  },
+  sensChip: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: theme.colors.divider,
+    borderRadius: theme.radius.full,
+    backgroundColor: theme.colors.surface,
+    paddingVertical: theme.spacing.sm,
+    alignItems: 'center',
+  },
+  sensChipActive: {
+    borderColor: theme.colors.gold,
+    backgroundColor: theme.colors.goldWash,
+  },
+  sensChipText: { ...theme.type.label, color: theme.colors.sand },
+  sensChipTextActive: { color: theme.colors.gold },
+  sensHint: {
+    ...theme.type.caption,
+    color: theme.colors.clay,
+    marginBottom: theme.spacing.lg,
   },
 });
