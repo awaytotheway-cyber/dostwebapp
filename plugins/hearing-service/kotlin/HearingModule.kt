@@ -27,6 +27,8 @@ class HearingModule(reactContext: ReactApplicationContext) :
 
   override fun getName(): String = "HearingModule"
 
+  private val enrollmentRecorder by lazy { EnrollmentRecorder(reactApplicationContext) }
+
   @ReactMethod
   fun startSession(promise: Promise) {
     try {
@@ -58,6 +60,23 @@ class HearingModule(reactContext: ReactApplicationContext) :
   @ReactMethod
   fun isSessionActive(promise: Promise) {
     promise.resolve(HearingService.isRunning)
+  }
+
+  /**
+   * Speaker-enrollment capture: record a fixed-duration PCM clip
+   * (2..20 seconds) in the app's foreground and return it as base64.
+   * No foreground service, no notification, no wake lock — this is a
+   * short in-app UX, not a background session. See EnrollmentRecorder.
+   */
+  @ReactMethod
+  fun captureEnrollmentClip(durationMs: Int, promise: Promise) {
+    enrollmentRecorder.capture(durationMs, promise)
+  }
+
+  @ReactMethod
+  fun cancelEnrollmentCapture(promise: Promise) {
+    enrollmentRecorder.cancel()
+    promise.resolve(true)
   }
 
   // Required no-ops for the RN event-emitter contract.

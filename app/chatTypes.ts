@@ -51,6 +51,7 @@ export type ChatStackParamList = {
   Profile: undefined;
   HearingDisclosure: { returnTo?: 'ListeningSession' } | undefined;
   ListeningSession: undefined;
+  SpeakerEnrollment: { returnTo?: 'ListeningSession' } | undefined;
 };
 
 /** Chat edge function success payload (Step 7 — UI wired in Step 8). */

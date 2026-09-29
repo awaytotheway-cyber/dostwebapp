@@ -26,7 +26,12 @@ const path = require('path');
 const PACKAGE = 'com.dost.app';
 const SERVICE_CLASS = 'com.dost.app.hearing.HearingService';
 const PACKAGE_CLASS = 'com.dost.app.hearing.HearingPackage';
-const KOTLIN_FILES = ['HearingService.kt', 'HearingModule.kt', 'HearingPackage.kt'];
+const KOTLIN_FILES = [
+  'HearingService.kt',
+  'HearingModule.kt',
+  'HearingPackage.kt',
+  'EnrollmentRecorder.kt',
+];
 
 function withHearingKotlinSources(config) {
   return withDangerousMod(config, [

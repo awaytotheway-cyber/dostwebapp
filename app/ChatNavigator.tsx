@@ -15,6 +15,7 @@ import ProfileScreen from './ProfileScreen';
 import PersonalityProfileScreen from './PersonalityProfileScreen';
 import HearingDisclosureScreen from './HearingDisclosureScreen';
 import ListeningSessionScreen from './ListeningSessionScreen';
+import SpeakerEnrollmentScreen from './SpeakerEnrollmentScreen';
 import EnneagramScreen from './onboarding/EnneagramScreen';
 import NumerologyScreen from './onboarding/NumerologyScreen';
 import TCMScreen from './onboarding/TCMScreen';
@@ -116,6 +117,7 @@ export default function ChatNavigator({ onStartOver }: Props) {
         <Stack.Screen name="YourJourney" component={YourJourneyScreen} />
         <Stack.Screen name="HearingDisclosure" component={HearingDisclosureScreen} />
         <Stack.Screen name="ListeningSession" component={ListeningSessionScreen} />
+        <Stack.Screen name="SpeakerEnrollment" component={SpeakerEnrollmentScreen} />
         <Stack.Screen name="Profile">
           {(props) => (
             <ProfileScreen {...props} onStartOver={() => onStartOverRef.current()} />

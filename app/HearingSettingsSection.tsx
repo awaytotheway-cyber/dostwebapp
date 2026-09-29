@@ -1,7 +1,13 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import theme from '../lib/theme';
 import { supabase } from '../lib/supabase';
+import { deleteEnrollment, isEnrolled } from '../lib/hearing/enrollment';
+import type { ChatStackParamList } from './chatTypes';
+
+type NavProp = NativeStackNavigationProp<ChatStackParamList>;
 
 /**
  * Settings block for the hearing feature. Shows total listening time
@@ -13,8 +19,10 @@ import { supabase } from '../lib/supabase';
  * self-contained.
  */
 export default function HearingSettingsSection() {
+  const navigation = useNavigation<NavProp>();
   const [totalMs, setTotalMs] = useState<number | null>(null);
   const [sessionCount, setSessionCount] = useState<number>(0);
+  const [enrolled, setEnrolled] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
 
   const loadTotals = useCallback(async () => {
@@ -31,9 +39,52 @@ export default function HearingSettingsSection() {
     setSessionCount(data.length);
   }, []);
 
+  const refreshEnrollment = useCallback(async () => {
+    setEnrolled(await isEnrolled());
+  }, []);
+
   useEffect(() => {
     void loadTotals();
-  }, [loadTotals]);
+    void refreshEnrollment();
+    // Refresh on focus so the row reflects a fresh enrollment done
+    // via the Listening screen or the row itself.
+    const unsub = navigation.addListener('focus', () => {
+      void refreshEnrollment();
+    });
+    return unsub;
+  }, [loadTotals, refreshEnrollment, navigation]);
+
+  const onDeleteEnrollment = () => {
+    Alert.alert(
+      'Delete voice enrollment',
+      'This removes only the voiceprint DOST uses to recognize you. Past listening data is untouched. You’ll need to re-enroll before starting a new session.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => void performDeleteEnrollment(),
+        },
+      ],
+    );
+  };
+
+  const performDeleteEnrollment = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await deleteEnrollment();
+      await refreshEnrollment();
+      Alert.alert('Deleted', 'Voice enrollment has been removed.');
+    } catch (e) {
+      Alert.alert(
+        'Could not delete',
+        e instanceof Error ? e.message : 'Please try again.',
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const onDeleteAll = () => {
     Alert.alert(
@@ -103,6 +154,41 @@ export default function HearingSettingsSection() {
           </Text>
         </View>
       </View>
+
+      <Pressable
+        onPress={() => navigation.navigate('SpeakerEnrollment', { returnTo: undefined })}
+        accessibilityRole="button"
+        accessibilityLabel={enrolled ? 'Re-record my voice' : 'Set up voice enrollment'}
+        style={({ pressed }) => [styles.enrollRow, pressed && { opacity: 0.7 }]}
+      >
+        <View style={{ flex: 1 }}>
+          <Text style={styles.enrollTitle}>
+            {enrolled === false ? 'Set up voice enrollment' : 'Re-record my voice'}
+          </Text>
+          <Text style={styles.enrollHint}>
+            {enrolled === false
+              ? 'Required before you can start a listening session.'
+              : 'Do this if the gate is missing your voice too often, or if you’ve changed rooms.'}
+          </Text>
+        </View>
+        <Text style={styles.enrollChevron}>›</Text>
+      </Pressable>
+
+      {enrolled && (
+        <Pressable
+          onPress={onDeleteEnrollment}
+          disabled={busy}
+          accessibilityRole="button"
+          accessibilityLabel="Delete voice enrollment"
+          style={({ pressed }) => [
+            styles.dangerOutlineButton,
+            pressed && { opacity: 0.7 },
+            busy && { opacity: 0.5 },
+          ]}
+        >
+          <Text style={styles.dangerOutlineText}>Delete voice enrollment</Text>
+        </Pressable>
+      )}
 
       <Pressable
         onPress={onDeleteAll}
@@ -186,6 +272,46 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   dangerButtonText: {
+    ...theme.type.label,
+    color: theme.colors.error,
+    fontSize: 14,
+  },
+  enrollRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: theme.colors.divider,
+    borderRadius: theme.radius.lg,
+    backgroundColor: theme.colors.surface,
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
+    marginBottom: theme.spacing.md,
+  },
+  enrollTitle: { ...theme.type.label, color: theme.colors.cream, fontSize: 15 },
+  enrollHint: {
+    ...theme.type.caption,
+    color: theme.colors.clay,
+    marginTop: 2,
+  },
+  enrollChevron: {
+    ...theme.type.heading,
+    fontSize: 24,
+    color: theme.colors.sand,
+    marginLeft: theme.spacing.md,
+  },
+  dangerOutlineButton: {
+    minHeight: theme.spacing['4xl'],
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: theme.radius.cta,
+    borderWidth: 1,
+    borderColor: theme.colors.error,
+    paddingHorizontal: theme.spacing['2xl'],
+    paddingVertical: theme.spacing.sm,
+    backgroundColor: 'transparent',
+    marginBottom: theme.spacing.md,
+  },
+  dangerOutlineText: {
     ...theme.type.label,
     color: theme.colors.error,
     fontSize: 14,

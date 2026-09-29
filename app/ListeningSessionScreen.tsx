@@ -14,6 +14,7 @@ import GentlePressable from './GentlePressable';
 import type { ChatStackParamList } from './chatTypes';
 import { HEARING_DISCLOSURE_ACK_KEY } from './HearingDisclosureScreen';
 import { requestHearingPermissions } from '../lib/hearing/permissions';
+import { isEnrolled } from '../lib/hearing/enrollment';
 import {
   ensureModelDownloaded,
   isModelDownloaded,
@@ -98,6 +99,15 @@ export default function ListeningSessionScreen({ navigation }: Props) {
     if (startingRef.current) return;
     startingRef.current = true;
     try {
+      // Speaker enrollment gate (Phase 2): a session that isn't
+      // filtered to just this user would record anyone speaking near
+      // the phone. Block start until the user has enrolled.
+      const enrolled = await isEnrolled();
+      if (!enrolled) {
+        navigation.navigate('SpeakerEnrollment', { returnTo: 'ListeningSession' });
+        return;
+      }
+
       const perms = await requestHearingPermissions();
       if (!perms.granted) {
         if (perms.reason === 'mic-denied') {
@@ -139,7 +149,7 @@ export default function ListeningSessionScreen({ navigation }: Props) {
     } finally {
       startingRef.current = false;
     }
-  }, [batteryMode]);
+  }, [batteryMode, navigation]);
 
   const onStop = useCallback(async () => {
     const sessionId =
