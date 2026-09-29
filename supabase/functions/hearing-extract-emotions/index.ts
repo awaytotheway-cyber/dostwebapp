@@ -49,6 +49,13 @@ const FALLBACK_NEED = "understanding";
 const SYSTEM_PROMPT =
   `You classify one short spoken passage against DOST's emotion taxonomy and NVC needs list.
 
+The passage may be in English, Hindi, Marathi, or mix these languages
+(code-switching is normal). It may be in Devanagari script or
+Roman-transliterated. Understand the passage in whatever language it
+arrives in, and return your answer using the English allowlisted
+tokens below — the tokens are the taxonomy, not translations of the
+passage.
+
 Return a single JSON object with these fields, and nothing else:
   primary_emotion       ONE token from the allowed emotions list
   secondary_emotions    up to 2 additional tokens from that list (may be empty)
@@ -59,6 +66,7 @@ Rules:
   - Prefer allowlisted tokens exactly. Do not invent tokens.
   - The passage may contain placeholders like [phone] [email] [address]. Treat them as opaque.
   - Never quote names, events, phone numbers, or emails back to the caller.
+  - Never echo the passage's own words — return only tokens.
   - If the passage is too short or unclear, return primary_emotion="${FALLBACK_EMOTION}", underlying_need="${FALLBACK_NEED}", and semantic_confidence <= 0.4.
 
 Allowed emotions: ${[...ALLOWED_EMOTIONS].join(", ")}

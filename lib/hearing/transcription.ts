@@ -18,13 +18,17 @@ import * as FileSystem from 'expo-file-system/legacy';
  * for that segment and the semantic-emotions leg is simply skipped.
  */
 
-const MODEL_FILENAME = 'ggml-tiny.en-q5_1.bin';
+// Multilingual tiny model — supports 99 languages including English,
+// Hindi and Marathi (the three languages DOST's users speak). The
+// English-only variant (ggml-tiny.en-q5_1.bin) would garble anything
+// non-English, so we deliberately use the multilingual build even
+// though it's slightly less accurate on pure English input.
+const MODEL_FILENAME = 'ggml-tiny-q5_1.bin';
 
-// Canonical whisper.cpp GGML model URL. This is the file location
-// whisper.rn's README references directly, and it is where ggerganov
+// Canonical whisper.cpp GGML model URL. This is where ggerganov
 // publishes every whisper.cpp GGML/quantized model.
 const MODEL_URL =
-  'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.en-q5_1.bin';
+  'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny-q5_1.bin';
 
 // Approximate on-disk size (~31 MB). Used only for the disclosure copy
 // so we don't hardcode a number the UI can lie about.
@@ -115,7 +119,10 @@ export async function transcribeSegment(pcm: Float32Array): Promise<string> {
       pcm.byteOffset + pcm.byteLength,
     ) as ArrayBuffer;
     const { promise } = ctx.transcribeData(buf, {
-      language: 'en',
+      // 'auto' lets Whisper detect the language per segment, so a
+      // session that mixes English, Hindi and Marathi transcribes
+      // each segment in its own language rather than forcing one.
+      language: 'auto',
       maxThreads: 2,
     });
     const res = await promise;
