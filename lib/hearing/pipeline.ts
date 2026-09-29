@@ -2,6 +2,10 @@ import { supabase } from '../supabase';
 import { extractAcousticFeatures } from './acousticFeatures';
 import type { AcousticFeatures } from './acousticFeatures';
 import { inferAcousticState } from './acousticInference';
+import {
+  logCalibrationRow,
+  shouldLogCalibration,
+} from './calibration';
 import { loadReferenceVoiceprint } from './enrollment';
 import {
   isSessionActive as nativeIsSessionActive,
@@ -108,6 +112,9 @@ type SessionCtx = {
   segmentsMatched: number;
   segmentsDiscardedOtherSpeaker: number;
   segmentsDiscardedAmbiguous: number;
+  // Calibration logging: decided once at session start. Counts down
+  // per row written so we cap without another DB read per segment.
+  calibrationRowsRemaining: number;
   activeTasks: number;
   unsubscribe: () => void;
   lastSummary?: HearingSessionStopped;
@@ -136,6 +143,7 @@ export async function startHearingSession(
     );
   }
   const sensitivity = await getSensitivity();
+  const calibrationDecision = await shouldLogCalibration(userId);
 
   const { data: sessionRow, error: sessErr } = await supabase
     .from('voice_sessions')
@@ -180,6 +188,20 @@ export async function startHearingSession(
         ctx.referenceVoiceprint,
         ctx.sensitivity,
       );
+
+      // Time-boxed calibration logging (Step 8). Fire-and-forget; never
+      // awaited, never surfaces errors. Bounded by
+      // ctx.calibrationRowsRemaining so we can't over-write per-user cap.
+      if (ctx.calibrationRowsRemaining > 0) {
+        logCalibrationRow(
+          ctx.userId,
+          gate.similarity,
+          gate.result,
+          ctx.sensitivity,
+        );
+        ctx.calibrationRowsRemaining--;
+      }
+
       if (gate.result !== 'match') {
         if (gate.result === 'mismatch') {
           ctx.segmentsDiscardedOtherSpeaker++;
@@ -228,6 +250,9 @@ export async function startHearingSession(
     segmentsMatched: 0,
     segmentsDiscardedOtherSpeaker: 0,
     segmentsDiscardedAmbiguous: 0,
+    calibrationRowsRemaining: calibrationDecision.shouldLog
+      ? calibrationDecision.rowsRemaining
+      : 0,
     activeTasks: 0,
     unsubscribe,
   };
