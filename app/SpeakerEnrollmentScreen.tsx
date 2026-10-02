@@ -23,10 +23,10 @@ import {
   selectPromptsFor,
   TARGET_CLIP_COUNT,
   voiceprintFromClip,
+  type EnrollmentClipPrint,
   type EnrollmentLanguage,
   type EnrollmentPrompt,
 } from '../lib/hearing/enrollment';
-import type { Voiceprint } from '../lib/hearing/speakerFingerprint';
 
 type Props = NativeStackScreenProps<ChatStackParamList, 'SpeakerEnrollment'>;
 
@@ -49,7 +49,7 @@ export default function SpeakerEnrollmentScreen({ navigation, route }: Props) {
     'mr',
   ]);
   const [prompts, setPrompts] = useState<EnrollmentPrompt[]>([]);
-  const voiceprints = useRef<Voiceprint[]>([]);
+  const voiceprints = useRef<EnrollmentClipPrint[]>([]);
   const returnTo = route.params?.returnTo;
 
   const totalClips = prompts.length || TARGET_CLIP_COUNT;

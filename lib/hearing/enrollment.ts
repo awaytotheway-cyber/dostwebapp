@@ -5,8 +5,14 @@ import {
   analyzeVoiceprint,
   averageVoiceprints,
   VOICEPRINT_LENGTH,
+  voiceprintSimilarity,
   type Voiceprint,
 } from './speakerFingerprint';
+import {
+  calibrateFromSelfScores,
+  MIN_SPEECH_SECONDS,
+  type SpeakerCalibration,
+} from './speakerVerification';
 import { VOICEPRINT_MODEL_VERSION } from './voiceprintModel';
 
 /**
@@ -16,9 +22,10 @@ import { VOICEPRINT_MODEL_VERSION } from './voiceprintModel';
  *                            short in-app PCM clip (no foreground
  *                            service, no notification, no disk).
  * - saveEnrollment()          averages per-clip voiceprints into a
- *                            reference and upserts speaker_enrollment.
- * - loadReferenceVoiceprint() fetches the enrolled reference once at
- *                            session start; the pipeline caches it
+ *                            reference, upserts speaker_enrollment, and
+ *                            stores this phone's accept thresholds.
+ * - loadSpeakerProfile()     fetches the reference + thresholds once at
+ *                            session start; the pipeline caches them
  *                            for the session's lifetime.
  * - isEnrolled()              quick check used to gate the Listening
  *                            Session start button.
@@ -26,7 +33,8 @@ import { VOICEPRINT_MODEL_VERSION } from './voiceprintModel';
  *                            until re-enrollment.
  *
  * The enrollment audio (PCM clips) never touches disk. Only the
- * resulting 26-dim voiceprint vector is persisted.
+ * resulting 26-dim voiceprint vector is persisted, plus a few threshold
+ * numbers kept on this device (they depend on its microphone).
  */
 
 const ENROLLMENT_ACK_KEY = 'dost.hearing.enrollment.complete.v1';
@@ -41,6 +49,14 @@ const MODEL_VERSION = VOICEPRINT_MODEL_VERSION;
 
 // Each 12 s clip must contain at least this much voiced audio.
 const MIN_CLIP_SPEECH_SECONDS = 3;
+
+const CALIBRATION_KEY_PREFIX = 'dost.hearing.speakerCalibration.';
+const WINDOW_SECONDS = 3;
+const WINDOW_HOP_SECONDS = 1.5;
+
+function calibrationKey(userId: string): string {
+  return `${CALIBRATION_KEY_PREFIX}${MODEL_VERSION}.${userId}`;
+}
 
 export type EnrollmentLanguage = 'en' | 'hi' | 'mr';
 
@@ -344,32 +360,57 @@ export async function cancelEnrollmentCapture(): Promise<void> {
 
 // ─── voiceprint + persistence ─────────────────────────────────────
 
+export type EnrollmentClipPrint = {
+  voiceprint: Voiceprint;
+  windows: Voiceprint[];
+  snrDb: number;
+};
+
 /**
- * Extract a voiceprint from a captured clip. Wraps the primitive from
- * speakerFingerprint.ts so callers don't have to touch that module
- * directly.
+ * Analyse one enrollment clip: a whole-clip voiceprint plus voiceprints
+ * of overlapping 3 s windows, used to calibrate thresholds at save time.
  */
-export function voiceprintFromClip(clip: CapturedClip): Voiceprint {
-  const { voiceprint, speechSeconds } = analyzeVoiceprint(clip.pcm, clip.sampleRate);
-  if (speechSeconds < MIN_CLIP_SPEECH_SECONDS) {
+export function voiceprintFromClip(clip: CapturedClip): EnrollmentClipPrint {
+  const whole = analyzeVoiceprint(clip.pcm, clip.sampleRate);
+  if (whole.speechSeconds < MIN_CLIP_SPEECH_SECONDS) {
     throw new Error(
-      `We only heard about ${Math.round(speechSeconds)} seconds of your voice. ` +
+      `We only heard about ${Math.round(whole.speechSeconds)} seconds of your voice. ` +
         'Please read the whole passage aloud, holding the phone a little closer.',
     );
   }
-  return voiceprint;
+  const win = Math.round(WINDOW_SECONDS * clip.sampleRate);
+  const hop = Math.round(WINDOW_HOP_SECONDS * clip.sampleRate);
+  const windows: Voiceprint[] = [];
+  for (let start = 0; start + win <= clip.pcm.length; start += hop) {
+    const w = analyzeVoiceprint(clip.pcm.subarray(start, start + win), clip.sampleRate);
+    if (w.speechSeconds >= MIN_SPEECH_SECONDS) windows.push(w.voiceprint);
+  }
+  return { voiceprint: whole.voiceprint, windows, snrDb: whole.snrDb };
 }
 
-export async function saveEnrollment(
-  clipVoiceprints: Voiceprint[],
-): Promise<void> {
-  if (clipVoiceprints.length === 0) {
+export async function saveEnrollment(clips: EnrollmentClipPrint[]): Promise<void> {
+  if (clips.length < 2) {
     throw new Error('No enrollment clips captured');
   }
-  const reference = averageVoiceprints(clipVoiceprints);
+  const reference = averageVoiceprints(clips.map((c) => c.voiceprint));
   if (reference.length !== VOICEPRINT_LENGTH) {
     throw new Error('Voiceprint dimension mismatch');
   }
+
+  // How closely each 3 s window matches the user's other clips.
+  const selfScores = clips.flatMap((clip, i) => {
+    const others = averageVoiceprints(
+      clips.filter((_, j) => j !== i).map((c) => c.voiceprint),
+    );
+    return clip.windows.map((w) => voiceprintSimilarity(w, others));
+  });
+  if (selfScores.length < 5) {
+    throw new Error(
+      'There was not enough clear speech to learn your voice. Please try again somewhere quieter.',
+    );
+  }
+  const snrs = clips.map((c) => c.snrDb).sort((a, b) => a - b);
+  const calibration = calibrateFromSelfScores(selfScores, snrs[Math.floor(snrs.length / 2)]);
 
   const { data: userData, error: userErr } = await supabase.auth.getUser();
   if (userErr || !userData?.user) {
@@ -383,11 +424,13 @@ export async function saveEnrollment(
     voiceprint: reference,
     enrollment_method: ENROLLMENT_METHOD,
     model_version: MODEL_VERSION,
-    clips_used: clipVoiceprints.length,
+    clips_used: clips.length,
     enrolled_at: now,
     updated_at: now,
   });
   if (error) throw error;
+
+  await AsyncStorage.setItem(calibrationKey(userId), JSON.stringify(calibration));
 
   try {
     await AsyncStorage.setItem(ENROLLMENT_ACK_KEY, now);
@@ -396,16 +439,25 @@ export async function saveEnrollment(
   }
 }
 
+export type SpeakerProfile = {
+  reference: Voiceprint;
+  calibration: SpeakerCalibration;
+};
+
 /**
- * Fetch the enrolled reference voiceprint. Returns null if the user
- * hasn't enrolled yet. pgvector returns the column as either a JSON
- * array or a string like "[n1,n2,...]" depending on client codec —
- * this handles both.
+ * Fetch the enrolled reference voiceprint and this phone's thresholds.
+ * Returns null if either is missing — a new phone or reinstall needs
+ * re-enrollment, since the thresholds depend on the microphone.
+ * pgvector returns the column as either a JSON array or a string like
+ * "[n1,n2,...]" depending on client codec — this handles both.
  */
-export async function loadReferenceVoiceprint(): Promise<Voiceprint | null> {
+export async function loadSpeakerProfile(): Promise<SpeakerProfile | null> {
   const { data: userData } = await supabase.auth.getUser();
   const userId = userData?.user?.id;
   if (!userId) return null;
+
+  const calibration = await loadCalibration(userId);
+  if (!calibration) return null;
 
   const { data, error } = await supabase
     .from('speaker_enrollment')
@@ -413,18 +465,20 @@ export async function loadReferenceVoiceprint(): Promise<Voiceprint | null> {
     .eq('user_id', userId)
     .maybeSingle();
   if (error || !data || data.model_version !== MODEL_VERSION) return null;
-  return parseVoiceprint(data.voiceprint);
+  const reference = parseVoiceprint(data.voiceprint);
+  return reference ? { reference, calibration } : null;
 }
 
 /**
- * Fast enrollment check. Reads from Supabase (source of truth) but
- * treats the AsyncStorage ack key as a hint so cold-start UI can
- * avoid a network round-trip when navigating.
+ * Enrollment check used to gate the Listening Session start button and
+ * the Settings row. Requires both the Supabase row and this phone's
+ * thresholds.
  */
 export async function isEnrolled(): Promise<boolean> {
   const { data: userData } = await supabase.auth.getUser();
   const userId = userData?.user?.id;
   if (!userId) return false;
+  if (!(await loadCalibration(userId))) return false;
   const { data } = await supabase
     .from('speaker_enrollment')
     .select('user_id, clips_used, model_version')
@@ -441,9 +495,21 @@ export async function deleteEnrollment(): Promise<void> {
   if (!userId) return;
   await supabase.from('speaker_enrollment').delete().eq('user_id', userId);
   try {
-    await AsyncStorage.removeItem(ENROLLMENT_ACK_KEY);
+    await AsyncStorage.multiRemove([ENROLLMENT_ACK_KEY, calibrationKey(userId)]);
   } catch {
     // best-effort
+  }
+}
+
+async function loadCalibration(userId: string): Promise<SpeakerCalibration | null> {
+  try {
+    const raw = await AsyncStorage.getItem(calibrationKey(userId));
+    if (!raw) return null;
+    const c = JSON.parse(raw) as SpeakerCalibration;
+    const nums = [c.accept?.strict, c.accept?.balanced, c.accept?.lenient, c.reject, c.enrollmentSnrDb];
+    return nums.every((n) => typeof n === 'number' && Number.isFinite(n)) ? c : null;
+  } catch {
+    return null;
   }
 }
 

@@ -16,15 +16,14 @@ import { LDA_PROJECTION } from './voiceprintModel';
  *   6. Voiceprint = mean and std of c1..c13 → 26 numbers. This raw
  *      vector is what gets stored at enrollment.
  *
- * Comparison (voiceprintSimilarity): both prints are projected through
- * a fixed LDA matrix (voiceprintModel.ts) that keeps directions where
+ * Comparison (voiceprintSimilarity): both prints are projected through a
+ * fixed LDA matrix (voiceprintModel.ts) that keeps directions where
  * different speakers differ and shrinks directions that noise, volume
- * and microphone colouring move. Distance — not cosine — is measured in
- * that space, because a phone's mic colouring shifts the user's and a
- * bystander's prints by the same offset, and a difference cancels it.
- *
- * Measured on 60 real speakers (AudioMNIST, cross-validated by speaker
- * halves): see the threshold notes in speakerVerification.ts.
+ * and mic colouring move. Similarity is exp(-distance) in that space —
+ * distance, not cosine, because a phone's mic colouring shifts the
+ * user's and a bystander's prints by the same offset, and a difference
+ * cancels it. Absolute similarity still shifts between phones and
+ * rooms, so accept thresholds are calibrated per user at enrollment.
  * ══════════════════════════════════════════════════════════════════
  */
 
@@ -45,8 +44,8 @@ export const VOICEPRINT_LENGTH = NUM_CEPS * 2;
 export type VoiceprintAnalysis = {
   voiceprint: Voiceprint;
   speechSeconds: number;
-  // Loud-frame vs quiet-frame energy gap (dB); low means speech barely
-  // rises above the background.
+  // Loud-frame vs quiet-frame energy gap: how far speech rises above
+  // the room's background.
   snrDb: number;
 };
 
@@ -294,19 +293,11 @@ function project(v: Voiceprint): number[] {
   });
 }
 
-/** RMS distance between two voiceprints in LDA space (0 = identical). */
-export function voiceprintDistance(a: Voiceprint, b: Voiceprint): number {
-  if (a.length !== VOICEPRINT_LENGTH || b.length !== VOICEPRINT_LENGTH) {
-    return Infinity;
-  }
+/** Similarity in (0, 1]: exp(-RMS distance) in LDA space. */
+export function voiceprintSimilarity(a: Voiceprint, b: Voiceprint): number {
   const pa = project(a);
   const pb = project(b);
   let s = 0;
   for (let i = 0; i < pa.length; i++) s += (pa[i] - pb[i]) ** 2;
-  return Math.sqrt(s / pa.length);
-}
-
-/** Similarity in (0, 1]: exp(-distance). Higher means more alike. */
-export function voiceprintSimilarity(a: Voiceprint, b: Voiceprint): number {
-  return Math.exp(-voiceprintDistance(a, b));
+  return Math.exp(-Math.sqrt(s / pa.length));
 }

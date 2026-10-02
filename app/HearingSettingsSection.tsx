@@ -248,11 +248,11 @@ export default function HearingSettingsSection() {
 function sensitivityHint(s: Sensitivity): string {
   switch (s) {
     case 'strict':
-      return 'DOST is more likely to skip your own speech in noisy conditions. Best when others are often nearby.';
+      return 'Keeps less of your speech, and almost never other people’s. Best when others are often nearby.';
     case 'balanced':
-      return 'The default. Most segments of your speech are matched; strangers’ speech is filtered.';
+      return 'The default. Keeps a good share of your speech and filters out almost all of other people’s. In noisy places DOST skips speech rather than guess.';
     case 'lenient':
-      return 'DOST is more likely to accept borderline segments. Best when you’re usually alone but voice conditions vary.';
+      return 'Keeps more of your speech, but also lets a little more of other people’s through. Best when you’re usually alone.';
   }
 }
 

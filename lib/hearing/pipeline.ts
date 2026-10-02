@@ -6,7 +6,7 @@ import {
   logCalibrationRow,
   shouldLogCalibration,
 } from './calibration';
-import { loadReferenceVoiceprint } from './enrollment';
+import { loadSpeakerProfile } from './enrollment';
 import {
   isSessionActive as nativeIsSessionActive,
   startSession as nativeStartSession,
@@ -23,6 +23,7 @@ import { analyzeVoiceprint, type Voiceprint } from './speakerFingerprint';
 import {
   verifySpeaker,
   type Sensitivity,
+  type SpeakerCalibration,
   type VerificationResult,
 } from './speakerVerification';
 import { disposeTranscription, transcribeSegment } from './transcription';
@@ -106,6 +107,7 @@ type SessionCtx = {
   batteryMode: BatteryMode;
   sensitivity: Sensitivity;
   referenceVoiceprint: Voiceprint;
+  calibration: SpeakerCalibration;
   startedAt: number;
   segmentsProcessed: number;
   segmentIndex: number; // increments per received segment, for 'light' sampling
@@ -138,8 +140,8 @@ export async function startHearingSession(
   // Phase 2 gate prerequisite: fetch the enrolled reference voiceprint
   // once at session start. Sessions cannot run without one — the UI's
   // enrollment gate is the primary defense, this is the safety net.
-  const referenceVoiceprint = await loadReferenceVoiceprint();
-  if (!referenceVoiceprint) {
+  const profile = await loadSpeakerProfile();
+  if (!profile) {
     throw new Error(
       'You need to enroll your voice before starting a listening session.',
     );
@@ -186,10 +188,10 @@ export async function startHearingSession(
       // features, no transcription, no DB insert). Rule 5.
       const segPrint = analyzeVoiceprint(seg.pcm, seg.sampleRate);
       const gate = verifySpeaker(
-        segPrint.voiceprint,
+        segPrint,
         ctx.referenceVoiceprint,
+        ctx.calibration,
         ctx.sensitivity,
-        segPrint.speechSeconds,
       );
 
       // Time-boxed calibration logging (Step 8). Fire-and-forget; never
@@ -248,7 +250,8 @@ export async function startHearingSession(
     userId,
     batteryMode,
     sensitivity,
-    referenceVoiceprint,
+    referenceVoiceprint: profile.reference,
+    calibration: profile.calibration,
     startedAt,
     segmentsProcessed: 0,
     segmentIndex: 0,
