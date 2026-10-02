@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, spacing, type as typography } from '../lib/theme';
 import GentlePressable from './GentlePressable';
 import PaperGrain from './PaperGrain';
+import { useI18n } from '../lib/i18n';
 
 type Props = {
   title: string;
@@ -13,6 +14,7 @@ type Props = {
 /** Minimal Dawn Earth placeholder until the real screen is built. */
 export default function RouteStubScreen({ title, onBack }: Props) {
   const insets = useSafeAreaInsets();
+  const { t } = useI18n();
 
   return (
     <View style={styles.container}>
@@ -28,12 +30,12 @@ export default function RouteStubScreen({ title, onBack }: Props) {
       >
         <GentlePressable
           accessibilityRole="button"
-          accessibilityLabel="Back"
+          accessibilityLabel={t('common.backPlain')}
           onPress={onBack}
           hitSlop={8}
           style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
         >
-          <Text style={styles.back}>Back</Text>
+          <Text style={styles.back}>{t('common.backPlain')}</Text>
         </GentlePressable>
         <View style={styles.body}>
           <Text accessibilityRole="header" style={styles.title}>

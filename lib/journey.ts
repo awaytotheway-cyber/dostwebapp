@@ -3,16 +3,16 @@ import {
   labelForExtractedEmotion,
   labelForExtractedNeed,
 } from './emotionalStates';
+import { getAppLanguage, getLocaleTag, t, type TKey } from './i18n';
 import { supabase } from './supabase';
-
-const GENTLE_ERROR = "Something's off on my end. Try again in a moment.";
 
 export type JourneyRangeKey = '7d' | '30d' | 'all';
 
-export const JOURNEY_RANGES: { key: JourneyRangeKey; label: string }[] = [
-  { key: '7d', label: 'Past 7 days' },
-  { key: '30d', label: 'Past 30 days' },
-  { key: 'all', label: 'All time' },
+// `label` is the English label sent to the insight function; `labelKey` is shown.
+export const JOURNEY_RANGES: { key: JourneyRangeKey; label: string; labelKey: TKey }[] = [
+  { key: '7d', label: 'Past 7 days', labelKey: 'journey.range7d' },
+  { key: '30d', label: 'Past 30 days', labelKey: 'journey.range30d' },
+  { key: 'all', label: 'All time', labelKey: 'journey.rangeAll' },
 ];
 
 export type EmotionPoint = {
@@ -72,7 +72,7 @@ function dayLabel(key: string): string {
   const [y, m, d] = key.split('-').map(Number);
   if (!y || !m || !d) return '';
   const date = new Date(y, m - 1, d);
-  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  return date.toLocaleDateString(getLocaleTag(), { month: 'short', day: 'numeric' });
 }
 
 function capitalize(text: string): string {
@@ -81,18 +81,14 @@ function capitalize(text: string): string {
 }
 
 export function themeSentenceFor(token: string, count: number, total: number): string {
-  const label = labelForExtractedEmotion(token).toLowerCase();
+  const label = labelForExtractedEmotion(token);
+  const lower = label.toLocaleLowerCase(getLocaleTag());
+  const params = { label, labelLower: lower, labelCap: capitalize(lower) };
   const share = total > 0 ? count / total : 0;
-  if (share >= 0.35) {
-    return `${capitalize(label)} has been a recurring weather in your days.`;
-  }
-  if (share >= 0.2) {
-    return `${capitalize(label)} has returned often — quietly, then clearly.`;
-  }
-  if (count >= 3) {
-    return `Traces of ${label} have gathered more than a few times.`;
-  }
-  return `${capitalize(label)} has shown up — soft, but present.`;
+  if (share >= 0.35) return t('journey.themeRecurring', params);
+  if (share >= 0.2) return t('journey.themeOften', params);
+  if (count >= 3) return t('journey.themeTraces', params);
+  return t('journey.themeSoft', params);
 }
 
 function buildWeather(
@@ -220,7 +216,7 @@ export async function loadJourneyAggregate(
     const { data: userData } = await supabase.auth.getUser();
     const userId = userData?.user?.id;
     if (!userId) {
-      return { ok: false, message: 'Could not open your journey right now.' };
+      return { ok: false, message: t('journey.openFailed') };
     }
 
     const since = rangeStartIso(rangeKey);
@@ -268,7 +264,7 @@ export async function loadJourneyAggregate(
     if (emotionsRes.error && voiceRes.error) {
       return {
         ok: false,
-        message: 'Could not load your journey right now. Try again in a moment.',
+        message: t('journey.loadFailed'),
       };
     }
 
@@ -324,7 +320,7 @@ export async function loadJourneyAggregate(
   } catch {
     return {
       ok: false,
-      message: 'Could not load your journey right now. Try again in a moment.',
+      message: t('journey.loadFailed'),
     };
   }
 }
@@ -349,6 +345,7 @@ export async function fetchJourneyInsight(input: {
       body: {
         range_key: input.rangeKey,
         range_label: input.rangeLabel,
+        language: getAppLanguage(),
         emotion_counts: input.emotionCounts,
         top_needs: input.topNeeds,
       },
@@ -374,14 +371,14 @@ export async function fetchJourneyInsight(input: {
       if (status === 401) {
         return {
           ok: false,
-          message: "Couldn't verify your session. Close the app and open it again.",
+          message: t('journey.sessionFailed'),
         };
       }
       return {
         ok: false,
         message: isNetwork
-          ? "You're offline right now. Connect and try again."
-          : GENTLE_ERROR,
+          ? t('journey.offline')
+          : t('journey.gentleError'),
       };
     }
 
@@ -402,7 +399,7 @@ export async function fetchJourneyInsight(input: {
       cached: data?.cached === true,
     };
   } catch {
-    return { ok: false, message: GENTLE_ERROR };
+    return { ok: false, message: t('journey.gentleError') };
   }
 }
 

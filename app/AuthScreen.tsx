@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabase';
 import theme from '../lib/theme';
 import GentlePressable from './GentlePressable';
 import PaperGrain from './PaperGrain';
+import { t as translate, useI18n } from '../lib/i18n';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -38,6 +39,7 @@ export default function AuthScreen() {
   const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(false);
   const [notice, setNotice] = useState<Notice>(null);
+  const { t } = useI18n();
 
   const continueWithGoogle = useCallback(async () => {
     if (loading) return;
@@ -57,7 +59,7 @@ export default function AuthScreen() {
       if (error || !data.url) {
         setNotice({
           kind: 'error',
-          message: 'Google sign-in could not start. Check your connection and try again.',
+          message: translate('auth.couldNotStart'),
         });
         return;
       }
@@ -67,7 +69,7 @@ export default function AuthScreen() {
       if (result.type === 'cancel' || result.type === 'dismiss') {
         setNotice({
           kind: 'cancelled',
-          message: 'Sign-in was cancelled. You can try again whenever you’re ready.',
+          message: translate('auth.cancelled'),
         });
         return;
       }
@@ -75,7 +77,7 @@ export default function AuthScreen() {
       if (result.type !== 'success') {
         setNotice({
           kind: 'error',
-          message: 'Google sign-in did not finish. Please try again.',
+          message: translate('auth.didNotFinish'),
         });
         return;
       }
@@ -87,7 +89,7 @@ export default function AuthScreen() {
       if (params.has('error') || params.has('error_code') || !accessToken || !refreshToken) {
         setNotice({
           kind: 'error',
-          message: 'Google could not complete sign-in. Please try again.',
+          message: translate('auth.couldNotComplete'),
         });
         return;
       }
@@ -100,13 +102,13 @@ export default function AuthScreen() {
       if (sessionError) {
         setNotice({
           kind: 'error',
-          message: 'Your secure session could not be opened. Please try again.',
+          message: translate('auth.sessionFailed'),
         });
       }
     } catch {
       setNotice({
         kind: 'error',
-        message: 'Google sign-in was interrupted. Check your connection and try again.',
+        message: translate('auth.interrupted'),
       });
     } finally {
       setLoading(false);
@@ -129,16 +131,13 @@ export default function AuthScreen() {
       >
         <View style={styles.content}>
           <Text accessibilityRole="header" style={styles.heading}>
-            Create your space
+            {t('auth.heading')}
           </Text>
-          <Text style={styles.copy}>
-            A private, grounded sanctuary for your mind. Continue securely with Google — DOST uses
-            your account only to keep this space connected to you.
-          </Text>
+          <Text style={styles.copy}>{t('auth.copy')}</Text>
 
           <GentlePressable
-            accessibilityHint="Opens Google sign-in in a secure browser"
-            accessibilityLabel={loading ? 'Opening Google sign-in' : 'Continue with Google'}
+            accessibilityHint={t('auth.buttonHint')}
+            accessibilityLabel={loading ? t('auth.openingA11y') : t('auth.continueWithGoogle')}
             accessibilityRole="button"
             accessibilityState={{ busy: loading, disabled: loading }}
             disabled={loading}
@@ -158,7 +157,7 @@ export default function AuthScreen() {
             </View>
             {loading ? <ActivityIndicator color={theme.colors.onPrimary} size="small" /> : null}
             <Text style={styles.googleButtonText}>
-              {loading ? 'Opening Google…' : 'Continue with Google'}
+              {loading ? t('auth.opening') : t('auth.continueWithGoogle')}
             </Text>
           </GentlePressable>
 
@@ -171,10 +170,7 @@ export default function AuthScreen() {
             </Text>
           ) : null}
 
-          <Text style={styles.privacy}>
-            Google never sees your reflections. You can sign out or delete your DOST account at any
-            time.
-          </Text>
+          <Text style={styles.privacy}>{t('auth.privacy')}</Text>
         </View>
       </ScrollView>
     </View>

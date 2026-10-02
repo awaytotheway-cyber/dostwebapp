@@ -41,6 +41,14 @@ import { deleteMyAccount, deleteMyConversations, exportMyData } from '../lib/pri
 import { ONBOARDING_COMPLETE_KEY } from '../lib/onboardingStorage';
 import { supabase } from '../lib/supabase';
 import { purgeUserDatabase } from '../lib/localDb';
+import {
+  APP_LANGUAGES,
+  NATIVE_LANGUAGE_NAMES,
+  getLocaleTag,
+  t as translate,
+  useI18n,
+  type TKey,
+} from '../lib/i18n';
 import { colors, radius, spacing, type as typography } from '../lib/theme';
 import { useReducedMotion } from '../lib/useReducedMotion';
 import type { ChatStackParamList } from './chatTypes';
@@ -74,8 +82,8 @@ function dateFromTime(t: HmTime): Date {
 }
 
 function doshaLabel(dosha: Dosha | null | undefined): string {
-  if (!dosha) return 'Not set yet';
-  return dosha.charAt(0).toUpperCase() + dosha.slice(1);
+  if (!dosha) return translate('settings.doshaNotSet');
+  return translate(`dosha.${dosha}` as TKey);
 }
 
 function memberSince(profile: ProfileRow | null): string {
@@ -84,19 +92,22 @@ function memberSince(profile: ProfileRow | null): string {
   if (!created) return '';
   try {
     const d = new Date(created);
-    return `Here since ${d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`;
+    return translate('profile.hereSince', {
+      date: d.toLocaleDateString(getLocaleTag(), { month: 'long', year: 'numeric' }),
+    });
   } catch {
     return '';
   }
 }
 
 function greetingName(profile: ProfileRow | null): string {
-  return profile?.name?.trim() || 'Guest';
+  return profile?.name?.trim() || translate('profile.guest');
 }
 
 export default function ProfileScreen({ navigation, onStartOver }: Props) {
   const reduceMotion = useReducedMotion();
   const insets = useSafeAreaInsets();
+  const { t, lang, locale, setLanguage } = useI18n();
 
   // Profile state
   const [profile, setProfile] = useState<ProfileRow | null>(null);
@@ -127,8 +138,8 @@ export default function ProfileScreen({ navigation, onStartOver }: Props) {
     refreshing || exporting || deletingChats || deletingAccount || signingOut;
 
   const timeLabel = useMemo(
-    () => dateFromTime(time).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }),
-    [time],
+    () => dateFromTime(time).toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit' }),
+    [time, locale],
   );
 
   useFocusEffect(
@@ -180,9 +191,9 @@ export default function ProfileScreen({ navigation, onStartOver }: Props) {
     setSavingProfile(true);
     try {
       const saved = await updateMyNameAndIntention(name, intention);
-      if (!saved.ok) { Alert.alert('Could not save', saved.message); return; }
-      Alert.alert('Saved', 'Your name and intention were updated.');
-    } catch { Alert.alert('Could not save', 'Please try again.'); }
+      if (!saved.ok) { Alert.alert(t('common.couldNotSave'), saved.message); return; }
+      Alert.alert(t('common.saved'), t('settings.nameIntentionUpdated'));
+    } catch { Alert.alert(t('common.couldNotSave'), t('common.pleaseTryAgain')); }
     finally { setSavingProfile(false); }
   };
 
@@ -191,9 +202,9 @@ export default function ProfileScreen({ navigation, onStartOver }: Props) {
     setSavingBirthPlace(true);
     try {
       const saved = await updateMyBirthPlace(birthPlace);
-      if (!saved.ok) { Alert.alert('Could not save', saved.message); return; }
-      Alert.alert('Saved', 'Your place of birth was updated.');
-    } catch { Alert.alert('Could not save', 'Please try again.'); }
+      if (!saved.ok) { Alert.alert(t('common.couldNotSave'), saved.message); return; }
+      Alert.alert(t('common.saved'), t('settings.birthPlaceUpdated'));
+    } catch { Alert.alert(t('common.couldNotSave'), t('common.pleaseTryAgain')); }
     finally { setSavingBirthPlace(false); }
   };
 
@@ -202,17 +213,17 @@ export default function ProfileScreen({ navigation, onStartOver }: Props) {
     setSavingTime(true);
     try {
       const saved = await saveReflectionTime(time);
-      if (!saved.ok) { Alert.alert('Could not save', saved.message); return; }
+      if (!saved.ok) { Alert.alert(t('common.couldNotSave'), saved.message); return; }
       const allowed = await requestNotificationPermission();
       if (!allowed) {
-        Alert.alert('Time saved', 'Reminders need notification permission. You can still tap Evening check-in in chat whenever you like.');
+        Alert.alert(t('settings.timeSaved'), t('settings.remindersNeedPermission'));
         return;
       }
       const scheduled = await scheduleEveningCheckIn(time);
-      Alert.alert('Time saved', scheduled.scheduled
-        ? 'Dost will check in at this time.'
-        : (scheduled.warning ?? 'Time saved.'));
-    } catch { Alert.alert('Could not save', 'Please try again.'); }
+      Alert.alert(t('settings.timeSaved'), scheduled.scheduled
+        ? t('profile.checkInScheduled')
+        : (scheduled.warning ?? t('profile.timeSavedShort')));
+    } catch { Alert.alert(t('common.couldNotSave'), t('common.pleaseTryAgain')); }
     finally { setSavingTime(false); }
   };
 
@@ -221,15 +232,15 @@ export default function ProfileScreen({ navigation, onStartOver }: Props) {
     setRefreshing(true);
     try {
       const result = await refreshUserMemory();
-      if (!result.ok) { Alert.alert('Could not refresh', result.message); return; }
+      if (!result.ok) { Alert.alert(t('settings.couldNotRefresh'), result.message); return; }
       const summary = await loadMemorySummary();
       setMemorySummary(summary);
       if (result.status === 'skipped') {
-        Alert.alert('No update yet', 'Chat a little more, or wait a few minutes, then try again.');
+        Alert.alert(t('settings.noUpdateYet'), t('settings.noUpdateYetBody'));
         return;
       }
-      Alert.alert('Updated', 'Memory was refreshed.');
-    } catch { Alert.alert('Could not refresh', 'Please try again.'); }
+      Alert.alert(t('settings.updated'), t('settings.memoryRefreshed'));
+    } catch { Alert.alert(t('settings.couldNotRefresh'), t('common.pleaseTryAgain')); }
     finally { setRefreshing(false); }
   };
 
@@ -238,8 +249,8 @@ export default function ProfileScreen({ navigation, onStartOver }: Props) {
     setExporting(true);
     try {
       const result = await exportMyData();
-      if (!result.ok) Alert.alert('Could not export', result.message);
-    } catch { Alert.alert('Could not export', 'Please try again.'); }
+      if (!result.ok) Alert.alert(t('settings.couldNotExport'), result.message);
+    } catch { Alert.alert(t('settings.couldNotExport'), t('common.pleaseTryAgain')); }
     finally { setExporting(false); }
   };
 
@@ -250,20 +261,20 @@ export default function ProfileScreen({ navigation, onStartOver }: Props) {
   };
 
   const onDeleteConversations = () => {
-    Alert.alert('Delete all my conversations?', "This can't be undone. Your profile stays.", [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('settings.deleteConversationsTitle'), t('settings.deleteConversationsBody'), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Delete conversations', style: 'destructive',
+        text: t('settings.deleteConversationsConfirm'), style: 'destructive',
         onPress: () => {
           void (async () => {
             setDeletingChats(true);
             try {
               const result = await deleteMyConversations();
-              if (!result.ok) { Alert.alert('Could not delete', result.message); return; }
+              if (!result.ok) { Alert.alert(t('settings.couldNotDelete'), result.message); return; }
               setMemorySummary(null);
-              Alert.alert('Conversations deleted', 'Your profile is still here.');
+              Alert.alert(t('settings.conversationsDeleted'), t('settings.profileStillHere'));
               navigation.navigate('Chat', { conversationsCleared: true });
-            } catch { Alert.alert('Could not delete', 'Please try again.'); }
+            } catch { Alert.alert(t('settings.couldNotDelete'), t('common.pleaseTryAgain')); }
             finally { setDeletingChats(false); }
           })();
         },
@@ -272,9 +283,9 @@ export default function ProfileScreen({ navigation, onStartOver }: Props) {
   };
 
   const onDeleteAccountPress = () => {
-    Alert.alert('Delete my account?', 'This permanently deletes your account and data. This cannot be undone.', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Continue', style: 'destructive', onPress: () => { setDeleteTyped(''); setAccountModal(true); } },
+    Alert.alert(t('settings.deleteAccountTitle'), t('settings.deleteAccountBody'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('common.continue'), style: 'destructive', onPress: () => { setDeleteTyped(''); setAccountModal(true); } },
     ]);
   };
 
@@ -283,22 +294,22 @@ export default function ProfileScreen({ navigation, onStartOver }: Props) {
     setDeletingAccount(true);
     try {
       const result = await deleteMyAccount();
-      if (!result.ok) { Alert.alert('Could not delete', result.message); return; }
+      if (!result.ok) { Alert.alert(t('settings.couldNotDelete'), result.message); return; }
       setAccountModal(false);
       await clearLocalCache();
       await AsyncStorage.removeItem(ONBOARDING_COMPLETE_KEY);
       try { await supabase.auth.signOut(); } catch {}
       onStartOver?.();
-    } catch { Alert.alert('Could not delete', 'Please try again.'); }
+    } catch { Alert.alert(t('settings.couldNotDelete'), t('common.pleaseTryAgain')); }
     finally { setDeletingAccount(false); }
   };
 
   const onSignOut = () => {
     if (busy) return;
-    Alert.alert('Start fresh?', 'This clears chat saved on this phone, then opens a new private guest session.', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('settings.startFreshTitle'), t('settings.startFreshBody'), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Start fresh', style: 'destructive',
+        text: t('settings.startFreshConfirm'), style: 'destructive',
         onPress: () => {
           void (async () => {
             setSigningOut(true);
@@ -307,7 +318,7 @@ export default function ProfileScreen({ navigation, onStartOver }: Props) {
               await AsyncStorage.removeItem(ONBOARDING_COMPLETE_KEY);
               try { await supabase.auth.signOut(); } catch {}
               onStartOver?.();
-            } catch { Alert.alert('Could not refresh', 'Please try again.'); }
+            } catch { Alert.alert(t('settings.couldNotRefresh'), t('common.pleaseTryAgain')); }
             finally { setSigningOut(false); }
           })();
         },
@@ -328,11 +339,11 @@ export default function ProfileScreen({ navigation, onStartOver }: Props) {
           onPress={() => navigation.goBack()}
           hitSlop={8}
           accessibilityRole="button"
-          accessibilityLabel="Back"
+          accessibilityLabel={t('common.backPlain')}
           style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
         >
           <Ionicons name="chevron-back" size={20} color={dark.sand} />
-          <Text style={styles.backLabel}>You</Text>
+          <Text style={styles.backLabel}>{t('profile.you')}</Text>
         </GentlePressable>
       </View>
 
@@ -365,22 +376,44 @@ export default function ProfileScreen({ navigation, onStartOver }: Props) {
         {/* ── HOW DOST TALKS TO YOU ── */}
         {loaded && (
           <View style={styles.talkCard}>
-            <Text style={styles.talkCardLabel}>HOW DOST TALKS TO YOU</Text>
+            <Text style={styles.talkCardLabel}>{t('profile.talkCardLabel')}</Text>
             <Text style={styles.talkCardValue}>
-              {intention.trim() || 'Direct, few questions at a time, no advice unless you ask.'}
+              {intention.trim() || t('profile.talkCardDefault')}
             </Text>
           </View>
         )}
 
+        <SectionHeader title={t('language.title')} intro={t('language.hint')} />
+        <View style={[styles.sectionCard, styles.langRow]}>
+          {APP_LANGUAGES.map((code) => (
+            <Pressable
+              key={code}
+              onPress={() => void setLanguage(code)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: lang === code }}
+              accessibilityLabel={NATIVE_LANGUAGE_NAMES[code]}
+              style={({ pressed }) => [
+                styles.langChip,
+                lang === code && styles.langChipActive,
+                pressed && styles.pressed,
+              ]}
+            >
+              <Text style={[styles.langChipText, lang === code && styles.langChipTextActive]}>
+                {NATIVE_LANGUAGE_NAMES[code]}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+
         {/* ══ My profile section ══════════════════════════════ */}
-        <SectionHeader title="My profile" intro="The details that help Dost speak to you personally." />
+        <SectionHeader title={t('settings.myProfile')} intro={t('profile.myProfileIntro')} />
         <View style={styles.sectionCard}>
-          <FieldLabel>Name</FieldLabel>
+          <FieldLabel>{t('settings.name')}</FieldLabel>
           <TextInput
             style={styles.input}
             value={name}
             onChangeText={(v) => setName(v.slice(0, MAX_NAME))}
-            placeholder="Your name"
+            placeholder={t('settings.namePlaceholder')}
             placeholderTextColor={dark.muted}
             selectionColor={colors.terracotta}
             maxLength={MAX_NAME}
@@ -388,12 +421,12 @@ export default function ProfileScreen({ navigation, onStartOver }: Props) {
             editable={!busy}
             underlineColorAndroid="transparent"
           />
-          <FieldLabel>Intention</FieldLabel>
+          <FieldLabel>{t('settings.intention')}</FieldLabel>
           <TextInput
             style={[styles.input, styles.textArea]}
             value={intention}
             onChangeText={(v) => setIntention(v.slice(0, MAX_INTENTION))}
-            placeholder="What you'd like to reflect on"
+            placeholder={t('settings.intentionPlaceholder')}
             placeholderTextColor={dark.muted}
             selectionColor={colors.terracotta}
             maxLength={MAX_INTENTION}
@@ -402,26 +435,26 @@ export default function ProfileScreen({ navigation, onStartOver }: Props) {
             textAlignVertical="top"
             underlineColorAndroid="transparent"
           />
-          <CTAButton onPress={() => void onSaveProfile()} disabled={busy} loading={savingProfile} label="Save name & intention" />
+          <CTAButton onPress={() => void onSaveProfile()} disabled={busy} loading={savingProfile} label={t('settings.saveNameIntention')} />
 
           <Divider />
-          <SubHeader title="Place of birth" hint="Optional. City, district, state, and country." />
-          <FieldLabel>City</FieldLabel>
+          <SubHeader title={t('settings.placeOfBirth')} hint={t('settings.placeOfBirthHelper')} />
+          <FieldLabel>{t('settings.city')}</FieldLabel>
           <TextInput style={styles.input} value={birthPlace.birthCity}
             onChangeText={(v) => setBirthPlace((p) => ({ ...p, birthCity: v.slice(0, FIELD_MAX) }))}
-            placeholder="City" placeholderTextColor={dark.muted} selectionColor={colors.terracotta}
+            placeholder={t('settings.city')} placeholderTextColor={dark.muted} selectionColor={colors.terracotta}
             autoCapitalize="words" editable={!busy} underlineColorAndroid="transparent" />
-          <FieldLabel>District</FieldLabel>
+          <FieldLabel>{t('settings.district')}</FieldLabel>
           <TextInput style={styles.input} value={birthPlace.birthDistrict}
             onChangeText={(v) => setBirthPlace((p) => ({ ...p, birthDistrict: v.slice(0, FIELD_MAX) }))}
-            placeholder="District" placeholderTextColor={dark.muted} selectionColor={colors.terracotta}
+            placeholder={t('settings.district')} placeholderTextColor={dark.muted} selectionColor={colors.terracotta}
             autoCapitalize="words" editable={!busy} underlineColorAndroid="transparent" />
-          <FieldLabel>State</FieldLabel>
+          <FieldLabel>{t('settings.state')}</FieldLabel>
           <TextInput style={styles.input} value={birthPlace.birthState}
             onChangeText={(v) => setBirthPlace((p) => ({ ...p, birthState: v.slice(0, FIELD_MAX) }))}
-            placeholder="State" placeholderTextColor={dark.muted} selectionColor={colors.terracotta}
+            placeholder={t('settings.state')} placeholderTextColor={dark.muted} selectionColor={colors.terracotta}
             autoCapitalize="words" editable={!busy} underlineColorAndroid="transparent" />
-          <FieldLabel>Country</FieldLabel>
+          <FieldLabel>{t('settings.country')}</FieldLabel>
           <View style={styles.pickerFrame}>
             <CountryPicker
               value={birthPlace.birthCountry || DEFAULT_BIRTH_COUNTRY}
@@ -429,20 +462,20 @@ export default function ProfileScreen({ navigation, onStartOver }: Props) {
               disabled={busy}
             />
           </View>
-          <CTAButton onPress={() => void onSaveBirthPlace()} disabled={busy} loading={savingBirthPlace} label="Save place of birth" />
+          <CTAButton onPress={() => void onSaveBirthPlace()} disabled={busy} loading={savingBirthPlace} label={t('settings.savePlaceOfBirth')} />
 
           <Divider />
-          <SubHeader title="Dosha" />
+          <SubHeader title={t('settings.dosha')} />
           <Text style={styles.copyValue}>{doshaLabel(dosha)}</Text>
-          <SecondaryButton onPress={() => navigation.navigate('DoshaRetake')} disabled={busy} label="Re-take quiz" />
+          <SecondaryButton onPress={() => navigation.navigate('DoshaRetake')} disabled={busy} label={t('settings.retakeQuiz')} />
 
           <Divider />
-          <SubHeader title="Personality profile" hint="Enneagram, Life Path, TCM, and MBTI — complete what you skipped, or update what you shared." />
-          <SecondaryButton onPress={() => navigation.navigate('PersonalityProfile')} disabled={busy} label="Open personality profile" />
+          <SubHeader title={t('settings.personalityProfile')} hint={t('profile.personalityHelper')} />
+          <SecondaryButton onPress={() => navigation.navigate('PersonalityProfile')} disabled={busy} label={t('settings.openPersonalityProfile')} />
         </View>
 
         {/* ══ Reminders section ═══════════════════════════════ */}
-        <SectionHeader title="Reminders" intro="Choose a gentle daily moment for Dost to check in." />
+        <SectionHeader title={t('profile.reminders')} intro={t('profile.remindersIntro')} />
         <View style={styles.sectionCard}>
           {Platform.OS === 'android' ? (
             <Pressable
@@ -450,7 +483,7 @@ export default function ProfileScreen({ navigation, onStartOver }: Props) {
               accessibilityRole="button"
               style={({ pressed }) => [styles.timeButton, pressed && styles.activeField]}
             >
-              <Text style={styles.timeButtonLabel}>DAILY CHECK-IN</Text>
+              <Text style={styles.timeButtonLabel}>{t('settings.dailyCheckIn')}</Text>
               <Text style={styles.timeButtonText}>{timeLabel}</Text>
             </Pressable>
           ) : (
@@ -466,26 +499,24 @@ export default function ProfileScreen({ navigation, onStartOver }: Props) {
               themeVariant="dark"
             />
           )}
-          <Text style={styles.helper}>
-            You'll be asked for notification permission when you save.
-          </Text>
-          <CTAButton onPress={() => void onSaveTime()} disabled={busy} loading={savingTime} label="Save time" />
+          <Text style={styles.helper}>{t('profile.remindersHelper')}</Text>
+          <CTAButton onPress={() => void onSaveTime()} disabled={busy} loading={savingTime} label={t('settings.saveTime')} />
         </View>
 
         {/* ══ What Dost remembers ═════════════════════════════ */}
-        <SectionHeader title="What Dost remembers" intro="A small, evolving summary — so you can always see what stays with Dost." />
+        <SectionHeader title={t('profile.memoryTitle')} intro={t('profile.memoryIntro')} />
         <View style={[styles.sectionCard, styles.memoryCard]}>
           <Text style={styles.memoryBox}>
-            {memorySummary ?? "Dost hasn't formed a memory yet. Chat a bit more, then tap Refresh."}
+            {memorySummary ?? t('profile.memoryEmpty')}
           </Text>
-          <CTAButton onPress={() => void onRefreshMemory()} disabled={busy} loading={refreshing} label="Refresh memory" />
+          <CTAButton onPress={() => void onRefreshMemory()} disabled={busy} loading={refreshing} label={t('settings.refreshMemory')} />
         </View>
 
         {/* ══ Privacy & account ═══════════════════════════════ */}
-        <SectionHeader title="Privacy & account" intro="Your words and your choices remain yours." />
+        <SectionHeader title={t('settings.privacyTitle')} intro={t('settings.privacyIntro')} />
         <View style={styles.sectionCard}>
-          <SecondaryButton onPress={() => void onExport()} disabled={busy} loading={exporting} label="Export my data" />
-          <Text style={styles.helper}>Saves a JSON file you can keep. Up to 3 exports per day.</Text>
+          <SecondaryButton onPress={() => void onExport()} disabled={busy} loading={exporting} label={t('settings.exportMyData')} />
+          <Text style={styles.helper}>{t('settings.exportHelper')}</Text>
 
           <Divider />
           <Pressable
@@ -495,7 +526,7 @@ export default function ProfileScreen({ navigation, onStartOver }: Props) {
             style={({ pressed }) => [styles.dangerOutlineButton, pressed && styles.pressed, busy && styles.buttonDisabled]}
           >
             <Text style={styles.dangerText}>
-              {deletingChats ? 'Deleting…' : 'Delete all my conversations'}
+              {deletingChats ? t('common.deleting') : t('settings.deleteAllConversations')}
             </Text>
           </Pressable>
 
@@ -503,11 +534,11 @@ export default function ProfileScreen({ navigation, onStartOver }: Props) {
             onPress={onSignOut}
             disabled={busy}
             loading={signingOut}
-            label={signingOut ? 'Refreshing…' : 'Sign out'}
+            label={signingOut ? t('common.refreshing') : t('profile.signOut')}
             style={styles.signOutButton}
             textStyle={styles.signOutText}
           />
-          <Text style={styles.helper}>Clears chat saved on this phone, then opens a new private guest session.</Text>
+          <Text style={styles.helper}>{t('settings.startFreshHelper')}</Text>
 
           <Pressable
             onPress={onDeleteAccountPress}
@@ -515,16 +546,16 @@ export default function ProfileScreen({ navigation, onStartOver }: Props) {
             accessibilityRole="button"
             style={({ pressed }) => [styles.accountButton, pressed && styles.pressed, busy && styles.buttonDisabled]}
           >
-            <Text style={styles.accountText}>Delete my account</Text>
+            <Text style={styles.accountText}>{t('settings.deleteMyAccount')}</Text>
           </Pressable>
         </View>
 
         {/* Diagnostics */}
         {lastError ? (
           <View style={styles.diagCard}>
-            <Text style={styles.diagLabel}>Last connection issue</Text>
+            <Text style={styles.diagLabel}>{t('profile.lastIssue')}</Text>
             <Text style={styles.diagText}>{formatDiagnostic(lastError)}</Text>
-            <Text style={styles.diagHint}>Share this with support if chat keeps failing.</Text>
+            <Text style={styles.diagHint}>{t('profile.lastIssueHint')}</Text>
           </View>
         ) : null}
       </ScrollView>
@@ -539,10 +570,8 @@ export default function ProfileScreen({ navigation, onStartOver }: Props) {
         <View style={styles.modalBackdrop}>
           <View style={styles.modalScrim} />
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Type DELETE to confirm</Text>
-            <Text style={styles.modalCopy}>
-              This removes your account and everything Dost stored for you.
-            </Text>
+            <Text style={styles.modalTitle}>{t('settings.typeDeleteTitle')}</Text>
+            <Text style={styles.modalCopy}>{t('profile.deleteModalBody')}</Text>
             <TextInput
               style={styles.input}
               value={deleteTyped}
@@ -561,10 +590,12 @@ export default function ProfileScreen({ navigation, onStartOver }: Props) {
               accessibilityRole="button"
               style={[styles.ctaButton, styles.dangerButton, (deleteTyped !== 'DELETE' || deletingAccount) && styles.buttonDisabled]}
             >
-              <Text style={styles.ctaText}>{deletingAccount ? 'Deleting…' : 'Delete my account'}</Text>
+              <Text style={styles.ctaText}>
+                {deletingAccount ? t('common.deleting') : t('settings.deleteMyAccount')}
+              </Text>
             </Pressable>
             <Pressable onPress={() => setAccountModal(false)} disabled={deletingAccount} accessibilityRole="button" style={styles.secondaryButtonBase}>
-              <Text style={styles.secondaryButtonText}>Cancel</Text>
+              <Text style={styles.secondaryButtonText}>{t('common.cancel')}</Text>
             </Pressable>
           </View>
         </View>
@@ -609,7 +640,7 @@ function CTAButton({ onPress, disabled, loading, label }: { onPress: () => void;
       accessibilityRole="button"
       style={({ pressed }) => [styles.ctaButton, pressed && styles.pressed, disabled && styles.buttonDisabled]}
     >
-      <Text style={styles.ctaText}>{loading ? 'Saving…' : label}</Text>
+      <Text style={styles.ctaText}>{loading ? translate('common.saving') : label}</Text>
     </Pressable>
   );
 }
@@ -625,7 +656,9 @@ function SecondaryButton({ onPress, disabled, loading, label, style: extraStyle,
       accessibilityRole="button"
       style={({ pressed }) => [styles.secondaryButtonBase, extraStyle, pressed && styles.pressed, disabled && styles.buttonDisabled]}
     >
-      <Text style={[styles.secondaryButtonText, extraTextStyle]}>{loading ? 'Loading…' : label}</Text>
+      <Text style={[styles.secondaryButtonText, extraTextStyle]}>
+        {loading ? translate('profile.loading') : label}
+      </Text>
     </Pressable>
   );
 }
@@ -721,6 +754,17 @@ const styles = StyleSheet.create({
   },
 
   // Section cards
+  langRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  langChip: {
+    borderWidth: 1,
+    borderColor: dark.border,
+    borderRadius: radius.full,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+  },
+  langChipActive: { borderColor: colors.terracotta, backgroundColor: dark.cardRaised },
+  langChipText: { ...typography.label, color: dark.sand },
+  langChipTextActive: { color: dark.title },
   sectionCard: {
     backgroundColor: dark.card,
     borderRadius: radius['2xl'],

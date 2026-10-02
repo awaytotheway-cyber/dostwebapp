@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import theme from '../lib/theme';
 import GentlePressable from './GentlePressable';
+import { useI18n } from '../lib/i18n';
 
 type Props = {
   kind: 'anonymous_disabled' | 'other';
@@ -11,10 +12,9 @@ type Props = {
 
 export default function AuthErrorScreen({ kind, onRetry }: Props) {
   const insets = useSafeAreaInsets();
+  const { t } = useI18n();
   const copy =
-    kind === 'anonymous_disabled'
-      ? "We couldn't connect right now. Check your internet and try again."
-      : "We couldn't connect right now. Check your internet and try again. If this keeps happening, the app may need a moment — try again in a few minutes.";
+    kind === 'anonymous_disabled' ? t('authError.copyShort') : t('authError.copyLong');
 
   return (
     <ScrollView
@@ -31,9 +31,9 @@ export default function AuthErrorScreen({ kind, onRetry }: Props) {
       <View style={styles.content}>
         <Text style={styles.brand}>DOST</Text>
         <View style={styles.statusLine} />
-        <Text style={styles.eyebrow}>A quiet pause</Text>
+        <Text style={styles.eyebrow}>{t('authError.eyebrow')}</Text>
         <Text accessibilityRole="header" style={styles.heading}>
-          We couldn&apos;t open your space
+          {t('authError.heading')}
         </Text>
         <Text style={styles.copy}>{copy}</Text>
         <GentlePressable
@@ -41,7 +41,7 @@ export default function AuthErrorScreen({ kind, onRetry }: Props) {
           onPress={onRetry}
           style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
         >
-          <Text style={styles.buttonText}>Try again</Text>
+          <Text style={styles.buttonText}>{t('common.tryAgain')}</Text>
         </GentlePressable>
       </View>
     </ScrollView>

@@ -23,6 +23,7 @@ import type { ChatStackParamList } from './chatTypes';
 import BreathingDot from './BreathingDot';
 import GentlePressable from './GentlePressable';
 import PaperGrain from './PaperGrain';
+import { useI18n } from '../lib/i18n';
 
 type Props = NativeStackScreenProps<ChatStackParamList, 'YourJourney'>;
 
@@ -138,6 +139,7 @@ function SoftLoading({ label }: { label: string }) {
 
 export default function YourJourneyScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
+  const { t, lang, locale } = useI18n();
   const [range, setRange] = useState<JourneyRangeKey>('7d');
   const [aggregate, setAggregate] = useState<JourneyAggregate | null>(null);
   const [insight, setInsight] = useState<string | null>(null);
@@ -146,8 +148,8 @@ export default function YourJourneyScreen({ navigation }: Props) {
   const [insightError, setInsightError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const rangeLabel =
-    JOURNEY_RANGES.find((r) => r.key === range)?.label ?? 'Past 7 days';
+  const rangeEntry = JOURNEY_RANGES.find((r) => r.key === range) ?? JOURNEY_RANGES[0];
+  const rangeLabel = rangeEntry.label;
 
   useFocusEffect(
     useCallback(() => {
@@ -200,7 +202,7 @@ export default function YourJourneyScreen({ navigation }: Props) {
       return () => {
         active = false;
       };
-    }, [range, rangeLabel]),
+    }, [range, rangeLabel, lang]),
   );
 
   const onSelectRange = (key: JourneyRangeKey) => {
@@ -243,10 +245,10 @@ export default function YourJourneyScreen({ navigation }: Props) {
           onPress={() => navigation.navigate('Home')}
           hitSlop={8}
           accessibilityRole="button"
-          accessibilityLabel="Back to Home"
+          accessibilityLabel={t('journey.backHomeA11y')}
           style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
         >
-          <Text style={styles.back}>Home</Text>
+          <Text style={styles.back}>{t('journey.home')}</Text>
         </GentlePressable>
         <Text
           accessibilityRole="header"
@@ -255,12 +257,13 @@ export default function YourJourneyScreen({ navigation }: Props) {
           adjustsFontSizeToFit
           minimumFontScale={0.85}
         >
-          Your Journey
+          {t('journey.title')}
         </Text>
       </View>
 
       <View style={styles.segments}>
-        {JOURNEY_RANGES.map(({ key, label }) => {
+        {JOURNEY_RANGES.map(({ key, labelKey }) => {
+          const label = t(labelKey);
           const selected = range === key;
           return (
             <GentlePressable
@@ -286,7 +289,7 @@ export default function YourJourneyScreen({ navigation }: Props) {
 
       {loading ? (
         <View style={styles.centered}>
-          <SoftLoading label="Gathering your weather…" />
+          <SoftLoading label={t('journey.gathering')} />
         </View>
       ) : error ? (
         <View style={styles.centered}>
@@ -302,23 +305,22 @@ export default function YourJourneyScreen({ navigation }: Props) {
         >
           {empty ? (
             <View style={styles.emptyWrap}>
-              <Text style={styles.empty}>
-                Your journey is still gathering — a little more reflection, and
-                the weather of your days will begin to show.
-              </Text>
+              <Text style={styles.empty}>{t('journey.empty')}</Text>
             </View>
           ) : (
             <>
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>The weather of your days</Text>
+                <Text style={styles.sectionTitle}>{t('journey.weatherTitle')}</Text>
                 <Text style={styles.sectionHint}>
-                  Soft traces across {rangeLabel.toLowerCase()}.
+                  {t('journey.weatherHint', {
+                    range: t(rangeEntry.labelKey).toLocaleLowerCase(locale),
+                  })}
                 </Text>
                 {aggregate ? <WeatherChart points={aggregate.weather} /> : null}
               </View>
 
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Recurring themes</Text>
+                <Text style={styles.sectionTitle}>{t('journey.themesTitle')}</Text>
                 {aggregate?.themeSentences.map((sentence) => (
                   <Text key={sentence} style={styles.themeLine}>
                     {sentence}
@@ -326,20 +328,20 @@ export default function YourJourneyScreen({ navigation }: Props) {
                 ))}
                 {aggregate && aggregate.topNeeds.length > 0 ? (
                   <Text style={styles.needsHint}>
-                    Underneath, a reach toward{' '}
-                    {aggregate.topNeeds
-                      .slice(0, 3)
-                      .map((n) => n.label.toLowerCase())
-                      .join(', ')}
-                    .
+                    {t('journey.needsHint', {
+                      needs: aggregate.topNeeds
+                        .slice(0, 3)
+                        .map((n) => n.label.toLocaleLowerCase(locale))
+                        .join(', '),
+                    })}
                   </Text>
                 ) : null}
               </View>
 
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>What DOST notices</Text>
+                <Text style={styles.sectionTitle}>{t('journey.noticesTitle')}</Text>
                 {insightLoading ? (
-                  <SoftLoading label="Listening for what wants noticing…" />
+                  <SoftLoading label={t('journey.listening')} />
                 ) : insight ? (
                   <Text style={styles.insight}>{insight}</Text>
                 ) : insightError ? (
@@ -347,21 +349,18 @@ export default function YourJourneyScreen({ navigation }: Props) {
                     <Text style={styles.insightErrorText}>{insightError}</Text>
                     <GentlePressable
                       accessibilityRole="button"
-                      accessibilityLabel="Try again"
+                      accessibilityLabel={t('common.tryAgain')}
                       onPress={() => void retryInsight()}
                       style={({ pressed }) => [
                         styles.retryButton,
                         pressed && styles.pressed,
                       ]}
                     >
-                      <Text style={styles.retryLabel}>Try again</Text>
+                      <Text style={styles.retryLabel}>{t('common.tryAgain')}</Text>
                     </GentlePressable>
                   </View>
                 ) : (
-                  <Text style={styles.themeLine}>
-                    I am still sitting with what you have shared — check back
-                    when a little more weather has gathered.
-                  </Text>
+                  <Text style={styles.themeLine}>{t('journey.insightPending')}</Text>
                 )}
               </View>
             </>

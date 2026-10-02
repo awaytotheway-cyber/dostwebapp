@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import theme from '../lib/theme';
 import GentlePressable from './GentlePressable';
+import { useI18n } from '../lib/i18n';
 
 type Props = {
   onContinue: () => void;
@@ -10,6 +11,7 @@ type Props = {
 
 export default function PrivacyNoticeScreen({ onContinue }: Props) {
   const insets = useSafeAreaInsets();
+  const { t } = useI18n();
 
   return (
     <ScrollView
@@ -25,20 +27,18 @@ export default function PrivacyNoticeScreen({ onContinue }: Props) {
     >
       <View style={styles.content}>
         <Text style={styles.brand}>DOST</Text>
-        <Text style={styles.eyebrow}>Private by design</Text>
+        <Text style={styles.eyebrow}>{t('privacy.eyebrow')}</Text>
         <Text accessibilityRole="header" style={styles.heading}>
-          A space that stays yours
+          {t('privacy.heading')}
         </Text>
-        <Text style={styles.copy}>
-          Your reflections are stored securely and used only to make DOST more helpful to you. You can delete everything anytime.
-        </Text>
+        <Text style={styles.copy}>{t('privacy.copy')}</Text>
         <View style={styles.divider} />
         <GentlePressable
           accessibilityRole="button"
           onPress={onContinue}
           style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
         >
-          <Text style={styles.buttonText}>Continue</Text>
+          <Text style={styles.buttonText}>{t('common.continue')}</Text>
         </GentlePressable>
       </View>
     </ScrollView>
