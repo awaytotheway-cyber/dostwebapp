@@ -45,6 +45,9 @@ export const VOICEPRINT_LENGTH = NUM_CEPS * 2;
 export type VoiceprintAnalysis = {
   voiceprint: Voiceprint;
   speechSeconds: number;
+  // Loud-frame vs quiet-frame energy gap (dB); low means speech barely
+  // rises above the background.
+  snrDb: number;
 };
 
 type Tables = {
@@ -153,11 +156,11 @@ export function analyzeVoiceprint(
   sampleRate: number,
 ): VoiceprintAnalysis {
   if (!Number.isFinite(sampleRate) || sampleRate < 8000) {
-    return { voiceprint: zeros(), speechSeconds: 0 };
+    return { voiceprint: zeros(), speechSeconds: 0, snrDb: 0 };
   }
   const t = tablesFor(sampleRate);
   if (pcm.length < t.frameSize) {
-    return { voiceprint: zeros(), speechSeconds: 0 };
+    return { voiceprint: zeros(), speechSeconds: 0, snrDb: 0 };
   }
 
   const { frameSize, hop, nfft, window, bitrev, twCos, twSin } = t;
@@ -228,6 +231,7 @@ export function analyzeVoiceprint(
 
   const sortedDb = Array.from(energyDb).sort((a, b) => a - b);
   const loudDb = sortedDb[Math.floor(0.95 * (sortedDb.length - 1))];
+  const floorDb = sortedDb[Math.floor(0.1 * (sortedDb.length - 1))];
   let kept = 0;
   const keep = new Uint8Array(frameCount);
   for (let f = 0; f < frameCount; f++) {
@@ -260,6 +264,7 @@ export function analyzeVoiceprint(
   return {
     voiceprint: [...mean, ...std],
     speechSeconds: (speechFrames * hop) / sampleRate,
+    snrDb: loudDb - floorDb,
   };
 }
 
