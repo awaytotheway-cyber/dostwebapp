@@ -1,19 +1,12 @@
 import Constants, { ExecutionEnvironment } from 'expo-constants';
+import { getLocaleTag, t } from './i18n';
 
-const MIC_RATIONALE =
-  'DOST uses your device to convert speech to text. Nothing is recorded or stored.';
-
-export const SPEECH_UNAVAILABLE_TITLE = 'Voice needs a one-time install';
-export const EXPO_GO_VOICE_MESSAGE = 'Voice input is available in the DOST app.';
-export const SPEECH_UNAVAILABLE_MESSAGE =
-  'Voice input is unavailable in this build. You can still type.';
-
-export const MIC_PERMISSION_DENIED =
-  'Microphone permission is off. You can type instead, or turn it on in your phone settings.';
-
-export const MIC_BUSY_MESSAGE = 'One moment — finishing the last listen.';
-export const MIC_START_FAIL = 'Could not start listening. Try again, or type.';
-export const MIC_NO_SPEECH = "Didn't catch that — try again or type.";
+export const expoGoVoiceMessage = () => t('speech.expoGo');
+export const speechUnavailableMessage = () => t('speech.unavailable');
+export const micPermissionDenied = () => t('speech.permissionDenied');
+export const micBusyMessage = () => t('speech.busy');
+export const micStartFail = () => t('speech.startFail');
+export const micNoSpeech = () => t('speech.noSpeech');
 
 type PermissionResult = {
   granted: boolean;
@@ -70,14 +63,14 @@ export function loadSpeechModule(): SpeechNativeModule | null {
 }
 
 export function speechUnavailableReason(mod: SpeechNativeModule | null): string | null {
-  if (isExpoGo()) return EXPO_GO_VOICE_MESSAGE;
-  if (!mod) return SPEECH_UNAVAILABLE_MESSAGE;
+  if (isExpoGo()) return expoGoVoiceMessage();
+  if (!mod) return speechUnavailableMessage();
   try {
     if (typeof mod.isRecognitionAvailable === 'function' && !mod.isRecognitionAvailable()) {
-      return 'Speech-to-text is not available on this device. You can still type.';
+      return t('speech.notOnDevice');
     }
   } catch {
-    return SPEECH_UNAVAILABLE_MESSAGE;
+    return speechUnavailableMessage();
   }
   return null;
 }
@@ -117,7 +110,7 @@ export async function requestMicPermission(
 
 export function startDictation(mod: SpeechNativeModule): void {
   mod.start({
-    lang: 'en-IN',
+    lang: getLocaleTag(),
     interimResults: true,
     maxAlternatives: 1,
     continuous: false,
@@ -164,22 +157,22 @@ function friendlySpeechError(event: SpeechErrorEvent): string | null {
     return null;
   }
   if (code === 'no-speech' || code === 'speech-timeout') {
-    return MIC_NO_SPEECH;
+    return micNoSpeech();
   }
   if (code === 'not-allowed' || code === 'permission-denied' || code === 'audio-capture') {
-    return MIC_PERMISSION_DENIED;
+    return micPermissionDenied();
   }
   if (code === 'network') {
-    return 'Voice needs a connection right now. You can still type.';
+    return t('speech.needsConnection');
   }
   if (code === 'busy' || code === 'already-started') {
-    return MIC_BUSY_MESSAGE;
+    return micBusyMessage();
   }
   const msg = typeof event.message === 'string' ? event.message.trim() : '';
   if (msg && !/\b500\b|exception|stack|native/i.test(msg)) {
-    return msg.length > 120 ? MIC_NO_SPEECH : msg;
+    return msg.length > 120 ? micNoSpeech() : msg;
   }
-  return MIC_NO_SPEECH;
+  return micNoSpeech();
 }
 
 export function subscribeSpeech(
@@ -223,4 +216,3 @@ export function subscribeSpeech(
   };
 }
 
-export { MIC_RATIONALE };

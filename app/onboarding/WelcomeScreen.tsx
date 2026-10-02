@@ -11,6 +11,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { OnboardingStackParamList } from './types';
+import { APP_LANGUAGES, NATIVE_LANGUAGE_NAMES, useI18n } from '../../lib/i18n';
 import { colors, radius, spacing, type } from '../../lib/theme';
 import GentlePressable from '../GentlePressable';
 
@@ -20,6 +21,7 @@ type Props = NativeStackScreenProps<OnboardingStackParamList, 'Welcome'>;
 
 export default function WelcomeScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
+  const { t, lang, setLanguage } = useI18n();
   const [reduceMotion, setReduceMotion] = useState<boolean | null>(null);
   const logoOpacity = useRef(new Animated.Value(0)).current;
   const presenceBreath = useRef(new Animated.Value(0.45)).current;
@@ -113,18 +115,36 @@ export default function WelcomeScreen({ navigation }: Props) {
         </Animated.View>
 
         <Text accessibilityRole="header" style={styles.heading}>
-          Welcome. I'm{' '}
-          <Text style={styles.dostName}>Dost</Text>.
+          {t('welcome.headingBefore')}
+          <Text style={styles.dostName}>Dost</Text>
+          {t('welcome.headingAfter')}
         </Text>
-        <Text style={styles.copy}>
-          A quiet friend to reflect with. Nothing you share leaves this space without your permission.
-        </Text>
+        <Text style={styles.copy}>{t('welcome.copy')}</Text>
+        <View style={styles.langRow} accessibilityLabel={t('language.title')}>
+          {APP_LANGUAGES.map((code) => (
+            <GentlePressable
+              key={code}
+              accessibilityRole="button"
+              accessibilityState={{ selected: lang === code }}
+              onPress={() => void setLanguage(code)}
+              style={({ pressed }) => [
+                styles.langChip,
+                lang === code && styles.langChipActive,
+                pressed && styles.buttonPressed,
+              ]}
+            >
+              <Text style={[styles.langChipText, lang === code && styles.langChipTextActive]}>
+                {NATIVE_LANGUAGE_NAMES[code]}
+              </Text>
+            </GentlePressable>
+          ))}
+        </View>
         <GentlePressable
           accessibilityRole="button"
           onPress={() => navigation.navigate('Name')}
           style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
         >
-          <Text style={styles.buttonText}>Begin</Text>
+          <Text style={styles.buttonText}>{t('welcome.begin')}</Text>
         </GentlePressable>
       </View>
     </View>
@@ -187,7 +207,34 @@ const styles = StyleSheet.create({
     color: colors.inkMuted,
     textAlign: 'center',
     maxWidth: 340,
-    marginBottom: spacing['5xl'],
+    marginBottom: spacing['3xl'],
+  },
+  langRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing['3xl'],
+  },
+  langChip: {
+    borderWidth: 1,
+    borderColor: colors.blush,
+    borderRadius: radius.full,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+  },
+  langChipActive: {
+    borderColor: colors.terracotta,
+    backgroundColor: colors.blush,
+  },
+  langChipText: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 14,
+    lineHeight: 20,
+    color: colors.inkMuted,
+  },
+  langChipTextActive: {
+    color: colors.inkDark,
   },
   button: {
     alignItems: 'center',

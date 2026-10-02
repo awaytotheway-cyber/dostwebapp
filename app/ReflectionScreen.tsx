@@ -13,6 +13,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { ChatStackParamList } from './chatTypes';
+import { useI18n } from '../lib/i18n';
 import { saveDailyIntentions } from '../lib/intentions';
 import {
   requestNotificationPermission,
@@ -25,6 +26,7 @@ type Props = NativeStackScreenProps<ChatStackParamList, 'Reflection'>;
 
 export default function ReflectionScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
+  const { t } = useI18n();
   const mode = route.params?.mode === 'noticings' ? 'noticings' : 'prompt';
   const [one, setOne] = useState('');
   const [two, setTwo] = useState('');
@@ -46,7 +48,7 @@ export default function ReflectionScreen({ navigation, route }: Props) {
     try {
       const saved = await saveDailyIntentions(one, two);
       if (!saved.ok) {
-        Alert.alert('Could not save', saved.message);
+        Alert.alert(t('common.couldNotSave'), saved.message);
         return;
       }
 
@@ -56,14 +58,12 @@ export default function ReflectionScreen({ navigation, route }: Props) {
       }
 
       Alert.alert(
-        'Saved',
-        allowed
-          ? "DOST will remind you in the morning. On Expo Go, that reminder may not appear."
-          : 'Saved for tomorrow. Enable notifications later if you want a morning reminder.',
+        t('common.saved'),
+        allowed ? t('reflection.savedMorning') : t('reflection.savedNoNotifications'),
       );
       navigation.navigate('Chat');
     } catch {
-      Alert.alert('Could not save', 'Please try again.');
+      Alert.alert(t('common.couldNotSave'), t('common.pleaseTryAgain'));
     } finally {
       setSaving(false);
     }
@@ -78,23 +78,23 @@ export default function ReflectionScreen({ navigation, route }: Props) {
         <View style={styles.topBar}>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Go back"
+            accessibilityLabel={t('common.goBack')}
             onPress={() => navigation.goBack()}
             hitSlop={spacing.sm}
             style={({ pressed }) => pressed && styles.controlPressed}
           >
             <Text style={styles.back}>
-              {mode === 'noticings' ? 'Evening reflection' : 'Evening reflection'}
+              {t('reflection.back')}
             </Text>
           </Pressable>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Not tonight"
+            accessibilityLabel={t('reflection.notTonight')}
             onPress={onNotTonight}
             hitSlop={spacing.sm}
             style={({ pressed }) => pressed && styles.controlPressed}
           >
-            <Text style={styles.notTonight}>Not tonight</Text>
+            <Text style={styles.notTonight}>{t('reflection.notTonight')}</Text>
           </Pressable>
         </View>
 
@@ -110,10 +110,10 @@ export default function ReflectionScreen({ navigation, route }: Props) {
           {mode === 'prompt' ? (
             <>
               <View style={styles.promptBlock}>
-                <Text style={styles.eyebrow}>EVENING REFLECTION</Text>
-                <Text style={styles.prompt}>Would you like to reflect on today?</Text>
+                <Text style={styles.eyebrow}>{t('reflection.eyebrow')}</Text>
+                <Text style={styles.prompt}>{t('reflection.prompt')}</Text>
                 <View style={styles.promptRule} />
-                <Text style={styles.promptNote}>A quiet moment is enough.</Text>
+                <Text style={styles.promptNote}>{t('reflection.promptNote')}</Text>
               </View>
 
               <View style={styles.actions}>
@@ -125,7 +125,7 @@ export default function ReflectionScreen({ navigation, route }: Props) {
                     pressed && styles.controlPressed,
                   ]}
                 >
-                  <Text style={styles.primaryButtonText}>Yes</Text>
+                  <Text style={styles.primaryButtonText}>{t('reflection.yes')}</Text>
                 </GentlePressable>
                 <GentlePressable
                   accessibilityRole="button"
@@ -135,15 +135,15 @@ export default function ReflectionScreen({ navigation, route }: Props) {
                     pressed && styles.controlPressed,
                   ]}
                 >
-                  <Text style={styles.secondaryButtonText}>Not tonight</Text>
+                  <Text style={styles.secondaryButtonText}>{t('reflection.notTonight')}</Text>
                 </GentlePressable>
               </View>
             </>
           ) : (
             <View>
-              <Text style={styles.eyebrow}>FOR TOMORROW</Text>
-              <Text style={styles.heading}>Two things to notice tomorrow</Text>
-              <Text style={styles.copy}>Name two small things you'd like to notice.</Text>
+              <Text style={styles.eyebrow}>{t('reflection.forTomorrow')}</Text>
+              <Text style={styles.heading}>{t('reflection.heading')}</Text>
+              <Text style={styles.copy}>{t('reflection.copy')}</Text>
 
               <View style={styles.noticingList}>
                 <View style={styles.noticingCard}>
@@ -152,12 +152,12 @@ export default function ReflectionScreen({ navigation, route }: Props) {
                     <View style={styles.noticingRule} />
                   </View>
                   <View style={styles.noticingField}>
-                    <Text style={styles.inputLabel}>FIRST NOTICING</Text>
+                    <Text style={styles.inputLabel}>{t('reflection.firstLabel')}</Text>
                     <TextInput
                       style={styles.input}
                       value={one}
                       onChangeText={(value) => setOne(value.slice(0, 120))}
-                      placeholder="First noticing"
+                      placeholder={t('reflection.firstPlaceholder')}
                       placeholderTextColor={colors.clay}
                       maxLength={120}
                       editable={!saving}
@@ -173,12 +173,12 @@ export default function ReflectionScreen({ navigation, route }: Props) {
                     <View style={styles.noticingRule} />
                   </View>
                   <View style={styles.noticingField}>
-                    <Text style={styles.inputLabel}>SECOND NOTICING</Text>
+                    <Text style={styles.inputLabel}>{t('reflection.secondLabel')}</Text>
                     <TextInput
                       style={styles.input}
                       value={two}
                       onChangeText={(value) => setTwo(value.slice(0, 120))}
-                      placeholder="Second noticing"
+                      placeholder={t('reflection.secondPlaceholder')}
                       placeholderTextColor={colors.clay}
                       maxLength={120}
                       editable={!saving}
@@ -201,7 +201,9 @@ export default function ReflectionScreen({ navigation, route }: Props) {
                   pressed && canSave && styles.controlPressed,
                 ]}
               >
-                <Text style={styles.primaryButtonText}>{saving ? 'Saving…' : 'Save'}</Text>
+                <Text style={styles.primaryButtonText}>
+                  {saving ? t('common.saving') : t('common.save')}
+                </Text>
               </GentlePressable>
             </View>
           )}

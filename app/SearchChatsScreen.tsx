@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { getLocaleTag, t as translate, useI18n } from '../lib/i18n';
 import { supabase } from '../lib/supabase';
 import {
   getDb,
@@ -32,7 +33,7 @@ function formatWhen(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return '';
   try {
-    return date.toLocaleString(undefined, {
+    return date.toLocaleString(getLocaleTag(), {
       month: 'short',
       day: 'numeric',
       hour: 'numeric',
@@ -45,6 +46,7 @@ function formatWhen(iso: string): string {
 
 export default function SearchChatsScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
+  const { t } = useI18n();
   const userIdRef = useRef<string | null>(null);
   const [query, setQuery] = useState('');
   const [hits, setHits] = useState<MessageSearchHit[]>([]);
@@ -73,7 +75,7 @@ export default function SearchChatsScreen({ navigation }: Props) {
     const q = raw.trim();
     if (!userId || q.length < 2) {
       setHits([]);
-      setHint(q.length === 1 ? 'Type at least 2 characters.' : null);
+      setHint(q.length === 1 ? translate('search.minChars') : null);
       return;
     }
 
@@ -115,11 +117,11 @@ export default function SearchChatsScreen({ navigation }: Props) {
 
       setHits(local.slice(0, 40));
       if (local.length === 0) {
-        setHint('No matching messages yet.');
+        setHint(translate('search.noMatches'));
       }
     } catch {
       setHits([]);
-      setHint('Could not search right now. Try again in a moment.');
+      setHint(translate('search.failed'));
     } finally {
       setSearching(false);
     }
@@ -150,11 +152,11 @@ export default function SearchChatsScreen({ navigation }: Props) {
         <GentlePressable
           onPress={() => navigation.goBack()}
           hitSlop={8}
-          accessibilityLabel="Back"
+          accessibilityLabel={t('common.backPlain')}
         >
-          <Text style={styles.back}>Back</Text>
+          <Text style={styles.back}>{t('common.backPlain')}</Text>
         </GentlePressable>
-        <Text style={styles.title}>Search chats</Text>
+        <Text style={styles.title}>{t('search.title')}</Text>
         <View style={styles.backSpacer} />
       </View>
 
@@ -163,7 +165,7 @@ export default function SearchChatsScreen({ navigation }: Props) {
           style={styles.input}
           value={query}
           onChangeText={setQuery}
-          placeholder="Search your messages…"
+          placeholder={t('search.placeholder')}
           placeholderTextColor={colors.sand}
           autoCapitalize="none"
           autoCorrect={false}
@@ -195,7 +197,7 @@ export default function SearchChatsScreen({ navigation }: Props) {
           <GentlePressable
             style={styles.row}
             onPress={() => openHit(item)}
-            accessibilityLabel={`Open message from ${formatWhen(item.created_at)}`}
+            accessibilityLabel={t('search.openA11y', { when: formatWhen(item.created_at) })}
           >
             <Text style={styles.when}>{formatWhen(item.created_at)}</Text>
             <Text style={styles.preview}>{previewText(item.content)}</Text>

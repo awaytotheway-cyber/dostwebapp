@@ -39,6 +39,12 @@ import { purgeUserDatabase } from '../lib/localDb';
 import { colors, radius, spacing, type as typography } from '../lib/theme';
 import { useReducedMotion } from '../lib/useReducedMotion';
 import HearingSettingsSection from './HearingSettingsSection';
+import {
+  APP_LANGUAGES,
+  NATIVE_LANGUAGE_NAMES,
+  useI18n,
+  type TKey,
+} from '../lib/i18n';
 
 type Props = NativeStackScreenProps<ChatStackParamList, 'Settings'> & {
   onStartOver: () => void;
@@ -54,14 +60,10 @@ function dateFromTime(time: HmTime): Date {
   return d;
 }
 
-function doshaLabel(dosha: Dosha | null): string {
-  if (!dosha) return 'Not set yet';
-  return dosha.charAt(0).toUpperCase() + dosha.slice(1);
-}
-
 export default function SettingsScreen({ navigation, onStartOver }: Props) {
   const reduceMotion = useReducedMotion();
   const insets = useSafeAreaInsets();
+  const { t, lang, locale, setLanguage } = useI18n();
   const [name, setName] = useState('');
   const [intention, setIntention] = useState('');
   const [dosha, setDosha] = useState<Dosha | null>(null);
@@ -109,11 +111,11 @@ export default function SettingsScreen({ navigation, onStartOver }: Props) {
 
   const timeLabel = useMemo(
     () =>
-      dateFromTime(time).toLocaleTimeString(undefined, {
+      dateFromTime(time).toLocaleTimeString(locale, {
         hour: 'numeric',
         minute: '2-digit',
       }),
-    [time],
+    [time, locale],
   );
 
   const busy =
@@ -140,12 +142,12 @@ export default function SettingsScreen({ navigation, onStartOver }: Props) {
     try {
       const saved = await updateMyNameAndIntention(name, intention);
       if (!saved.ok) {
-        Alert.alert('Could not save', saved.message);
+        Alert.alert(t('common.couldNotSave'), saved.message);
         return;
       }
-      Alert.alert('Saved', 'Your name and intention were updated.');
+      Alert.alert(t('common.saved'), t('settings.nameIntentionUpdated'));
     } catch {
-      Alert.alert('Could not save', 'Please try again.');
+      Alert.alert(t('common.couldNotSave'), t('common.pleaseTryAgain'));
     } finally {
       setSavingProfile(false);
     }
@@ -157,12 +159,12 @@ export default function SettingsScreen({ navigation, onStartOver }: Props) {
     try {
       const saved = await updateMyBirthPlace(birthPlace);
       if (!saved.ok) {
-        Alert.alert('Could not save', saved.message);
+        Alert.alert(t('common.couldNotSave'), saved.message);
         return;
       }
-      Alert.alert('Saved', 'Your place of birth was updated.');
+      Alert.alert(t('common.saved'), t('settings.birthPlaceUpdated'));
     } catch {
-      Alert.alert('Could not save', 'Please try again.');
+      Alert.alert(t('common.couldNotSave'), t('common.pleaseTryAgain'));
     } finally {
       setSavingBirthPlace(false);
     }
@@ -174,29 +176,25 @@ export default function SettingsScreen({ navigation, onStartOver }: Props) {
     try {
       const saved = await saveReflectionTime(time);
       if (!saved.ok) {
-        Alert.alert('Could not save', saved.message);
+        Alert.alert(t('common.couldNotSave'), saved.message);
         return;
       }
 
       const allowed = await requestNotificationPermission();
       if (!allowed) {
-        Alert.alert(
-          'Time saved',
-          'Reminders need notification permission. You can still tap Evening check-in in chat whenever you like.',
-        );
+        Alert.alert(t('settings.timeSaved'), t('settings.remindersNeedPermission'));
         return;
       }
 
       const scheduled = await scheduleEveningCheckIn(time);
       Alert.alert(
-        'Time saved',
+        t('settings.timeSaved'),
         scheduled.scheduled
-          ? 'DOST will check in at this time. On Expo Go, the reminder may not appear — tap Evening check-in in chat to try the same flow.'
-          : scheduled.warning ??
-              'Time saved. Tap Evening check-in in chat if a reminder does not appear.',
+          ? t('settings.checkInScheduled')
+          : scheduled.warning ?? t('settings.checkInFallback'),
       );
     } catch {
-      Alert.alert('Could not save', 'Please try again.');
+      Alert.alert(t('common.couldNotSave'), t('common.pleaseTryAgain'));
     } finally {
       setSavingTime(false);
     }
@@ -208,21 +206,18 @@ export default function SettingsScreen({ navigation, onStartOver }: Props) {
     try {
       const result = await refreshUserMemory();
       if (!result.ok) {
-        Alert.alert('Could not refresh', result.message);
+        Alert.alert(t('settings.couldNotRefresh'), result.message);
         return;
       }
       const summary = await loadMemorySummary();
       setMemorySummary(summary);
       if (result.status === 'skipped') {
-        Alert.alert(
-          'No update yet',
-          'Chat a little more, or wait a few minutes, then try again.',
-        );
+        Alert.alert(t('settings.noUpdateYet'), t('settings.noUpdateYetBody'));
         return;
       }
-      Alert.alert('Updated', summary ? 'Memory was refreshed.' : 'Memory was refreshed.');
+      Alert.alert(t('settings.updated'), t('settings.memoryRefreshed'));
     } catch {
-      Alert.alert('Could not refresh', 'Please try again.');
+      Alert.alert(t('settings.couldNotRefresh'), t('common.pleaseTryAgain'));
     } finally {
       setRefreshing(false);
     }
@@ -234,10 +229,10 @@ export default function SettingsScreen({ navigation, onStartOver }: Props) {
     try {
       const result = await exportMyData();
       if (!result.ok) {
-        Alert.alert('Could not export', result.message);
+        Alert.alert(t('settings.couldNotExport'), result.message);
       }
     } catch {
-      Alert.alert('Could not export', 'Please try again.');
+      Alert.alert(t('settings.couldNotExport'), t('common.pleaseTryAgain'));
     } finally {
       setExporting(false);
     }
@@ -249,14 +244,14 @@ export default function SettingsScreen({ navigation, onStartOver }: Props) {
     try {
       const result = await deleteMyConversations();
       if (!result.ok) {
-        Alert.alert('Could not delete', result.message);
+        Alert.alert(t('settings.couldNotDelete'), result.message);
         return;
       }
       setMemorySummary(null);
-      Alert.alert('Conversations deleted', 'Your profile is still here.');
+      Alert.alert(t('settings.conversationsDeleted'), t('settings.profileStillHere'));
       navigation.navigate('Chat', { conversationsCleared: true });
     } catch {
-      Alert.alert('Could not delete', 'Please try again.');
+      Alert.alert(t('settings.couldNotDelete'), t('common.pleaseTryAgain'));
     } finally {
       setDeletingChats(false);
     }
@@ -264,12 +259,12 @@ export default function SettingsScreen({ navigation, onStartOver }: Props) {
 
   const onDeleteConversations = () => {
     Alert.alert(
-      'Delete all my conversations?',
-      "This can't be undone. Your profile stays.",
+      t('settings.deleteConversationsTitle'),
+      t('settings.deleteConversationsBody'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Delete conversations',
+          text: t('settings.deleteConversationsConfirm'),
           style: 'destructive',
           onPress: () => {
             void runDeleteConversations();
@@ -281,12 +276,12 @@ export default function SettingsScreen({ navigation, onStartOver }: Props) {
 
   const onDeleteAccountPress = () => {
     Alert.alert(
-      'Delete my account?',
-      'This permanently deletes your account and data. This cannot be undone.',
+      t('settings.deleteAccountTitle'),
+      t('settings.deleteAccountBody'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Continue',
+          text: t('common.continue'),
           style: 'destructive',
           onPress: () => {
             setDeleteTyped('');
@@ -303,7 +298,7 @@ export default function SettingsScreen({ navigation, onStartOver }: Props) {
     try {
       const result = await deleteMyAccount();
       if (!result.ok) {
-        Alert.alert('Could not delete', result.message);
+        Alert.alert(t('settings.couldNotDelete'), result.message);
         return;
       }
       setAccountModal(false);
@@ -316,7 +311,7 @@ export default function SettingsScreen({ navigation, onStartOver }: Props) {
       }
       onStartOver();
     } catch {
-      Alert.alert('Could not delete', 'Please try again.');
+      Alert.alert(t('settings.couldNotDelete'), t('common.pleaseTryAgain'));
     } finally {
       setDeletingAccount(false);
     }
@@ -333,12 +328,12 @@ export default function SettingsScreen({ navigation, onStartOver }: Props) {
   const onSignOut = () => {
     if (busy) return;
     Alert.alert(
-      'Start fresh?',
-      'This clears chat saved on this phone, then opens a new private guest session.',
+      t('settings.startFreshTitle'),
+      t('settings.startFreshBody'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Start fresh',
+          text: t('settings.startFreshConfirm'),
           style: 'destructive',
           onPress: () => {
             void (async () => {
@@ -353,7 +348,7 @@ export default function SettingsScreen({ navigation, onStartOver }: Props) {
                 }
                 onStartOver();
               } catch {
-                Alert.alert('Could not refresh', 'Please try again.');
+                Alert.alert(t('settings.couldNotRefresh'), t('common.pleaseTryAgain'));
               } finally {
                 setSigningOut(false);
               }
@@ -375,10 +370,10 @@ export default function SettingsScreen({ navigation, onStartOver }: Props) {
             onPress={() => navigation.goBack()}
             hitSlop={8}
             accessibilityRole="button"
-            accessibilityLabel="Go back"
+            accessibilityLabel={t('common.goBack')}
             style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
           >
-            <Text style={styles.back}>Back</Text>
+            <Text style={styles.back}>{t('common.backPlain')}</Text>
           </Pressable>
         </View>
         <ScrollView
@@ -387,21 +382,44 @@ export default function SettingsScreen({ navigation, onStartOver }: Props) {
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
         >
-          <Text style={styles.eyebrow}>YOUR SPACE</Text>
-          <Text style={styles.heading}>Space Settings</Text>
-          <Text style={styles.intro}>
-            Shape what DOST knows, when it checks in, and what you choose to keep.
-          </Text>
+          <Text style={styles.eyebrow}>{t('settings.eyebrow')}</Text>
+          <Text style={styles.heading}>{t('settings.heading')}</Text>
+          <Text style={styles.intro}>{t('settings.intro')}</Text>
 
           <View style={styles.sectionBlock}>
-            <Text style={styles.section}>My profile</Text>
-            <Text style={styles.sectionIntro}>The details that help DOST speak to you personally.</Text>
-            <Text style={styles.label}>Name</Text>
+            <Text style={styles.section}>{t('language.title')}</Text>
+            <Text style={styles.sectionIntro}>{t('language.hint')}</Text>
+            <View style={styles.langRow}>
+              {APP_LANGUAGES.map((code) => (
+                <Pressable
+                  key={code}
+                  onPress={() => void setLanguage(code)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: lang === code }}
+                  accessibilityLabel={NATIVE_LANGUAGE_NAMES[code]}
+                  style={({ pressed }) => [
+                    styles.langChip,
+                    lang === code && styles.langChipActive,
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <Text style={[styles.langChipText, lang === code && styles.langChipTextActive]}>
+                    {NATIVE_LANGUAGE_NAMES[code]}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+
+          <View style={styles.sectionBlock}>
+            <Text style={styles.section}>{t('settings.myProfile')}</Text>
+            <Text style={styles.sectionIntro}>{t('settings.myProfileIntro')}</Text>
+            <Text style={styles.label}>{t('settings.name')}</Text>
             <TextInput
               style={styles.input}
               value={name}
               onChangeText={(value) => setName(value.slice(0, MAX_NAME))}
-              placeholder="Your name"
+              placeholder={t('settings.namePlaceholder')}
               placeholderTextColor={colors.clay}
               selectionColor={colors.gold}
               cursorColor={colors.gold}
@@ -410,12 +428,12 @@ export default function SettingsScreen({ navigation, onStartOver }: Props) {
               editable={!busy}
               underlineColorAndroid="transparent"
             />
-            <Text style={styles.label}>Intention</Text>
+            <Text style={styles.label}>{t('settings.intention')}</Text>
             <TextInput
               style={[styles.input, styles.textArea]}
               value={intention}
               onChangeText={(value) => setIntention(value.slice(0, MAX_INTENTION))}
-              placeholder="What you'd like to reflect on"
+              placeholder={t('settings.intentionPlaceholder')}
               placeholderTextColor={colors.clay}
               selectionColor={colors.gold}
               cursorColor={colors.gold}
@@ -429,7 +447,7 @@ export default function SettingsScreen({ navigation, onStartOver }: Props) {
               onPress={() => void onSaveProfile()}
               disabled={busy}
               accessibilityRole="button"
-              accessibilityLabel="Save name and intention"
+              accessibilityLabel={t('settings.saveNameIntentionA11y')}
               style={({ pressed }) => [
                 styles.button,
                 pressed && styles.pressed,
@@ -437,21 +455,21 @@ export default function SettingsScreen({ navigation, onStartOver }: Props) {
               ]}
             >
               <Text style={styles.buttonText}>
-                {savingProfile ? 'Saving…' : 'Save name & intention'}
+                {savingProfile ? t('common.saving') : t('settings.saveNameIntention')}
               </Text>
             </Pressable>
 
             <View style={styles.subsection}>
-              <Text style={styles.subheading}>Place of birth</Text>
-              <Text style={styles.helperInline}>Optional. City, district, state, and country.</Text>
-              <Text style={styles.label}>City</Text>
+              <Text style={styles.subheading}>{t('settings.placeOfBirth')}</Text>
+              <Text style={styles.helperInline}>{t('settings.placeOfBirthHelper')}</Text>
+              <Text style={styles.label}>{t('settings.city')}</Text>
               <TextInput
                 style={styles.input}
                 value={birthPlace.birthCity}
                 onChangeText={(value) =>
                   setBirthPlace((prev) => ({ ...prev, birthCity: value.slice(0, FIELD_MAX) }))
                 }
-                placeholder="City"
+                placeholder={t('settings.city')}
                 placeholderTextColor={colors.clay}
                 selectionColor={colors.gold}
                 cursorColor={colors.gold}
@@ -460,14 +478,14 @@ export default function SettingsScreen({ navigation, onStartOver }: Props) {
                 editable={!busy}
                 underlineColorAndroid="transparent"
               />
-              <Text style={styles.label}>District</Text>
+              <Text style={styles.label}>{t('settings.district')}</Text>
               <TextInput
                 style={styles.input}
                 value={birthPlace.birthDistrict}
                 onChangeText={(value) =>
                   setBirthPlace((prev) => ({ ...prev, birthDistrict: value.slice(0, FIELD_MAX) }))
                 }
-                placeholder="District"
+                placeholder={t('settings.district')}
                 placeholderTextColor={colors.clay}
                 selectionColor={colors.gold}
                 cursorColor={colors.gold}
@@ -476,14 +494,14 @@ export default function SettingsScreen({ navigation, onStartOver }: Props) {
                 editable={!busy}
                 underlineColorAndroid="transparent"
               />
-              <Text style={styles.label}>State</Text>
+              <Text style={styles.label}>{t('settings.state')}</Text>
               <TextInput
                 style={styles.input}
                 value={birthPlace.birthState}
                 onChangeText={(value) =>
                   setBirthPlace((prev) => ({ ...prev, birthState: value.slice(0, FIELD_MAX) }))
                 }
-                placeholder="State"
+                placeholder={t('settings.state')}
                 placeholderTextColor={colors.clay}
                 selectionColor={colors.gold}
                 cursorColor={colors.gold}
@@ -492,7 +510,7 @@ export default function SettingsScreen({ navigation, onStartOver }: Props) {
                 editable={!busy}
                 underlineColorAndroid="transparent"
               />
-              <Text style={styles.label}>Country</Text>
+              <Text style={styles.label}>{t('settings.country')}</Text>
               <View style={styles.pickerFrame}>
                 <CountryPicker
                   value={birthPlace.birthCountry || DEFAULT_BIRTH_COUNTRY}
@@ -506,7 +524,7 @@ export default function SettingsScreen({ navigation, onStartOver }: Props) {
                 onPress={() => void onSaveBirthPlace()}
                 disabled={busy}
                 accessibilityRole="button"
-                accessibilityLabel="Save place of birth"
+                accessibilityLabel={t('settings.savePlaceOfBirth')}
                 style={({ pressed }) => [
                   styles.button,
                   pressed && styles.pressed,
@@ -514,64 +532,63 @@ export default function SettingsScreen({ navigation, onStartOver }: Props) {
                 ]}
               >
                 <Text style={styles.buttonText}>
-                  {savingBirthPlace ? 'Saving…' : 'Save place of birth'}
+                  {savingBirthPlace ? t('common.saving') : t('settings.savePlaceOfBirth')}
                 </Text>
               </Pressable>
             </View>
 
             <View style={styles.subsection}>
-              <Text style={styles.subheading}>Dosha</Text>
-              <Text style={styles.copy}>{doshaLabel(dosha)}</Text>
+              <Text style={styles.subheading}>{t('settings.dosha')}</Text>
+              <Text style={styles.copy}>
+                {dosha ? t(`dosha.${dosha}` as TKey) : t('settings.doshaNotSet')}
+              </Text>
               <Pressable
                 onPress={() => navigation.navigate('DoshaRetake')}
                 disabled={busy}
                 accessibilityRole="button"
-                accessibilityLabel="Re-take dosha quiz"
+                accessibilityLabel={t('settings.retakeDoshaA11y')}
                 style={({ pressed }) => [
                   styles.secondaryButton,
                   pressed && styles.pressed,
                   busy && styles.buttonDisabled,
                 ]}
               >
-                <Text style={styles.secondaryButtonText}>Re-take quiz</Text>
+                <Text style={styles.secondaryButtonText}>{t('settings.retakeQuiz')}</Text>
               </Pressable>
             </View>
 
             <View style={styles.subsection}>
-              <Text style={styles.subheading}>Personality profile</Text>
-              <Text style={styles.helperInline}>
-                Enneagram, Life Path, TCM, and MBTI — complete what you skipped, or change what you
-                already shared.
-              </Text>
+              <Text style={styles.subheading}>{t('settings.personalityProfile')}</Text>
+              <Text style={styles.helperInline}>{t('settings.personalityProfileHelper')}</Text>
               <Pressable
                 onPress={() => navigation.navigate('PersonalityProfile')}
                 disabled={busy}
                 accessibilityRole="button"
-                accessibilityLabel="Open personality profile"
+                accessibilityLabel={t('settings.openPersonalityProfile')}
                 style={({ pressed }) => [
                   styles.secondaryButton,
                   pressed && styles.pressed,
                   busy && styles.buttonDisabled,
                 ]}
               >
-                <Text style={styles.secondaryButtonText}>Open personality profile</Text>
+                <Text style={styles.secondaryButtonText}>
+                  {t('settings.openPersonalityProfile')}
+                </Text>
               </Pressable>
             </View>
           </View>
 
           <View style={styles.sectionBlock}>
-            <Text style={styles.section}>Reflection time</Text>
-            <Text style={styles.sectionIntro}>
-              Choose a gentle daily moment for DOST to check in.
-            </Text>
+            <Text style={styles.section}>{t('settings.reflectionTime')}</Text>
+            <Text style={styles.sectionIntro}>{t('settings.reflectionTimeIntro')}</Text>
             {Platform.OS === 'android' ? (
               <Pressable
                 onPress={() => setShowPicker(true)}
                 accessibilityRole="button"
-                accessibilityLabel="Choose daily check-in time"
+                accessibilityLabel={t('settings.chooseCheckInTimeA11y')}
                 style={({ pressed }) => [styles.timeButton, pressed && styles.activeField]}
               >
-                <Text style={styles.timeButtonLabel}>DAILY CHECK-IN</Text>
+                <Text style={styles.timeButtonLabel}>{t('settings.dailyCheckIn')}</Text>
                 <Text style={styles.timeButtonText}>{timeLabel}</Text>
               </Pressable>
             ) : (
@@ -587,39 +604,12 @@ export default function SettingsScreen({ navigation, onStartOver }: Props) {
                 themeVariant="light"
               />
             ) : null}
-            <Text style={styles.helper}>
-              You'll be asked for notification permission when you save. On Expo Go, reminders may
-              not fire — use Evening check-in in chat to open the same check-in.
-            </Text>
+            <Text style={styles.helper}>{t('settings.reflectionTimeHelper')}</Text>
             <Pressable
               onPress={() => void onSaveTime()}
               disabled={busy}
               accessibilityRole="button"
-              accessibilityLabel="Save reflection time"
-              style={({ pressed }) => [
-                styles.button,
-                pressed && styles.pressed,
-                busy && styles.buttonDisabled,
-              ]}
-            >
-              <Text style={styles.buttonText}>{savingTime ? 'Saving…' : 'Save time'}</Text>
-            </Pressable>
-          </View>
-
-          <View style={[styles.sectionBlock, styles.memorySection]}>
-            <Text style={styles.section}>What DOST remembers</Text>
-            <Text style={styles.memoryIntro}>
-              A small, evolving summary — so you can always see what stays with DOST.
-            </Text>
-            <Text style={styles.memoryBox}>
-              {memorySummary ??
-                "DOST hasn't formed a memory yet. Chat a bit more, then tap Refresh."}
-            </Text>
-            <Pressable
-              onPress={() => void onRefreshMemory()}
-              disabled={busy}
-              accessibilityRole="button"
-              accessibilityLabel="Refresh memory"
+              accessibilityLabel={t('settings.saveReflectionTimeA11y')}
               style={({ pressed }) => [
                 styles.button,
                 pressed && styles.pressed,
@@ -627,7 +617,28 @@ export default function SettingsScreen({ navigation, onStartOver }: Props) {
               ]}
             >
               <Text style={styles.buttonText}>
-                {refreshing ? 'Refreshing…' : 'Refresh memory'}
+                {savingTime ? t('common.saving') : t('settings.saveTime')}
+              </Text>
+            </Pressable>
+          </View>
+
+          <View style={[styles.sectionBlock, styles.memorySection]}>
+            <Text style={styles.section}>{t('settings.memoryTitle')}</Text>
+            <Text style={styles.memoryIntro}>{t('settings.memoryIntro')}</Text>
+            <Text style={styles.memoryBox}>{memorySummary ?? t('settings.memoryEmpty')}</Text>
+            <Pressable
+              onPress={() => void onRefreshMemory()}
+              disabled={busy}
+              accessibilityRole="button"
+              accessibilityLabel={t('settings.refreshMemory')}
+              style={({ pressed }) => [
+                styles.button,
+                pressed && styles.pressed,
+                busy && styles.buttonDisabled,
+              ]}
+            >
+              <Text style={styles.buttonText}>
+                {refreshing ? t('common.refreshing') : t('settings.refreshMemory')}
               </Text>
             </Pressable>
           </View>
@@ -635,13 +646,13 @@ export default function SettingsScreen({ navigation, onStartOver }: Props) {
           <HearingSettingsSection />
 
           <View style={styles.sectionBlock}>
-            <Text style={styles.section}>Privacy & account</Text>
-            <Text style={styles.sectionIntro}>Your words and your choices remain yours.</Text>
+            <Text style={styles.section}>{t('settings.privacyTitle')}</Text>
+            <Text style={styles.sectionIntro}>{t('settings.privacyIntro')}</Text>
             <Pressable
               onPress={() => void onExport()}
               disabled={busy}
               accessibilityRole="button"
-              accessibilityLabel="Export my data"
+              accessibilityLabel={t('settings.exportMyData')}
               style={({ pressed }) => [
                 styles.secondaryButton,
                 pressed && styles.pressed,
@@ -649,17 +660,17 @@ export default function SettingsScreen({ navigation, onStartOver }: Props) {
               ]}
             >
               <Text style={styles.secondaryButtonText}>
-                {exporting ? 'Exporting…' : 'Export my data'}
+                {exporting ? t('settings.exporting') : t('settings.exportMyData')}
               </Text>
             </Pressable>
-            <Text style={styles.helper}>Saves a JSON file you can keep. Up to 3 exports per day.</Text>
+            <Text style={styles.helper}>{t('settings.exportHelper')}</Text>
 
             <View style={styles.actionDivider} />
             <Pressable
               onPress={onDeleteConversations}
               disabled={busy}
               accessibilityRole="button"
-              accessibilityLabel="Delete all conversations"
+              accessibilityLabel={t('settings.deleteAllConversationsA11y')}
               style={({ pressed }) => [
                 styles.dangerOutlineButton,
                 pressed && styles.pressed,
@@ -667,7 +678,7 @@ export default function SettingsScreen({ navigation, onStartOver }: Props) {
               ]}
             >
               <Text style={styles.dangerText}>
-                {deletingChats ? 'Deleting…' : 'Delete all my conversations'}
+                {deletingChats ? t('common.deleting') : t('settings.deleteAllConversations')}
               </Text>
             </Pressable>
 
@@ -675,7 +686,7 @@ export default function SettingsScreen({ navigation, onStartOver }: Props) {
               onPress={onSignOut}
               disabled={busy}
               accessibilityRole="button"
-              accessibilityLabel="Start fresh session"
+              accessibilityLabel={t('settings.startFreshSession')}
               style={({ pressed }) => [
                 styles.secondaryButton,
                 styles.signOutButton,
@@ -684,25 +695,23 @@ export default function SettingsScreen({ navigation, onStartOver }: Props) {
               ]}
             >
               <Text style={styles.signOutText}>
-                {signingOut ? 'Refreshing…' : 'Start fresh session'}
+                {signingOut ? t('common.refreshing') : t('settings.startFreshSession')}
               </Text>
             </Pressable>
-            <Text style={styles.helper}>
-              Clears chat saved on this phone, then opens a new private guest session.
-            </Text>
+            <Text style={styles.helper}>{t('settings.startFreshHelper')}</Text>
 
             <Pressable
               onPress={onDeleteAccountPress}
               disabled={busy}
               accessibilityRole="button"
-              accessibilityLabel="Delete my account"
+              accessibilityLabel={t('settings.deleteMyAccount')}
               style={({ pressed }) => [
                 styles.accountButton,
                 pressed && styles.pressed,
                 busy && styles.buttonDisabled,
               ]}
             >
-              <Text style={styles.accountText}>Delete my account</Text>
+              <Text style={styles.accountText}>{t('settings.deleteMyAccount')}</Text>
             </Pressable>
           </View>
         </ScrollView>
@@ -717,10 +726,8 @@ export default function SettingsScreen({ navigation, onStartOver }: Props) {
         <View style={styles.modalBackdrop}>
           <View style={styles.modalScrim} />
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Type DELETE to confirm</Text>
-            <Text style={styles.modalCopy}>
-              This removes your account and everything DOST stored for you.
-            </Text>
+            <Text style={styles.modalTitle}>{t('settings.typeDeleteTitle')}</Text>
+            <Text style={styles.modalCopy}>{t('settings.typeDeleteBody')}</Text>
             <TextInput
               style={styles.input}
               value={deleteTyped}
@@ -738,7 +745,7 @@ export default function SettingsScreen({ navigation, onStartOver }: Props) {
               onPress={() => void runDeleteAccount()}
               disabled={deleteTyped !== 'DELETE' || deletingAccount}
               accessibilityRole="button"
-              accessibilityLabel="Confirm delete my account"
+              accessibilityLabel={t('settings.confirmDeleteAccountA11y')}
               style={[
                 styles.button,
                 styles.dangerButton,
@@ -746,17 +753,17 @@ export default function SettingsScreen({ navigation, onStartOver }: Props) {
               ]}
             >
               <Text style={styles.buttonText}>
-                {deletingAccount ? 'Deleting…' : 'Delete my account'}
+                {deletingAccount ? t('common.deleting') : t('settings.deleteMyAccount')}
               </Text>
             </Pressable>
             <Pressable
               onPress={() => setAccountModal(false)}
               disabled={deletingAccount}
               accessibilityRole="button"
-              accessibilityLabel="Cancel account deletion"
+              accessibilityLabel={t('settings.cancelDeleteAccountA11y')}
               style={styles.secondaryButton}
             >
-              <Text style={styles.secondaryButtonText}>Cancel</Text>
+              <Text style={styles.secondaryButtonText}>{t('common.cancel')}</Text>
             </Pressable>
           </View>
         </View>
@@ -767,6 +774,18 @@ export default function SettingsScreen({ navigation, onStartOver }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.base },
+  langRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  langChip: {
+    borderWidth: 1,
+    borderColor: colors.divider,
+    borderRadius: radius.full,
+    backgroundColor: colors.surface,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+  },
+  langChipActive: { borderColor: colors.gold, backgroundColor: colors.goldWash },
+  langChipText: { ...typography.label, color: colors.sand },
+  langChipTextActive: { color: colors.gold },
   flex: { flex: 1 },
   topBar: { paddingHorizontal: spacing.xl, paddingVertical: spacing.sm },
   backButton: {

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
+import { useI18n } from '../lib/i18n';
 import { colors, radius, spacing, type as typography } from '../lib/theme';
 import { useReducedMotion } from '../lib/useReducedMotion';
 import GentlePressable from './GentlePressable';
@@ -20,6 +21,7 @@ export function SuggestionChips({
   disabled = false,
 }: Props) {
   const reduceMotion = useReducedMotion();
+  const { t } = useI18n();
   const fade = useRef(new Animated.Value(reduceMotion ? 1 : 0)).current;
 
   useEffect(() => {
@@ -66,9 +68,9 @@ export function SuggestionChips({
           onPress={() => onSelect('__skip__')}
           disabled={disabled}
           accessibilityRole="button"
-          accessibilityLabel="Something else"
+          accessibilityLabel={t('chips.somethingElse')}
         >
-          <Text style={styles.chipTextMuted}>Something else</Text>
+          <Text style={styles.chipTextMuted}>{t('chips.somethingElse')}</Text>
         </GentlePressable>
       </View>
     </Animated.View>

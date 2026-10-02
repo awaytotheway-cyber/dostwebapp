@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Line, Path } from 'react-native-svg';
+import { useI18n, type TKey } from '../lib/i18n';
 import { loadMyProfile } from '../lib/profile';
 import { colors, radius, spacing, type as typography } from '../lib/theme';
 import type { ChatStackParamList } from './chatTypes';
@@ -34,24 +35,17 @@ function getTimeOfDay(date = new Date()): TimeOfDay {
   return 'evening';
 }
 
-function greetingFor(time: TimeOfDay, name: string | null): string {
-  const salutation =
-    time === 'morning' ? 'Good morning' : time === 'afternoon' ? 'Good afternoon' : 'Good evening';
-  const trimmed = name?.trim();
-  return trimmed ? `${salutation}, ${trimmed}` : salutation;
-}
-
-function subGreetingFor(time: TimeOfDay): string {
-  if (time === 'morning') return 'How did you sleep?';
-  if (time === 'afternoon') return 'Anything on your mind?';
-  return 'Anything you want to talk about?';
-}
 
 export default function HomeScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const [name, setName] = useState<string | null>(null);
   const [pastChatCount, setPastChatCount] = useState<number | null>(null);
   const timeOfDay = useMemo(() => getTimeOfDay(), []);
+  const { t, tn } = useI18n();
+  const trimmedName = name?.trim();
+  const greeting = trimmedName
+    ? t(`home.greetingNamed.${timeOfDay}` as TKey, { name: trimmedName })
+    : t(`home.greeting.${timeOfDay}` as TKey);
 
   useEffect(() => {
     let cancelled = false;
@@ -88,7 +82,7 @@ export default function HomeScreen({ navigation }: Props) {
           </View>
           <GentlePressable
             accessibilityRole="button"
-            accessibilityLabel="Profile"
+            accessibilityLabel={t('home.profile')}
             onPress={() => navigation.navigate('Profile')}
             hitSlop={10}
             style={({ pressed }) => [styles.iconButton, pressed && styles.iconPressed]}
@@ -100,30 +94,30 @@ export default function HomeScreen({ navigation }: Props) {
         {/* ── Greeting ── */}
         <View style={styles.greetingBlock}>
           <Text accessibilityRole="header" style={styles.greeting}>
-            {greetingFor(timeOfDay, name)}
+            {greeting}
           </Text>
-          <Text style={styles.subGreeting}>{subGreetingFor(timeOfDay)}</Text>
+          <Text style={styles.subGreeting}>{t(`home.subGreeting.${timeOfDay}` as TKey)}</Text>
         </View>
 
         {/* ── Main card: Talk to Dost ── */}
         <GentlePressable
           accessibilityRole="button"
-          accessibilityLabel="Talk to Dost. Type or just talk. No topic needed."
+          accessibilityLabel={`${t('home.talkTitle')}. ${t('home.talkBody')}`}
           onPress={() => navigation.navigate('Chat', { newSession: true })}
           style={({ pressed }) => [styles.mainCard, pressed && styles.cardPressed]}
         >
           <View style={styles.mainCardHeader}>
-            <Text style={styles.mainCardTitle}>Talk to Dost</Text>
+            <Text style={styles.mainCardTitle}>{t('home.talkTitle')}</Text>
             <BreathingDot size={8} color={colors.terracottaDot} />
           </View>
-          <Text style={styles.mainCardBody}>Type or just talk. No topic needed.</Text>
+          <Text style={styles.mainCardBody}>{t('home.talkBody')}</Text>
           <GentlePressable
             accessibilityRole="button"
-            accessibilityLabel="Start a chat"
+            accessibilityLabel={t('home.startChat')}
             onPress={() => navigation.navigate('Chat', { newSession: true })}
             style={({ pressed }) => [styles.startButton, pressed && styles.startButtonPressed]}
           >
-            <Text style={styles.startButtonText}>Start a chat  →</Text>
+            <Text style={styles.startButtonText}>{t('home.startChatArrow')}</Text>
           </GentlePressable>
         </GentlePressable>
 
@@ -132,7 +126,7 @@ export default function HomeScreen({ navigation }: Props) {
           {/* Voice note */}
           <GentlePressable
             accessibilityRole="button"
-            accessibilityLabel="Voice note — say it out loud"
+            accessibilityLabel={t('home.voiceNoteA11y')}
             onPress={() => navigation.navigate('VoiceNoteRecord')}
             style={({ pressed }) => [styles.tile, pressed && styles.cardPressed]}
           >
@@ -162,14 +156,14 @@ export default function HomeScreen({ navigation }: Props) {
                 />
               </Svg>
             </View>
-            <Text style={styles.tileTitle}>Voice note</Text>
-            <Text style={styles.tileDescription}>Say it out loud instead</Text>
+            <Text style={styles.tileTitle}>{t('home.voiceNoteTitle')}</Text>
+            <Text style={styles.tileDescription}>{t('home.voiceNoteBody')}</Text>
           </GentlePressable>
 
           {/* Past chats */}
           <GentlePressable
             accessibilityRole="button"
-            accessibilityLabel="Past chats"
+            accessibilityLabel={t('home.pastChatsTitle')}
             onPress={() => navigation.navigate('PastReflections')}
             style={({ pressed }) => [styles.tile, pressed && styles.cardPressed]}
           >
@@ -180,9 +174,11 @@ export default function HomeScreen({ navigation }: Props) {
                 <Line x1="5" y1="20" x2="16" y2="20" stroke={home.description} strokeWidth={1.6} strokeLinecap="round" />
               </Svg>
             </View>
-            <Text style={styles.tileTitle}>Past chats</Text>
+            <Text style={styles.tileTitle}>{t('home.pastChatsTitle')}</Text>
             <Text style={styles.tileDescription}>
-              {pastChatCount != null ? `${pastChatCount} saved` : "Revisit what you've shared"}
+              {pastChatCount != null
+                ? tn('home.pastChatsCount', pastChatCount)
+                : t('home.pastChatsBody')}
             </Text>
           </GentlePressable>
         </View>
@@ -190,7 +186,7 @@ export default function HomeScreen({ navigation }: Props) {
         {/* ── Listening session ── */}
         <GentlePressable
           accessibilityRole="button"
-          accessibilityLabel="Listening session — let DOST hear how you speak"
+          accessibilityLabel={t('home.listeningSessionA11y')}
           onPress={() => navigation.navigate('ListeningSession')}
           style={({ pressed }) => [styles.journeyRow, pressed && styles.cardPressed]}
         >
@@ -214,7 +210,7 @@ export default function HomeScreen({ navigation }: Props) {
               />
               <Line x1="14" y1="20" x2="14" y2="23" stroke={home.muted} strokeWidth={1.5} strokeLinecap="round" />
             </Svg>
-            <Text style={styles.journeyLabel}>Listening session</Text>
+            <Text style={styles.journeyLabel}>{t('home.listeningSession')}</Text>
           </View>
           <Ionicons name="chevron-forward" size={20} color={home.muted} />
         </GentlePressable>
@@ -222,7 +218,7 @@ export default function HomeScreen({ navigation }: Props) {
         {/* ── Your Journey ── */}
         <GentlePressable
           accessibilityRole="button"
-          accessibilityLabel="Your journey"
+          accessibilityLabel={t('home.yourJourney')}
           onPress={() => navigation.navigate('YourJourney')}
           style={({ pressed }) => [styles.journeyRow, pressed && styles.cardPressed]}
         >
@@ -238,7 +234,7 @@ export default function HomeScreen({ navigation }: Props) {
               />
               <Line x1="3.5" y1="18.5" x2="24.5" y2="18.5" stroke={home.muted} strokeWidth={1.5} strokeLinecap="round" />
             </Svg>
-            <Text style={styles.journeyLabel}>Your journey</Text>
+            <Text style={styles.journeyLabel}>{t('home.yourJourney')}</Text>
           </View>
           <Ionicons name="chevron-forward" size={20} color={home.muted} />
         </GentlePressable>

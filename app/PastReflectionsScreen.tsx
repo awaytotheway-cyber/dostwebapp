@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getLocaleTag, t as translate, useI18n, type TKey } from '../lib/i18n';
 import { supabase } from '../lib/supabase';
 import { radius, spacing, type as typography } from '../lib/theme';
 import type { ChatStackParamList } from './chatTypes';
@@ -59,10 +60,10 @@ const dawn = {
 /** Soft boundary between chat sessions when no explicit session id exists. */
 const SESSION_GAP_MS = 4 * 60 * 60 * 1000;
 
-const FILTERS: { key: Filter; label: string }[] = [
-  { key: 'all', label: 'All' },
-  { key: 'chats', label: 'Chats' },
-  { key: 'voice', label: 'Voice Notes' },
+const FILTERS: { key: Filter; label: TKey }[] = [
+  { key: 'all', label: 'past.filterAll' },
+  { key: 'chats', label: 'past.filterChats' },
+  { key: 'voice', label: 'past.filterVoice' },
 ];
 
 function previewText(content: string, max = 100): string {
@@ -76,7 +77,7 @@ function formatWhen(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return '';
 
-  const time = date.toLocaleTimeString(undefined, {
+  const time = date.toLocaleTimeString(getLocaleTag(), {
     hour: 'numeric',
     minute: '2-digit',
   });
@@ -88,10 +89,10 @@ function formatWhen(iso: string): string {
     (startToday.getTime() - startThat.getTime()) / (24 * 60 * 60 * 1000),
   );
 
-  if (dayDiff === 0) return `Today, ${time}`;
-  if (dayDiff === 1) return `Yesterday, ${time}`;
+  if (dayDiff === 0) return translate('past.today', { time });
+  if (dayDiff === 1) return translate('past.yesterday', { time });
 
-  const day = date.toLocaleDateString(undefined, {
+  const day = date.toLocaleDateString(getLocaleTag(), {
     month: 'short',
     day: 'numeric',
   });
@@ -183,6 +184,7 @@ function groupChatSessions(
 
 export default function PastReflectionsScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
+  const { t, locale } = useI18n();
   const [filter, setFilter] = useState<Filter>('all');
   const [items, setItems] = useState<ReflectionItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -195,7 +197,7 @@ export default function PastReflectionsScreen({ navigation }: Props) {
       const userId = userData?.user?.id;
       if (!userId) {
         setItems([]);
-        setError('Could not open your reflections right now.');
+        setError(translate('past.openFailed'));
         return;
       }
 
@@ -282,7 +284,7 @@ export default function PastReflectionsScreen({ navigation }: Props) {
       setItems(merged);
     } catch {
       setItems([]);
-      setError('Could not load reflections right now. Try again in a moment.');
+      setError(translate('past.loadFailed'));
     } finally {
       setLoading(false);
     }
@@ -334,10 +336,10 @@ export default function PastReflectionsScreen({ navigation }: Props) {
 
   const emptyMessage =
     filter === 'chats'
-      ? 'No chat reflections yet.'
+      ? t('past.emptyChats')
       : filter === 'voice'
-        ? 'No voice notes yet.'
-        : 'Nothing here yet — when you reflect, it will gather.';
+        ? t('past.emptyVoice')
+        : t('past.emptyAll');
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -348,11 +350,11 @@ export default function PastReflectionsScreen({ navigation }: Props) {
           onPress={() => navigation.goBack()}
           hitSlop={8}
           accessibilityRole="button"
-          accessibilityLabel="Back"
+          accessibilityLabel={t('common.backPlain')}
           style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
         >
           <Ionicons name="chevron-back" size={20} color={dawn.sand} />
-          <Text accessibilityRole="header" style={styles.title}>Past chats</Text>
+          <Text accessibilityRole="header" style={styles.title}>{t('past.title')}</Text>
         </GentlePressable>
       </View>
 
@@ -360,7 +362,7 @@ export default function PastReflectionsScreen({ navigation }: Props) {
       <View style={styles.searchRow}>
         <View style={styles.searchBar}>
           <Ionicons name="search-outline" size={16} color={dawn.muted} />
-          <Text style={styles.searchPlaceholder}>Search what you've said</Text>
+          <Text style={styles.searchPlaceholder}>{t('past.searchPlaceholder')}</Text>
         </View>
       </View>
 
@@ -372,14 +374,14 @@ export default function PastReflectionsScreen({ navigation }: Props) {
               key={key}
               accessibilityRole="button"
               accessibilityState={{ selected }}
-              accessibilityLabel={label}
+              accessibilityLabel={t(label)}
               onPress={() => setFilter(key)}
               style={[styles.segment, selected && styles.segmentSelected]}
             >
               <Text
                 style={[styles.segmentLabel, selected && styles.segmentLabelSelected]}
               >
-                {label}
+                {t(label)}
               </Text>
             </GentlePressable>
           );
@@ -388,9 +390,9 @@ export default function PastReflectionsScreen({ navigation }: Props) {
 
       {loading ? (
         <View style={styles.centered}>
-          <View style={styles.loadingRow} accessibilityLabel="Gathering reflections">
+          <View style={styles.loadingRow} accessibilityLabel={t('past.gatheringA11y')}>
             <BreathingDot size={10} color={dawn.gold} />
-            <Text style={styles.loadingText}>Gathering reflections…</Text>
+            <Text style={styles.loadingText}>{t('past.gathering')}</Text>
           </View>
         </View>
       ) : error ? (
@@ -416,18 +418,22 @@ export default function PastReflectionsScreen({ navigation }: Props) {
               accessibilityRole="button"
               accessibilityLabel={
                 item.kind === 'chat'
-                  ? `Chat from ${formatWhen(item.created_at)}`
-                  : `Voice note from ${formatWhen(item.created_at)}, ${formatDuration(item.duration_seconds)}`
+                  ? t('past.chatA11y', { when: formatWhen(item.created_at) })
+                  : t('past.voiceA11y', {
+                      when: formatWhen(item.created_at),
+                      duration: formatDuration(item.duration_seconds),
+                    })
               }
               onPress={() => openItem(item)}
               style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
             >
               <View style={styles.cardTop}>
                 <Text style={styles.cardTitle} numberOfLines={1}>
-                  {item.preview || (item.kind === 'chat' ? 'A quiet exchange' : 'A voice note')}
+                  {item.preview ||
+                    (item.kind === 'chat' ? t('past.quietExchange') : t('past.aVoiceNote'))}
                 </Text>
                 <Text style={styles.when}>
-                  {new Date(item.created_at).toLocaleDateString(undefined, { weekday: 'short' })}
+                  {new Date(item.created_at).toLocaleDateString(locale, { weekday: 'short' })}
                 </Text>
               </View>
               {item.kind === 'chat' && (
@@ -437,7 +443,7 @@ export default function PastReflectionsScreen({ navigation }: Props) {
               )}
               {item.kind === 'voice' && (
                 <Text style={styles.duration}>
-                  {formatDuration(item.duration_seconds)} · written up by Dost
+                  {t('past.writtenUp', { duration: formatDuration(item.duration_seconds) })}
                 </Text>
               )}
             </GentlePressable>

@@ -1,18 +1,16 @@
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
+import { t } from './i18n';
 import { loadReflectionTime, morningOf, nextOccurrence, type HmTime } from './intentions';
 
-export const REFLECTION_OPENING =
-  "I've been holding space through the day. Would you like to share what's staying with you?";
-
-export const REFLECTION_FOLLOW_UP = 'Would you like to name two things to notice tomorrow?';
+export const reflectionOpening = () => t('notifications.reflectionOpening');
+export const reflectionFollowUp = () => t('notifications.reflectionFollowUp');
 
 const CHANNEL_ID = 'dost';
 const EVENING_NEXT_ID = 'dost-evening-next';
 const EVENING_DAILY_ID = 'dost-evening-daily';
 const MORNING_ID = 'dost-morning-noticings';
 
-const EVENING_BODY = "A quiet moment, if you'd like it. — DOST";
 
 type PendingScreen = 'Chat' | 'Reflection';
 let pendingScreen: PendingScreen | null = null;
@@ -169,7 +167,7 @@ export async function scheduleEveningCheckIn(time: HmTime): Promise<{ scheduled:
         identifier: EVENING_NEXT_ID,
         content: {
           title: 'DOST',
-          body: EVENING_BODY,
+          body: t('notifications.eveningBody'),
           data: { screen: 'Reflection' },
           sound: true,
         },
@@ -184,7 +182,7 @@ export async function scheduleEveningCheckIn(time: HmTime): Promise<{ scheduled:
           identifier: EVENING_NEXT_ID,
           content: {
             title: 'DOST',
-            body: EVENING_BODY,
+            body: t('notifications.eveningBody'),
             data: { screen: 'Reflection' },
             sound: true,
           },
@@ -203,7 +201,7 @@ export async function scheduleEveningCheckIn(time: HmTime): Promise<{ scheduled:
         identifier: EVENING_DAILY_ID,
         content: {
           title: 'DOST',
-          body: EVENING_BODY,
+          body: t('notifications.eveningBody'),
           data: { screen: 'Reflection' },
           sound: true,
         },
@@ -215,20 +213,12 @@ export async function scheduleEveningCheckIn(time: HmTime): Promise<{ scheduled:
     }
 
     if (!scheduled) {
-      return {
-        scheduled: false,
-        warning:
-          'Saved the time, but reminders may not fire in Expo Go. Use Evening check-in in the chat header to try the check-in.',
-      };
+      return { scheduled: false, warning: t('notifications.expoGoWarning') };
     }
 
     return { scheduled: true };
   } catch {
-    return {
-      scheduled: false,
-      warning:
-        'Saved the time, but reminders may not fire in Expo Go. Use Evening check-in in the chat header to try the check-in.',
-    };
+    return { scheduled: false, warning: t('notifications.expoGoWarning') };
   }
 }
 
@@ -260,7 +250,7 @@ export async function scheduleMorningNoticings(
       identifier: MORNING_ID,
       content: {
         title: 'DOST',
-        body: `Two things you wanted to notice today: ${intentions[0]}, ${intentions[1]}`,
+        body: t('notifications.morningBody', { first: intentions[0], second: intentions[1] }),
         data: { screen: 'Chat' },
         sound: true,
       },

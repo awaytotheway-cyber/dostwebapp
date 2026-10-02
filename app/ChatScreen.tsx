@@ -44,13 +44,13 @@ import { fetchOlderFromServer, reconcileRecentAfterSend, seedFromServer, syncFro
 import { updateUserMemory } from '../lib/memory';
 import { loadMyProfile } from '../lib/profile';
 import {
-  EXPO_GO_VOICE_MESSAGE,
-  MIC_BUSY_MESSAGE,
-  MIC_NO_SPEECH,
-  MIC_PERMISSION_DENIED,
-  MIC_START_FAIL,
-  SPEECH_UNAVAILABLE_MESSAGE,
   abortDictation,
+  expoGoVoiceMessage,
+  micBusyMessage,
+  micNoSpeech,
+  micPermissionDenied,
+  micStartFail,
+  speechUnavailableMessage,
   getMicPermissionState,
   isExpoGo,
   loadSpeechModule,
@@ -62,10 +62,8 @@ import {
   type SpeechNativeModule,
 } from '../lib/speech';
 import type { EmotionalStateToken } from '../lib/emotionalStates';
-import {
-  REFLECTION_FOLLOW_UP,
-  REFLECTION_OPENING,
-} from '../lib/notifications';
+import { reflectionFollowUp, reflectionOpening } from '../lib/notifications';
+import { t as translate, useI18n } from '../lib/i18n';
 import { supabase } from '../lib/supabase';
 import type { ChatStackParamList } from './chatTypes';
 import { colors, radius, spacing, type as typography } from '../lib/theme';
@@ -81,9 +79,6 @@ const MAX_MESSAGE_LEN = 2000;
 const USER_ID = 1;
 const DOST_ID = 2;
 const MEMORY_EXCHANGE_THRESHOLD = 5;
-const VOICE_MISS = MIC_NO_SPEECH;
-const OFFLINE_BANNER = "Offline — DOST will respond when you're back";
-const SEND_FAIL_HINT = "Something's off on my end. Tap the grey message to retry.";
 const LISTEN_WATCHDOG_MS = 12_000;
 
 type MessageChips = {
@@ -125,8 +120,8 @@ function createClientId(): string {
 
 function greetingText(name?: string | null): string {
   const trimmed = name?.trim();
-  if (trimmed) return `Namaste, ${trimmed}. What's on your mind today? Whenever you're ready.`;
-  return "Namaste — what's on your mind today? Whenever you're ready.";
+  if (trimmed) return translate('chat.greetingNamed', { name: trimmed });
+  return translate('chat.greeting');
 }
 
 function greetingMessage(name?: string | null): ChatMessage {
@@ -222,6 +217,7 @@ function MessageRow({
   const pending = mine && item.deliveryStatus === 'pending';
   const failed = mine && item.deliveryStatus === 'failed';
   const shouldEnter = useRef(claimEntrance(item._id)).current;
+  const { t } = useI18n();
   const entrance = useRef(new Animated.Value(shouldEnter ? 0 : 1)).current;
 
   useEffect(() => {
@@ -286,15 +282,15 @@ function MessageRow({
             {item.text}
           </Text>
         </View>
-        {pending ? <Text style={styles.sending}>Sending…</Text> : null}
-        {failed ? <Text style={styles.notSent}>Not sent · tap to retry</Text> : null}
+        {pending ? <Text style={styles.sending}>{t('chat.sending')}</Text> : null}
+        {failed ? <Text style={styles.notSent}>{t('chat.notSent')}</Text> : null}
       </Pressable>
       {!mine && item.chips && !item.chips.dismissed ? (
         <>
           {item.chips.suggested_emotions.length > 0 ? (
             <SuggestionChips
               options={item.chips.suggested_emotions}
-              label="What does this feel like?"
+              label={t('chat.chipsEmotion')}
               labelForOption={labelForEmotionChip}
               onSelect={onEmotionChipSelect}
               disabled={!chipsActive || item.chips.disabled}
@@ -303,7 +299,7 @@ function MessageRow({
           {item.chips.suggested_needs.length > 0 ? (
             <SuggestionChips
               options={item.chips.suggested_needs}
-              label="What might you be needing?"
+              label={t('chat.chipsNeed')}
               labelForOption={labelForNeedChip}
               onSelect={onNeedChipSelect}
               disabled={!chipsActive || item.chips.disabled}
@@ -317,6 +313,7 @@ function MessageRow({
 
 export default function ChatScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
+  const { t } = useI18n();
   const reduceMotion = useReducedMotion();
   const listRef = useRef<FlatList<ChatMessage>>(null);
   const sendingRef = useRef(false);
@@ -584,7 +581,7 @@ export default function ChatScreen({ navigation, route }: Props) {
         listenWatchdogRef.current = setTimeout(() => {
           stopDictation(mod);
           resetMicIdle();
-          setVoiceHint(VOICE_MISS);
+          setVoiceHint(micNoSpeech());
         }, LISTEN_WATCHDOG_MS);
       },
       onEnd: () => {
@@ -605,11 +602,11 @@ export default function ChatScreen({ navigation, route }: Props) {
       },
       onError: (message) => {
         resetMicIdle();
-        if (message === MIC_PERMISSION_DENIED) {
+        if (message === micPermissionDenied()) {
           setPermHint(true);
           return;
         }
-        setVoiceHint(message || VOICE_MISS);
+        setVoiceHint(message || micNoSpeech());
       },
     });
     return () => {
@@ -622,14 +619,14 @@ export default function ChatScreen({ navigation, route }: Props) {
 
   useEffect(() => {
     if (!voiceHint) return;
-    const t = setTimeout(() => setVoiceHint(null), 3000);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setVoiceHint(null), 3000);
+    return () => clearTimeout(timer);
   }, [voiceHint]);
 
   useEffect(() => {
     if (!sendHint) return;
-    const t = setTimeout(() => setSendHint(null), 4000);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setSendHint(null), 4000);
+    return () => clearTimeout(timer);
   }, [sendHint]);
 
   useEffect(() => {
@@ -644,7 +641,7 @@ export default function ChatScreen({ navigation, route }: Props) {
         ...prev,
         {
           _id: 'reflection-opening',
-          text: REFLECTION_OPENING,
+          text: reflectionOpening(),
           createdAt: new Date(),
           user: { _id: DOST_ID, name: 'DOST' },
         },
@@ -888,7 +885,7 @@ export default function ChatScreen({ navigation, route }: Props) {
           const hint =
             typeof result.message === 'string' && result.message.trim()
               ? formatChatErrorForUi(result.message.trim())
-              : SEND_FAIL_HINT;
+              : t('chat.sendFailHint');
           setSendHint(hint);
           return;
         }
@@ -927,7 +924,7 @@ export default function ChatScreen({ navigation, route }: Props) {
 
         const followUp =
           reflectionModeRef.current && !reflectionFollowUpRef.current
-            ? REFLECTION_FOLLOW_UP
+            ? reflectionFollowUp()
             : null;
         if (followUp) reflectionFollowUpRef.current = true;
 
@@ -978,14 +975,14 @@ export default function ChatScreen({ navigation, route }: Props) {
               m._id === clientId ? { ...m, deliveryStatus: 'failed' } : m,
             ),
           );
-          setSendHint(SEND_FAIL_HINT);
+          setSendHint(t('chat.sendFailHint'));
         }
       } finally {
         setIsTyping(false);
         sendingRef.current = false;
       }
     },
-    [applyLocalRows, runSync],
+    [applyLocalRows, runSync, t],
   );
 
   useEffect(() => {
@@ -1017,11 +1014,11 @@ export default function ChatScreen({ navigation, route }: Props) {
       }
       if (!isOnline) return;
       const label = labelForEmotionChip(token);
-      void sendWithText(`That feels like ${label}`, undefined, {
+      void sendWithText(t('chat.chipEmotionMessage', { label }), undefined, {
         selected_emotion: token,
       });
     },
-    [activeChipsMessageId, isOnline, sendWithText],
+    [activeChipsMessageId, isOnline, sendWithText, t],
   );
 
   const handleNeedChipSelect = useCallback(
@@ -1039,11 +1036,11 @@ export default function ChatScreen({ navigation, route }: Props) {
       }
       if (!isOnline) return;
       const label = labelForNeedChip(token);
-      void sendWithText(`I think what I need is ${label}`, undefined, {
+      void sendWithText(t('chat.chipNeedMessage', { label }), undefined, {
         selected_need: token,
       });
     },
-    [activeChipsMessageId, isOnline, sendWithText],
+    [activeChipsMessageId, isOnline, sendWithText, t],
   );
 
   const onSend = useCallback(async () => {
@@ -1139,11 +1136,11 @@ export default function ChatScreen({ navigation, route }: Props) {
         listenWatchdogRef.current = setTimeout(() => {
           abortDictation(mod);
           resetMicIdle();
-          setVoiceHint(MIC_START_FAIL);
+          setVoiceHint(micStartFail());
         }, 4000);
       } catch {
         resetMicIdle();
-        setVoiceHint(MIC_START_FAIL);
+        setVoiceHint(micStartFail());
       }
     },
     [clearListenWatchdog, input, micState, resetMicIdle],
@@ -1152,11 +1149,11 @@ export default function ChatScreen({ navigation, route }: Props) {
   const onMicPress = useCallback(() => {
     if (isExpoGo()) {
       setPermHint(false);
-      setVoiceHint(EXPO_GO_VOICE_MESSAGE);
+      setVoiceHint(expoGoVoiceMessage());
       return;
     }
     if (!isOnline) {
-      setVoiceHint('Voice needs a connection. You can still type.');
+      setVoiceHint(t('chat.voiceNeedsConnection'));
       return;
     }
     const mod = speechModRef.current;
@@ -1170,13 +1167,13 @@ export default function ChatScreen({ navigation, route }: Props) {
     }
 
     if (micState === 'starting' || micState === 'processing' || micBusyRef.current) {
-      setVoiceHint(MIC_BUSY_MESSAGE);
+      setVoiceHint(micBusyMessage());
       return;
     }
 
     const reason = speechUnavailableReason(mod);
     if (reason || !mod) {
-      setVoiceHint(reason ?? SPEECH_UNAVAILABLE_MESSAGE);
+      setVoiceHint(reason ?? speechUnavailableMessage());
       return;
     }
 
@@ -1195,6 +1192,7 @@ export default function ChatScreen({ navigation, route }: Props) {
     isOnline,
     micState,
     resetMicIdle,
+    t,
   ]);
 
   const onNewChat = useCallback(() => {
@@ -1221,7 +1219,7 @@ export default function ChatScreen({ navigation, route }: Props) {
               onPress={() => navigation.navigate('Home')}
               hitSlop={8}
               accessibilityRole="button"
-              accessibilityLabel="Home"
+              accessibilityLabel={t('chat.homeA11y')}
               style={styles.headerHomeButton}
             >
               <Ionicons name="chevron-back" size={22} color={colors.gold} />
@@ -1230,7 +1228,7 @@ export default function ChatScreen({ navigation, route }: Props) {
               <Text style={styles.headerTitle}>DOST</Text>
               <View style={styles.headerStatus}>
                 <View style={styles.presenceDot} />
-                <Text style={styles.headerSubtitle}>reflecting with you</Text>
+                <Text style={styles.headerSubtitle}>{t('chat.reflectingWithYou')}</Text>
               </View>
             </View>
           </View>
@@ -1238,28 +1236,28 @@ export default function ChatScreen({ navigation, route }: Props) {
             <Pressable
               onPress={onNewChat}
               hitSlop={8}
-              accessibilityLabel="New chat"
+              accessibilityLabel={t('chat.newChat')}
             >
-              <Text style={styles.headerLink}>New chat</Text>
+              <Text style={styles.headerLink}>{t('chat.newChat')}</Text>
             </Pressable>
             <Pressable
               onPress={() => navigation.navigate('SearchChats')}
               hitSlop={8}
-              accessibilityLabel="Search old chats"
+              accessibilityLabel={t('chat.searchA11y')}
             >
-              <Text style={styles.headerLink}>Search</Text>
+              <Text style={styles.headerLink}>{t('chat.search')}</Text>
             </Pressable>
             <Pressable
               onPress={() => navigation.navigate('Reflection', { mode: 'prompt' })}
               hitSlop={8}
-              accessibilityLabel="Evening check-in"
+              accessibilityLabel={t('chat.eveningCheckIn')}
             >
-              <Text style={styles.headerLink}>Evening check-in</Text>
+              <Text style={styles.headerLink}>{t('chat.eveningCheckIn')}</Text>
             </Pressable>
             <Pressable
               onPress={() => navigation.navigate('Settings')}
               hitSlop={8}
-              accessibilityLabel="Settings"
+              accessibilityLabel={t('chat.settingsA11y')}
             >
               <Text style={styles.gear}>{'\u2699'}</Text>
             </Pressable>
@@ -1273,26 +1271,24 @@ export default function ChatScreen({ navigation, route }: Props) {
         />
         {!isOnline ? (
           <View style={styles.offlineBanner}>
-            <Text style={styles.offlineText}>{OFFLINE_BANNER}</Text>
+            <Text style={styles.offlineText}>{t('chat.offline')}</Text>
           </View>
         ) : null}
         {showNoticingsBanner ? (
           <View style={styles.banner}>
-            <Text style={styles.bannerText}>
-              When you're ready, name two things to notice tomorrow.
-            </Text>
+            <Text style={styles.bannerText}>{t('chat.noticingsBanner')}</Text>
             <Pressable
               onPress={() => navigation.navigate('Reflection', { mode: 'noticings' })}
               hitSlop={8}
             >
-              <Text style={styles.bannerAction}>Save noticings</Text>
+              <Text style={styles.bannerAction}>{t('chat.saveNoticings')}</Text>
             </Pressable>
           </View>
         ) : null}
         {gentleLoading ? (
           <View style={styles.loadingBox}>
             <BreathingDot size={10} />
-            <Text style={styles.loadingText}>Getting your chat ready...</Text>
+            <Text style={styles.loadingText}>{t('chat.gettingReady')}</Text>
           </View>
         ) : (
           <FlatList
@@ -1311,7 +1307,7 @@ export default function ChatScreen({ navigation, route }: Props) {
                   disabled={loadingEarlier}
                 >
                   <Text style={styles.loadEarlierText}>
-                    {loadingEarlier ? 'Loading...' : 'Load earlier messages'}
+                    {loadingEarlier ? t('chat.loading') : t('chat.loadEarlier')}
                   </Text>
                 </Pressable>
               ) : null
@@ -1336,10 +1332,10 @@ export default function ChatScreen({ navigation, route }: Props) {
                 <View
                   style={styles.typing}
                   accessible
-                  accessibilityLabel="DOST is reflecting"
+                  accessibilityLabel={t('chat.reflectingA11y')}
                   accessibilityRole="progressbar"
                 >
-                  <Text style={styles.typingText}>DOST is reflecting...</Text>
+                  <Text style={styles.typingText}>{t('chat.reflecting')}</Text>
                   <BreathingDot size={6} />
                 </View>
               ) : null
@@ -1348,11 +1344,9 @@ export default function ChatScreen({ navigation, route }: Props) {
         )}
         {permHint ? (
           <View style={styles.hintRow}>
-            <Text style={styles.hintText}>
-              To use voice, allow microphone access in your device settings.{' '}
-            </Text>
+            <Text style={styles.hintText}>{t('chat.micPermission')} </Text>
             <Pressable onPress={() => void Linking.openSettings()} hitSlop={6}>
-              <Text style={styles.hintLink}>Open Settings</Text>
+              <Text style={styles.hintLink}>{t('chat.openSettings')}</Text>
             </Pressable>
           </View>
         ) : null}
@@ -1368,7 +1362,7 @@ export default function ChatScreen({ navigation, route }: Props) {
         ) : null}
         {chipSkipHint ? (
           <View style={styles.chipSkipRow}>
-            <Text style={styles.chipSkipText}>Tell me in your own words</Text>
+            <Text style={styles.chipSkipText}>{t('chat.ownWords')}</Text>
           </View>
         ) : null}
         <View style={[styles.composer, { paddingBottom: composerBottom }]}>
@@ -1376,7 +1370,7 @@ export default function ChatScreen({ navigation, route }: Props) {
             style={styles.input}
             value={input}
             onChangeText={(value) => setInput(value.slice(0, MAX_MESSAGE_LEN))}
-            placeholder={listening ? 'Listening...' : 'Pour your heart out here...'}
+            placeholder={listening ? t('chat.placeholderListening') : t('chat.placeholder')}
             placeholderTextColor={colors.sand}
             maxLength={MAX_MESSAGE_LEN}
             multiline
@@ -1390,7 +1384,7 @@ export default function ChatScreen({ navigation, route }: Props) {
           <GentlePressable
             onPress={onSend}
             disabled={!canSend}
-            accessibilityLabel="Send"
+            accessibilityLabel={t('chat.sendA11y')}
             style={[styles.send, !canSend && styles.sendDisabled]}
           >
             <Ionicons name="arrow-up" size={20} color={colors.onPrimary} />

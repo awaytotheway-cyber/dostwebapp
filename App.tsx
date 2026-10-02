@@ -18,6 +18,7 @@ import AuthScreen from './app/AuthScreen';
 import AuthErrorScreen from './app/AuthErrorScreen';
 import BreathingDot from './app/BreathingDot';
 import OnboardingNavigator from './app/onboarding/OnboardingNavigator';
+import { I18nProvider, initI18n, t } from './lib/i18n';
 import { loadMyProfile } from './lib/profile';
 import { ONBOARDING_COMPLETE_KEY } from './lib/onboardingStorage';
 import { initNotificationRouting } from './lib/notifications';
@@ -49,6 +50,7 @@ export default function App() {
     Inter_500Medium,
     Inter_600SemiBold,
   });
+  const [i18nReady, setI18nReady] = useState(false);
   const [gate, setGate] = useState<Gate>('loading');
   const [authErrorKind, setAuthErrorKind] = useState<
     'anonymous_disabled' | 'other'
@@ -97,6 +99,7 @@ export default function App() {
 
   useEffect(() => {
     initNotificationRouting();
+    void initI18n().then(() => setI18nReady(true));
   }, []);
 
   useEffect(() => {
@@ -160,7 +163,7 @@ export default function App() {
     setGate('chat');
   };
 
-  if (!fontsLoaded) {
+  if (!fontsLoaded || !i18nReady) {
     return <FontLoadingScreen />;
   }
 
@@ -176,7 +179,7 @@ export default function App() {
         />
         <BreathingDot size={10} color={theme.colors.terracottaDot} />
         <Text accessibilityLiveRegion="polite" style={styles.loadingCopy}>
-          Starting gently…
+          {t('app.starting')}
         </Text>
       </View>
     );
@@ -197,7 +200,9 @@ export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <StatusBar style="dark" />
-      <SafeAreaProvider style={{ flex: 1 }}>{screen}</SafeAreaProvider>
+      <I18nProvider>
+        <SafeAreaProvider style={{ flex: 1 }}>{screen}</SafeAreaProvider>
+      </I18nProvider>
     </GestureHandlerRootView>
   );
 }

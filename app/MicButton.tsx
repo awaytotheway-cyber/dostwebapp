@@ -7,6 +7,7 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useI18n } from '../lib/i18n';
 import { colors, radius, spacing } from '../lib/theme';
 import { useReducedMotion } from '../lib/useReducedMotion';
 import GentlePressable from './GentlePressable';
@@ -22,6 +23,7 @@ type Props = {
 export default function MicButton({ state, disabled, onPress }: Props) {
   const pulse = useRef(new Animated.Value(0)).current;
   const reduceMotion = useReducedMotion();
+  const { t } = useI18n();
   const listening = state === 'listening';
   const busy = state === 'starting' || state === 'processing';
 
@@ -54,11 +56,11 @@ export default function MicButton({ state, disabled, onPress }: Props) {
 
   useEffect(() => {
     if (listening) {
-      AccessibilityInfo.announceForAccessibility('Listening');
+      AccessibilityInfo.announceForAccessibility(t('mic.announceListening'));
     } else if (state === 'processing') {
-      AccessibilityInfo.announceForAccessibility('Finishing voice input');
+      AccessibilityInfo.announceForAccessibility(t('mic.announceFinishing'));
     }
-  }, [listening, state]);
+  }, [listening, state, t]);
 
   const scale = pulse.interpolate({
     inputRange: [0, 1],
@@ -71,10 +73,10 @@ export default function MicButton({ state, disabled, onPress }: Props) {
 
   const label =
     state === 'listening'
-      ? 'Stop listening'
+      ? t('mic.stop')
       : state === 'processing' || state === 'starting'
-        ? 'Voice input busy'
-        : 'Voice input';
+        ? t('mic.busy')
+        : t('mic.idle');
 
   return (
     <View style={styles.wrap}>
@@ -93,7 +95,7 @@ export default function MicButton({ state, disabled, onPress }: Props) {
           (disabled || busy) && styles.buttonDisabled,
         ]}
         accessibilityLabel={label}
-        accessibilityHint="Tap to start speaking, tap again to stop. Only text is used — nothing is recorded."
+        accessibilityHint={t('mic.hint')}
         accessibilityState={{
           disabled: Boolean(disabled || busy),
           busy: listening || busy,

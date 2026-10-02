@@ -2,9 +2,11 @@ import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import {
   EMOTIONAL_STATES,
-  EMOTIONAL_STATE_HINTS,
+  hintForEmotionalState,
+  labelForEmotionalState,
   type EmotionalStateToken,
 } from '../lib/emotionalStates';
+import { useI18n } from '../lib/i18n';
 import { colors, radius, spacing, type as typography } from '../lib/theme';
 import GentlePressable from './GentlePressable';
 
@@ -21,10 +23,8 @@ export default function EmotionPicker({
   collapsed = false,
   onToggle,
 }: Props) {
-  const selectedLabel =
-    selected == null
-      ? null
-      : EMOTIONAL_STATES.find((s) => s.token === selected)?.label;
+  const { t } = useI18n();
+  const selectedLabel = selected == null ? null : labelForEmotionalState(selected);
 
   return (
     <View style={styles.wrap}>
@@ -33,17 +33,15 @@ export default function EmotionPicker({
         style={styles.header}
         accessibilityRole="button"
         accessibilityLabel={
-          collapsed
-            ? 'Show how you are feeling options'
-            : 'Hide how you are feeling options'
+          collapsed ? t('emotionPicker.showA11y') : t('emotionPicker.hideA11y')
         }
       >
         <View style={styles.headerText}>
-          <Text style={styles.title}>How are you feeling?</Text>
+          <Text style={styles.title}>{t('emotionPicker.title')}</Text>
           <Text style={styles.subtitle}>
             {selectedLabel
-              ? `Now: ${selectedLabel}`
-              : 'Optional — helps DOST meet you gently'}
+              ? t('emotionPicker.now', { label: selectedLabel })
+              : t('emotionPicker.optional')}
           </Text>
         </View>
         <Text style={styles.chevron}>{collapsed ? '+' : '–'}</Text>
@@ -51,10 +49,7 @@ export default function EmotionPicker({
 
       {!collapsed ? (
         <>
-          <Text style={styles.note}>
-            Optional covering patterns — not diagnoses. Auto-tagging still runs
-            on each message. Clear or change anytime.
-          </Text>
+          <Text style={styles.note}>{t('emotionPicker.note')}</Text>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -66,7 +61,7 @@ export default function EmotionPicker({
               style={[styles.chip, selected == null && styles.chipSelected]}
               accessibilityRole="button"
               accessibilityState={{ selected: selected == null }}
-              accessibilityLabel="No emotional state selected"
+              accessibilityLabel={t('emotionPicker.noneA11y')}
             >
               <Text
                 style={[
@@ -74,32 +69,33 @@ export default function EmotionPicker({
                   selected == null && styles.chipLabelSelected,
                 ]}
               >
-                None
+                {t('emotionPicker.none')}
               </Text>
             </GentlePressable>
-            {EMOTIONAL_STATES.map((state) => {
-              const active = selected === state.token;
+            {EMOTIONAL_STATES.map((token) => {
+              const active = selected === token;
+              const label = labelForEmotionalState(token);
               return (
                 <GentlePressable
-                  key={state.token}
-                  onPress={() => onSelect(active ? null : state.token)}
+                  key={token}
+                  onPress={() => onSelect(active ? null : token)}
                   style={[styles.chip, active && styles.chipSelected]}
                   accessibilityRole="button"
                   accessibilityState={{ selected: active }}
-                  accessibilityLabel={state.label}
-                  accessibilityHint={EMOTIONAL_STATE_HINTS[state.token]}
+                  accessibilityLabel={label}
+                  accessibilityHint={hintForEmotionalState(token)}
                 >
                   <Text
                     style={[styles.chipLabel, active && styles.chipLabelSelected]}
                   >
-                    {state.label}
+                    {label}
                   </Text>
                 </GentlePressable>
               );
             })}
           </ScrollView>
           {selected ? (
-            <Text style={styles.hint}>{EMOTIONAL_STATE_HINTS[selected]}</Text>
+            <Text style={styles.hint}>{hintForEmotionalState(selected)}</Text>
           ) : null}
         </>
       ) : null}
