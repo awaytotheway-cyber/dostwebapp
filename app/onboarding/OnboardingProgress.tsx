@@ -15,6 +15,7 @@ import {
 } from '../../lib/personalityProfile';
 import { onboardingStyles as styles } from './styles';
 import type { OnboardingStackParamList } from './types';
+import { useI18n } from '../../lib/i18n';
 
 const STEPS = [
   'Name',
@@ -55,6 +56,7 @@ export default function OnboardingProgress() {
   const route = useRoute();
   const current = STEPS.indexOf(route.name as (typeof STEPS)[number]);
   const [skippingAll, setSkippingAll] = useState(false);
+  const { t } = useI18n();
 
   const standaloneEdit = Boolean(
     (route.params as { standalone?: boolean } | undefined)?.standalone,
@@ -65,7 +67,7 @@ export default function OnboardingProgress() {
       <View style={styles.progressSection}>
         <GentlePressable
           accessibilityRole="button"
-          accessibilityLabel="Back"
+          accessibilityLabel={t('common.backPlain')}
           onPress={() => navigation.goBack()}
           hitSlop={10}
           style={styles.backButton}
@@ -77,7 +79,7 @@ export default function OnboardingProgress() {
   }
 
   const onPersonalityStep = isPersonalityRoute(route.name);
-  const stepLabel = `Step ${current + 1} of ${COUNTED_THROUGH_MBTI}`;
+  const stepLabel = t('onboarding.stepOf', { current: current + 1, total: COUNTED_THROUGH_MBTI });
   const showCountedLabel = onPersonalityStep;
 
   const skipAllRemaining = async () => {
@@ -86,7 +88,7 @@ export default function OnboardingProgress() {
     try {
       const skipped = await skipRemainingPersonalityModules(MODULE_BY_ROUTE[route.name]);
       if (!skipped.ok) {
-        Alert.alert('Could not save', skipped.message);
+        Alert.alert(t('common.couldNotSave'), skipped.message);
       }
     } finally {
       setSkippingAll(false);
@@ -99,7 +101,7 @@ export default function OnboardingProgress() {
     <View style={styles.progressSection}>
       <GentlePressable
         accessibilityRole="button"
-        accessibilityLabel="Back"
+        accessibilityLabel={t('common.backPlain')}
         onPress={() => navigation.goBack()}
         hitSlop={10}
         style={styles.backButton}
@@ -109,7 +111,11 @@ export default function OnboardingProgress() {
       <View
         accessible
         accessibilityRole="progressbar"
-        accessibilityLabel={showCountedLabel ? stepLabel : `Step ${current + 1} of ${STEPS.length}`}
+        accessibilityLabel={
+          showCountedLabel
+            ? stepLabel
+            : t('onboarding.stepOf', { current: current + 1, total: STEPS.length })
+        }
         style={styles.progress}
       >
         {STEPS.map((step, index) => (
@@ -131,14 +137,14 @@ export default function OnboardingProgress() {
       {onPersonalityStep ? (
         <GentlePressable
           accessibilityRole="button"
-          accessibilityLabel="Skip all remaining personality steps"
+          accessibilityLabel={t('onboarding.skipRemaining')}
           onPress={() => {
             void skipAllRemaining();
           }}
           disabled={skippingAll}
           style={styles.skipRemainingWrap}
         >
-          <Text style={styles.skipRemainingText}>Skip all remaining personality steps</Text>
+          <Text style={styles.skipRemainingText}>{t('onboarding.skipRemaining')}</Text>
         </GentlePressable>
       ) : null}
     </View>

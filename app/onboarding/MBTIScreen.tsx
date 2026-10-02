@@ -21,6 +21,7 @@ import {
   skipMbtiModule,
 } from '../../lib/personalityProfile';
 import { usePersonalityStepExit } from './usePersonalityStepExit';
+import { useI18n } from '../../lib/i18n';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'MBTI'>;
 
@@ -28,6 +29,7 @@ export default function MBTIScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
   const [value, setValue] = useState('');
   const [saving, setSaving] = useState(false);
+  const { t } = useI18n();
 
   const trimmed = value.trim();
   const showNonstandardNote = trimmed.length > 0 && !isStandardMbtiType(trimmed);
@@ -58,11 +60,11 @@ export default function MBTIScreen({ navigation, route }: Props) {
     try {
       const saved = await saveMbtiType(trimmed.toUpperCase());
       if (!saved.ok) {
-        Alert.alert('Could not save', saved.message);
+        Alert.alert(t('common.couldNotSave'), saved.message);
       }
       exitStep();
     } catch {
-      Alert.alert('Could not save', 'Please try again.');
+      Alert.alert(t('common.couldNotSave'), t('common.pleaseTryAgain'));
       exitStep();
     } finally {
       setSaving(false);
@@ -87,14 +89,11 @@ export default function MBTIScreen({ navigation, route }: Props) {
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
         >
-          <Text style={styles.eyebrow}>Optional</Text>
+          <Text style={styles.eyebrow}>{t('mbti.optional')}</Text>
           <Text accessibilityRole="header" style={[styles.headingLeft, styles.headingWithLead]}>
-            Do you know your Myers-Briggs type?
+            {t('mbti.heading')}
           </Text>
-          <Text style={styles.screenLead}>
-            If you've taken this before (like INFP, ESTJ, etc.), share it here. If not, no worries —
-            just skip.
-          </Text>
+          <Text style={styles.screenLead}>{t('mbti.lead')}</Text>
           <TextInput
             style={styles.input}
             value={value}
@@ -105,31 +104,29 @@ export default function MBTIScreen({ navigation, route }: Props) {
             autoCapitalize="characters"
             autoCorrect={false}
             autoComplete="off"
-            accessibilityLabel="Myers-Briggs type"
-            accessibilityHint="Examples include INFP and ESTJ"
+            accessibilityLabel={t('mbti.inputA11y')}
+            accessibilityHint={t('mbti.inputHint')}
             underlineColorAndroid="transparent"
           />
           {showNonstandardNote ? (
-            <Text style={styles.fieldHint}>
-              That doesn't look like a standard type — you can still save it, or skip.
-            </Text>
+            <Text style={styles.fieldHint}>{t('mbti.nonstandard')}</Text>
           ) : null}
         </ScrollView>
         <View style={styles.footer}>
           <GentlePressable
             accessibilityRole="button"
-            accessibilityLabel="Skip"
+            accessibilityLabel={t('common.skip')}
             onPress={() => {
               void onSkip();
             }}
             disabled={saving}
             style={styles.textLinkWrap}
           >
-            <Text style={styles.textLink}>Skip</Text>
+            <Text style={styles.textLink}>{t('common.skip')}</Text>
           </GentlePressable>
           <GentlePressable
             accessibilityRole="button"
-            accessibilityLabel={standalone ? 'Save type' : 'Continue'}
+            accessibilityLabel={standalone ? t('mbti.saveType') : t('common.continue')}
             onPress={() => {
               void onSave();
             }}
@@ -141,7 +138,7 @@ export default function MBTIScreen({ navigation, route }: Props) {
             ]}
           >
             <Text style={styles.buttonText}>
-              {saving ? 'Saving…' : standalone ? 'Save' : 'Continue'}
+              {saving ? t('common.saving') : standalone ? t('common.save') : t('common.continue')}
             </Text>
           </GentlePressable>
         </View>

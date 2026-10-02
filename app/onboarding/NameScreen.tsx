@@ -15,6 +15,7 @@ import { onboardingStyles as shared } from './styles';
 import OnboardingProgress from './OnboardingProgress';
 import { colors, spacing } from '../../lib/theme';
 import GentlePressable from '../GentlePressable';
+import { useI18n } from '../../lib/i18n';
 
 const MAX_NAME = 40;
 
@@ -22,6 +23,7 @@ type Props = NativeStackScreenProps<OnboardingStackParamList, 'Name'>;
 
 export default function NameScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
+  const { t } = useI18n();
   const [name, setName] = useState('');
   const canContinue = name.trim().length > 0;
 
@@ -45,16 +47,14 @@ export default function NameScreen({ navigation }: Props) {
         >
           <View>
             <Text accessibilityRole="header" style={shared.headingLeft}>
-              What should Dost{'\n'}call you?
+              {t('onboarding.nameHeading')}
             </Text>
-            <Text style={styles.subCopy}>
-              Just a first name is fine. You can change it any time.
-            </Text>
+            <Text style={styles.subCopy}>{t('onboarding.nameSub')}</Text>
             <TextInput
               style={shared.input}
               value={name}
               onChangeText={(value) => setName(value.slice(0, MAX_NAME))}
-              placeholder="Your name"
+              placeholder={t('onboarding.namePlaceholder')}
               placeholderTextColor={colors.inkLight}
               maxLength={MAX_NAME}
               autoCapitalize="words"
@@ -76,9 +76,9 @@ export default function NameScreen({ navigation }: Props) {
               !canContinue && shared.buttonDisabled,
             ]}
           >
-            <Text style={shared.buttonText}>Continue</Text>
+            <Text style={shared.buttonText}>{t('common.continue')}</Text>
           </GentlePressable>
-          <Text style={styles.privacyNote}>Everything you write stays private to your account.</Text>
+          <Text style={styles.privacyNote}>{t('onboarding.privacyNote')}</Text>
         </View>
       </KeyboardAvoidingView>
     </View>

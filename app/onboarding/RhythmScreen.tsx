@@ -8,33 +8,15 @@ import OnboardingProgress from './OnboardingProgress';
 import PreferenceGlyph from './PreferenceGlyph';
 import { onboardingStyles as styles } from './styles';
 import type { DailyRhythm, OnboardingStackParamList } from './types';
+import { useI18n, type TKey } from '../../lib/i18n';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'Rhythm'>;
 
-const OPTIONS: Array<{
-  value: DailyRhythm;
-  label: string;
-  description: string;
-}> = [
-  {
-    value: 'day',
-    label: 'Early light',
-    description: 'Mornings are when I feel clearest.',
-  },
-  {
-    value: 'flexible',
-    label: 'Through the day',
-    description: 'My best hours shift with the day.',
-  },
-  {
-    value: 'night',
-    label: 'After dark',
-    description: 'Evenings are when I come alive.',
-  },
-];
+const OPTIONS: DailyRhythm[] = ['day', 'flexible', 'night'];
 
 export default function RhythmScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
+  const { t } = useI18n();
   const [dailyRhythm, setDailyRhythm] = useState<DailyRhythm | null>(null);
 
   return (
@@ -49,12 +31,17 @@ export default function RhythmScreen({ navigation, route }: Props) {
         style={styles.contentTop}
         contentContainerStyle={styles.centeredScrollContent}
       >
-        <Text style={styles.eyebrow}>Your natural rhythm</Text>
+        <Text style={styles.eyebrow}>{t('onboarding.rhythmEyebrow')}</Text>
         <Text accessibilityRole="header" style={[styles.headingLeft, styles.headingWithLead]}>
-          When do you feel most like yourself?
+          {t('onboarding.rhythmHeading')}
         </Text>
-        <Text style={styles.screenLead}>Choose the part of the day that feels most naturally yours.</Text>
-        {OPTIONS.map((option) => {
+        <Text style={styles.screenLead}>{t('onboarding.rhythmLead')}</Text>
+        {OPTIONS.map((value) => {
+          const option = {
+            value,
+            label: t(`rhythm.${value}.label` as TKey),
+            description: t(`rhythm.${value}.description` as TKey),
+          };
           const selected = dailyRhythm === option.value;
           return (
             <GentlePressable
@@ -93,7 +80,7 @@ export default function RhythmScreen({ navigation, route }: Props) {
             !dailyRhythm && styles.buttonDisabled,
           ]}
         >
-          <Text style={styles.buttonText}>Continue</Text>
+          <Text style={styles.buttonText}>{t('common.continue')}</Text>
         </GentlePressable>
       </View>
     </View>

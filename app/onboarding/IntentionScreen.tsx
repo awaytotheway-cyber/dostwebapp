@@ -14,6 +14,7 @@ import { onboardingStyles as styles } from './styles';
 import OnboardingProgress from './OnboardingProgress';
 import { colors, spacing } from '../../lib/theme';
 import GentlePressable from '../GentlePressable';
+import { useI18n } from '../../lib/i18n';
 
 const MAX_INTENTION = 200;
 
@@ -21,6 +22,7 @@ type Props = NativeStackScreenProps<OnboardingStackParamList, 'Intention'>;
 
 export default function IntentionScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
+  const { t } = useI18n();
   const [intention, setIntention] = useState('');
 
   return (
@@ -43,13 +45,13 @@ export default function IntentionScreen({ navigation, route }: Props) {
         >
           <View>
             <Text accessibilityRole="header" style={styles.headingLeft}>
-              What would you like to reflect on, gently?
+              {t('onboarding.intentionHeading')}
             </Text>
             <TextInput
               style={[styles.input, styles.textArea]}
               value={intention}
               onChangeText={(value) => setIntention(value.slice(0, MAX_INTENTION))}
-              placeholder="A few words are enough"
+              placeholder={t('onboarding.intentionPlaceholder')}
               placeholderTextColor={colors.clay}
               maxLength={MAX_INTENTION}
               multiline
@@ -58,7 +60,7 @@ export default function IntentionScreen({ navigation, route }: Props) {
               textAlignVertical="top"
               underlineColorAndroid="transparent"
             />
-            <Text style={styles.helper}>You can change this anytime.</Text>
+            <Text style={styles.helper}>{t('onboarding.intentionHelper')}</Text>
           </View>
         </ScrollView>
         <View style={styles.footer}>
@@ -71,7 +73,7 @@ export default function IntentionScreen({ navigation, route }: Props) {
             }
             style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
           >
-            <Text style={styles.buttonText}>Continue</Text>
+            <Text style={styles.buttonText}>{t('common.continue')}</Text>
           </GentlePressable>
         </View>
       </KeyboardAvoidingView>

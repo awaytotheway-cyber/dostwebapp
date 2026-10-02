@@ -18,6 +18,7 @@ import {
   DEFAULT_COUNTRY_NAME,
   type Country,
 } from '../lib/countries';
+import { useI18n } from '../lib/i18n';
 import { colors, radius, spacing, type } from '../lib/theme';
 import { useReducedMotion } from '../lib/useReducedMotion';
 
@@ -29,8 +30,31 @@ type Props = {
 };
 
 type CountryChoice = Country & {
+  label: string;
   isLegacy?: boolean;
 };
+
+// Localised region names when the JS engine supports Intl.DisplayNames;
+// the stored value is always the English name.
+function regionNamer(locale: string): (code: string) => string | undefined {
+  try {
+    const DisplayNames = (Intl as unknown as { DisplayNames?: new (
+      locales: string[],
+      options: { type: 'region' },
+    ) => { of: (code: string) => string | undefined } }).DisplayNames;
+    if (typeof DisplayNames !== 'function') return () => undefined;
+    const names = new DisplayNames([locale], { type: 'region' });
+    return (code) => {
+      try {
+        return names.of(code);
+      } catch {
+        return undefined;
+      }
+    };
+  } catch {
+    return () => undefined;
+  }
+}
 
 function normalizeSearch(value: string): string {
   return value
@@ -51,22 +75,33 @@ export default function CountryPicker({
   const reduceMotion = useReducedMotion();
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
+  const { t, tn, lang, locale } = useI18n();
   const selectedValue = value.trim() ? value : DEFAULT_COUNTRY_NAME;
 
   const choices = useMemo<CountryChoice[]>(() => {
-    const options: CountryChoice[] = COUNTRIES.map((country) => ({ ...country }));
+    const localName = lang === 'en' ? () => undefined : regionNamer(locale);
+    const options: CountryChoice[] = COUNTRIES.map((country) => ({
+      ...country,
+      label: localName(country.code) ?? country.name,
+    }));
     if (!COUNTRIES.some((country) => country.name === selectedValue)) {
-      options.push({ code: '', name: selectedValue, isLegacy: true });
-      options.sort((a, b) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base' }));
+      options.push({ code: '', name: selectedValue, label: selectedValue, isLegacy: true });
+    }
+    if (lang !== 'en' || options.some((option) => option.isLegacy)) {
+      options.sort((a, b) => a.label.localeCompare(b.label, locale, { sensitivity: 'base' }));
     }
     return options;
-  }, [selectedValue]);
+  }, [selectedValue, lang, locale]);
+
+  const selectedLabel =
+    choices.find((country) => country.name === selectedValue)?.label ?? selectedValue;
 
   const filteredChoices = useMemo(() => {
     const normalizedQuery = normalizeSearch(query);
     if (!normalizedQuery) return choices;
     return choices.filter(
       (country) =>
+        normalizeSearch(country.label).includes(normalizedQuery) ||
         normalizeSearch(country.name).includes(normalizedQuery) ||
         country.code.toLocaleLowerCase('en').includes(normalizedQuery),
     );
@@ -94,11 +129,11 @@ export default function CountryPicker({
           disabled && styles.disabled,
         ]}
         accessibilityRole="button"
-        accessibilityLabel={`Country, ${selectedValue}`}
-        accessibilityHint="Opens a searchable list of countries and territories"
+        accessibilityLabel={t('countryPicker.buttonA11y', { name: selectedLabel })}
+        accessibilityHint={t('countryPicker.buttonHint')}
         accessibilityState={{ disabled }}
       >
-        <Text style={styles.buttonText}>{selectedValue}</Text>
+        <Text style={styles.buttonText}>{selectedLabel}</Text>
       </Pressable>
       <Modal
         visible={open}
@@ -134,18 +169,18 @@ export default function CountryPicker({
               <View style={styles.header}>
                 <View style={styles.headerCopy}>
                   <Text accessibilityRole="header" style={styles.title}>
-                    Choose country
+                    {t('countryPicker.title')}
                   </Text>
-                  <Text style={styles.subtitle}>Countries and territories</Text>
+                  <Text style={styles.subtitle}>{t('countryPicker.subtitle')}</Text>
                 </View>
                 <Pressable
                   onPress={close}
                   hitSlop={spacing.sm}
                   accessibilityRole="button"
-                  accessibilityLabel="Close country picker"
+                  accessibilityLabel={t('countryPicker.closeA11y')}
                   style={({ pressed }) => [styles.close, pressed && styles.controlPressed]}
                 >
-                  <Text style={styles.closeText}>Close</Text>
+                  <Text style={styles.closeText}>{t('countryPicker.close')}</Text>
                 </Pressable>
               </View>
 
@@ -153,14 +188,14 @@ export default function CountryPicker({
                 <TextInput
                   value={query}
                   onChangeText={setQuery}
-                  placeholder="Search country or code"
+                  placeholder={t('countryPicker.searchPlaceholder')}
                   placeholderTextColor={colors.clay}
                   selectionColor={colors.gold}
                   cursorColor={colors.gold}
                   autoCapitalize="none"
                   autoCorrect={false}
                   returnKeyType="search"
-                  accessibilityLabel="Search countries and territories"
+                  accessibilityLabel={t('countryPicker.searchA11y')}
                   style={styles.searchInput}
                   underlineColorAndroid="transparent"
                 />
@@ -169,19 +204,19 @@ export default function CountryPicker({
                     onPress={() => setQuery('')}
                     hitSlop={spacing.xs}
                     accessibilityRole="button"
-                    accessibilityLabel="Clear country search"
+                    accessibilityLabel={t('countryPicker.clearA11y')}
                     style={({ pressed }) => [
                       styles.clearSearch,
                       pressed && styles.controlPressed,
                     ]}
                   >
-                    <Text style={styles.clearSearchText}>Clear</Text>
+                    <Text style={styles.clearSearchText}>{t('countryPicker.clear')}</Text>
                   </Pressable>
                 ) : null}
               </View>
 
               <Text style={styles.resultCount} accessibilityLiveRegion="polite">
-                {filteredChoices.length} {filteredChoices.length === 1 ? 'result' : 'results'}
+                {tn('countryPicker.results', filteredChoices.length)}
               </Text>
 
               <FlatList
@@ -197,7 +232,7 @@ export default function CountryPicker({
                 initialNumToRender={18}
                 windowSize={7}
                 ListEmptyComponent={
-                  <Text style={styles.empty}>No countries match that search.</Text>
+                  <Text style={styles.empty}>{t('countryPicker.empty')}</Text>
                 }
                 renderItem={({ item }) => {
                   const selected = item.name === selectedValue;
@@ -208,7 +243,7 @@ export default function CountryPicker({
                         close();
                       }}
                       accessibilityRole="radio"
-                      accessibilityLabel={item.name}
+                      accessibilityLabel={item.label}
                       accessibilityState={{ selected }}
                       style={({ pressed }) => [
                         styles.option,
@@ -222,7 +257,7 @@ export default function CountryPicker({
                           selected && styles.optionTextSelected,
                         ]}
                       >
-                        {item.name}
+                        {item.label}
                       </Text>
                       <Text
                         style={[
@@ -230,7 +265,11 @@ export default function CountryPicker({
                           selected && styles.optionMetaSelected,
                         ]}
                       >
-                        {selected ? 'Selected' : item.isLegacy ? 'Saved' : item.code}
+                        {selected
+                          ? t('countryPicker.selected')
+                          : item.isLegacy
+                            ? t('countryPicker.saved')
+                            : item.code}
                       </Text>
                     </Pressable>
                   );

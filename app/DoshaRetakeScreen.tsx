@@ -7,6 +7,7 @@ import type { DoshaPick } from './onboarding/types';
 import { DOSHA_QUESTIONS, scoreDosha } from './onboarding/DoshaScreen';
 import { onboardingStyles as styles } from './onboarding/styles';
 import type { ChatStackParamList } from './chatTypes';
+import { useI18n } from '../lib/i18n';
 import { colors } from '../lib/theme';
 import GentlePressable from './GentlePressable';
 
@@ -16,6 +17,7 @@ export default function DoshaRetakeScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const [answers, setAnswers] = useState<Partial<Record<string, DoshaPick>>>({});
   const [saving, setSaving] = useState(false);
+  const { t } = useI18n();
 
   const complete = useMemo(
     () => DOSHA_QUESTIONS.every((q) => answers[q.key]),
@@ -29,12 +31,12 @@ export default function DoshaRetakeScreen({ navigation }: Props) {
     try {
       const result = await updateMyDosha(scoreDosha(filled), filled);
       if (!result.ok) {
-        Alert.alert('Could not save', result.message);
+        Alert.alert(t('common.couldNotSave'), result.message);
         return;
       }
       navigation.goBack();
     } catch {
-      Alert.alert('Could not save', 'Please try again.');
+      Alert.alert(t('common.couldNotSave'), t('common.pleaseTryAgain'));
     } finally {
       setSaving(false);
     }
@@ -44,14 +46,14 @@ export default function DoshaRetakeScreen({ navigation }: Props) {
     <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom + 8 }]}>
       <View style={{ paddingHorizontal: 28, paddingVertical: 8 }}>
         <Pressable onPress={() => navigation.goBack()} hitSlop={8}>
-          <Text style={{ fontSize: 16, color: colors.gold, fontWeight: '600' }}>Back</Text>
+          <Text style={{ fontSize: 16, color: colors.gold, fontWeight: '600' }}>{t('common.backPlain')}</Text>
         </Pressable>
       </View>
       <ScrollView style={styles.contentTop} contentContainerStyle={{ paddingBottom: 24 }}>
-        <Text style={styles.headingLeft}>Re-take dosha quiz</Text>
+        <Text style={styles.headingLeft}>{t('settings.retakeHeading')}</Text>
         {DOSHA_QUESTIONS.map((question) => (
           <View key={question.key}>
-            <Text style={styles.question}>{question.prompt}</Text>
+            <Text style={styles.question}>{t(question.prompt)}</Text>
             {question.options.map((option) => {
               const selected = answers[question.key] === option.value;
               return (
@@ -62,7 +64,7 @@ export default function DoshaRetakeScreen({ navigation }: Props) {
                   }
                   style={[styles.option, selected && styles.optionSelected]}
                 >
-                  <Text style={styles.optionText}>{option.label}</Text>
+                  <Text style={styles.optionText}>{t(option.label)}</Text>
                 </Pressable>
               );
             })}
@@ -75,7 +77,9 @@ export default function DoshaRetakeScreen({ navigation }: Props) {
           disabled={!complete || saving}
           style={[styles.button, (!complete || saving) && styles.buttonDisabled]}
         >
-          <Text style={styles.buttonText}>{saving ? 'Saving…' : 'Save dosha'}</Text>
+          <Text style={styles.buttonText}>
+            {saving ? t('common.saving') : t('settings.saveDosha')}
+          </Text>
         </GentlePressable>
       </View>
     </View>

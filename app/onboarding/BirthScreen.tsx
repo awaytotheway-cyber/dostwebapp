@@ -10,6 +10,7 @@ import { onboardingStyles as styles } from './styles';
 import OnboardingProgress from './OnboardingProgress';
 import { colors, spacing } from '../../lib/theme';
 import GentlePressable from '../GentlePressable';
+import { useI18n } from '../../lib/i18n';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'Birth'>;
 
@@ -34,6 +35,7 @@ function toTimeOnly(d: Date): string {
 
 export default function BirthScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
+  const { t, locale } = useI18n();
   const [date, setDate] = useState(defaultBirthDate);
   const [time, setTime] = useState(defaultBirthDate);
   const [unknownTime, setUnknownTime] = useState(true);
@@ -42,21 +44,21 @@ export default function BirthScreen({ navigation, route }: Props) {
 
   const dateLabel = useMemo(
     () =>
-      date.toLocaleDateString(undefined, {
+      date.toLocaleDateString(locale, {
         day: 'numeric',
         month: 'long',
         year: 'numeric',
       }),
-    [date],
+    [date, locale],
   );
 
   const timeLabel = useMemo(
     () =>
-      time.toLocaleTimeString(undefined, {
+      time.toLocaleTimeString(locale, {
         hour: 'numeric',
         minute: '2-digit',
       }),
-    [time],
+    [time, locale],
   );
 
   const onDateChange = (_event: DateTimePickerEvent, selected?: Date) => {
@@ -93,7 +95,7 @@ export default function BirthScreen({ navigation, route }: Props) {
         keyboardShouldPersistTaps="handled"
       >
         <Text accessibilityRole="header" style={styles.headingLeft}>
-          When were you born?
+          {t('onboarding.birthHeading')}
         </Text>
 
         {Platform.OS === 'android' ? (
@@ -132,7 +134,7 @@ export default function BirthScreen({ navigation, route }: Props) {
         ) : null}
 
         <View style={styles.toggleRow}>
-          <Text style={styles.toggleLabel}>I don't know the time</Text>
+          <Text style={styles.toggleLabel}>{t('onboarding.unknownTime')}</Text>
           <Switch
             value={unknownTime}
             onValueChange={(value) => {
@@ -185,7 +187,7 @@ export default function BirthScreen({ navigation, route }: Props) {
           onPress={onContinue}
           style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
         >
-          <Text style={styles.buttonText}>Continue</Text>
+          <Text style={styles.buttonText}>{t('common.continue')}</Text>
         </GentlePressable>
       </View>
     </View>

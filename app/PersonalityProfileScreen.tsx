@@ -14,7 +14,8 @@ import {
   moduleIsSkipped,
   type PersonalityProfileRow,
 } from '../lib/personalityProfile';
-import { ENNEAGRAM_TYPE_NAMES } from './onboarding/EnneagramScreen';
+import { enneagramTypeName } from './onboarding/EnneagramScreen';
+import { hasMessage, t as translate, useI18n, type TKey } from '../lib/i18n';
 import { colors, radius, spacing, type as typography } from '../lib/theme';
 import type { ChatStackParamList } from './chatTypes';
 import GentlePressable from './GentlePressable';
@@ -27,6 +28,8 @@ type RowStatus = 'complete' | 'skipped' | 'empty';
 
 function capitalize(value: string): string {
   if (!value) return value;
+  const key = `dosha.${value.toLowerCase()}`;
+  if (hasMessage(key)) return translate(key as TKey);
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
@@ -58,6 +61,7 @@ export default function PersonalityProfileScreen({ navigation }: Props) {
   const [dob, setDob] = useState<string | null>(null);
   const [doshaLabel, setDoshaLabel] = useState<string | null>(null);
   const [personality, setPersonality] = useState<PersonalityProfileRow | null>(null);
+  const { t } = useI18n();
 
   const load = useCallback(async () => {
     setLoadFailed(false);
@@ -95,10 +99,7 @@ export default function PersonalityProfileScreen({ navigation }: Props) {
 
   const openNumerology = () => {
     if (!dob) {
-      Alert.alert(
-        'Birth date needed',
-        'Life Path is calculated from your birth date. Add it in Space Settings, then come back here.',
-      );
+      Alert.alert(t('personality.birthDateNeeded'), t('personality.birthDateNeededBody'));
       return;
     }
     navigation.navigate('PersonalityNumerology', { standalone: true, dob });
@@ -112,10 +113,10 @@ export default function PersonalityProfileScreen({ navigation }: Props) {
           onPress={() => navigation.goBack()}
           hitSlop={8}
           accessibilityRole="button"
-          accessibilityLabel="Go back"
+          accessibilityLabel={t('common.goBack')}
           style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
         >
-          <Text style={styles.back}>Back</Text>
+          <Text style={styles.back}>{t('common.backPlain')}</Text>
         </GentlePressable>
       </View>
 
@@ -124,35 +125,30 @@ export default function PersonalityProfileScreen({ navigation }: Props) {
         contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + spacing['4xl'] }]}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.eyebrow}>YOUR SPACE</Text>
+        <Text style={styles.eyebrow}>{t('personality.eyebrow')}</Text>
         <Text accessibilityRole="header" style={styles.heading}>
-          Personality profile
+          {t('personality.heading')}
         </Text>
-        <Text style={styles.intro}>
-          Fill in anything you skipped, or change what you already shared. Nothing here is required.
-        </Text>
+        <Text style={styles.intro}>{t('personality.intro')}</Text>
 
         {loading ? (
-          <View style={styles.loadingRow} accessibilityLabel="Loading personality profile">
+          <View style={styles.loadingRow} accessibilityLabel={t('personality.loadingA11y')}>
             <BreathingDot size={10} color={colors.gold} />
-            <Text style={styles.loadingText}>Loading…</Text>
+            <Text style={styles.loadingText}>{t('personality.loading')}</Text>
           </View>
         ) : null}
 
         {loadFailed ? (
-          <Text style={styles.errorCopy}>
-            Could not load this profile. If it keeps happening, run the personality_profile SQL in
-            Supabase, then try again.
-          </Text>
+          <Text style={styles.errorCopy}>{t('personality.loadFailed')}</Text>
         ) : null}
 
         {!loading ? (
           <View style={styles.card}>
             <ProfileModuleRow
               status={doshaComplete ? 'complete' : 'empty'}
-              title="Dosha"
-              value={doshaComplete && doshaLabel ? doshaLabel : 'not set'}
-              action="tap to edit"
+              title={t('personality.dosha')}
+              value={doshaComplete && doshaLabel ? doshaLabel : t('personality.notSet')}
+              action={t('personality.tapToEdit')}
               onPress={() => navigation.navigate('DoshaRetake')}
             />
             <ProfileModuleRow
@@ -163,19 +159,20 @@ export default function PersonalityProfileScreen({ navigation }: Props) {
                     ? 'skipped'
                     : 'empty'
               }
-              title="Enneagram"
+              title={t('personality.enneagram')}
               value={
                 enneagramComplete && personality?.enneagram_type
-                  ? `Type ${personality.enneagram_type}${
-                      ENNEAGRAM_TYPE_NAMES[personality.enneagram_type]
-                        ? ` — ${ENNEAGRAM_TYPE_NAMES[personality.enneagram_type]}`
-                        : ''
-                    }`
+                  ? t('enneagram.typeName', {
+                      type: personality.enneagram_type,
+                      name: enneagramTypeName(personality.enneagram_type) ?? '',
+                    })
                   : moduleIsSkipped(personality, ENNEAGRAM_MODULE)
-                    ? 'skipped'
-                    : 'not set'
+                    ? t('personality.skipped')
+                    : t('personality.notSet')
               }
-              action={enneagramComplete ? 'tap to edit' : 'tap to complete'}
+              action={
+                enneagramComplete ? t('personality.tapToEdit') : t('personality.tapToComplete')
+              }
               onPress={() => navigation.navigate('PersonalityEnneagram', { standalone: true })}
             />
             <ProfileModuleRow
@@ -186,15 +183,15 @@ export default function PersonalityProfileScreen({ navigation }: Props) {
                     ? 'skipped'
                     : 'empty'
               }
-              title="Numerology"
+              title={t('personality.numerology')}
               value={
                 numerologyComplete && personality?.life_path_number != null
-                  ? `Life Path ${personality.life_path_number}`
-                  : moduleIsSkipped(personality, NUMEROLOGY_MODULE)
-                    ? 'not calculated'
-                    : 'not calculated'
+                  ? t('numerology.lifePathNumber', { number: personality.life_path_number })
+                  : t('personality.notCalculated')
               }
-              action={numerologyComplete ? 'tap to edit' : 'tap to reveal'}
+              action={
+                numerologyComplete ? t('personality.tapToEdit') : t('personality.tapToReveal')
+              }
               onPress={openNumerology}
             />
             <ProfileModuleRow
@@ -205,15 +202,17 @@ export default function PersonalityProfileScreen({ navigation }: Props) {
                     ? 'skipped'
                     : 'empty'
               }
-              title="TCM Element"
+              title={t('personality.tcmElement')}
               value={
                 tcmComplete && personality?.tcm_element
-                  ? personality.tcm_element
+                  ? hasMessage(`tcm.elements.${personality.tcm_element}`)
+                    ? t(`tcm.elements.${personality.tcm_element}` as TKey)
+                    : personality.tcm_element
                   : moduleIsSkipped(personality, TCM_MODULE)
-                    ? 'skipped'
-                    : 'not set'
+                    ? t('personality.skipped')
+                    : t('personality.notSet')
               }
-              action={tcmComplete ? 'tap to edit' : 'tap to complete'}
+              action={tcmComplete ? t('personality.tapToEdit') : t('personality.tapToComplete')}
               onPress={() => navigation.navigate('PersonalityTCM', { standalone: true })}
             />
             <ProfileModuleRow
@@ -225,15 +224,13 @@ export default function PersonalityProfileScreen({ navigation }: Props) {
                     ? 'skipped'
                     : 'empty'
               }
-              title="MBTI"
+              title={t('personality.mbti')}
               value={
                 mbtiComplete && personality?.mbti_type
                   ? personality.mbti_type
-                  : moduleIsSkipped(personality, MBTI_MODULE)
-                    ? 'not provided'
-                    : 'not provided'
+                  : t('personality.notProvided')
               }
-              action={mbtiComplete ? 'tap to edit' : 'tap to add'}
+              action={mbtiComplete ? t('personality.tapToEdit') : t('personality.tapToAdd')}
               onPress={() => navigation.navigate('PersonalityMBTI', { standalone: true })}
             />
           </View>
@@ -262,14 +259,12 @@ function ProfileModuleRow({
     <GentlePressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`${title}: ${value}. ${action}`}
+      accessibilityLabel={translate('personality.rowA11y', { title, value, action })}
       style={({ pressed }) => [styles.row, last && styles.rowLast, pressed && styles.pressed]}
     >
       <Text style={[styles.mark, status === 'complete' && styles.markDone]}>{statusMark(status)}</Text>
       <View style={styles.rowCopy}>
-        <Text style={styles.rowTitle}>
-          {title}: {value}
-        </Text>
+        <Text style={styles.rowTitle}>{translate('personality.rowTitle', { title, value })}</Text>
         <Text style={styles.rowAction}>{action}</Text>
       </View>
     </GentlePressable>

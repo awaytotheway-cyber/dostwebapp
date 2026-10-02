@@ -16,6 +16,7 @@ import OnboardingProgress from './OnboardingProgress';
 import OnboardingCountryPicker from './OnboardingCountryPicker';
 import { colors, spacing } from '../../lib/theme';
 import GentlePressable from '../GentlePressable';
+import { useI18n } from '../../lib/i18n';
 
 const FIELD_MAX = 80;
 
@@ -23,6 +24,7 @@ type Props = NativeStackScreenProps<OnboardingStackParamList, 'BirthPlace'>;
 
 export default function BirthPlaceScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
+  const { t } = useI18n();
   const [place, setPlace] = useState(emptyBirthPlace);
 
   const onContinue = () => {
@@ -57,55 +59,53 @@ export default function BirthPlaceScreen({ navigation, route }: Props) {
           keyboardDismissMode="on-drag"
         >
           <Text accessibilityRole="header" style={styles.headingLeft}>
-            Where were you born?
+            {t('onboarding.birthPlaceHeading')}
           </Text>
-          <Text style={styles.helper}>
-            Optional, but it helps. You can skip any field and change this later in Settings.
-          </Text>
+          <Text style={styles.helper}>{t('onboarding.birthPlaceHelper')}</Text>
 
-          <Text style={styles.fieldLabel}>City</Text>
+          <Text style={styles.fieldLabel}>{t('settings.city')}</Text>
           <TextInput
             style={styles.input}
             value={place.birthCity}
             onChangeText={(value) =>
               setPlace((prev) => ({ ...prev, birthCity: value.slice(0, FIELD_MAX) }))
             }
-            placeholder="City"
+            placeholder={t('settings.city')}
             placeholderTextColor={colors.clay}
             maxLength={FIELD_MAX}
             autoCapitalize="words"
             underlineColorAndroid="transparent"
           />
 
-          <Text style={styles.fieldLabel}>District</Text>
+          <Text style={styles.fieldLabel}>{t('settings.district')}</Text>
           <TextInput
             style={styles.input}
             value={place.birthDistrict}
             onChangeText={(value) =>
               setPlace((prev) => ({ ...prev, birthDistrict: value.slice(0, FIELD_MAX) }))
             }
-            placeholder="District"
+            placeholder={t('settings.district')}
             placeholderTextColor={colors.clay}
             maxLength={FIELD_MAX}
             autoCapitalize="words"
             underlineColorAndroid="transparent"
           />
 
-          <Text style={styles.fieldLabel}>State</Text>
+          <Text style={styles.fieldLabel}>{t('settings.state')}</Text>
           <TextInput
             style={styles.input}
             value={place.birthState}
             onChangeText={(value) =>
               setPlace((prev) => ({ ...prev, birthState: value.slice(0, FIELD_MAX) }))
             }
-            placeholder="State"
+            placeholder={t('settings.state')}
             placeholderTextColor={colors.clay}
             maxLength={FIELD_MAX}
             autoCapitalize="words"
             underlineColorAndroid="transparent"
           />
 
-          <Text style={styles.fieldLabel}>Country</Text>
+          <Text style={styles.fieldLabel}>{t('settings.country')}</Text>
           <OnboardingCountryPicker
             value={place.birthCountry}
             onChange={(birthCountry) => setPlace((prev) => ({ ...prev, birthCountry }))}
@@ -116,7 +116,7 @@ export default function BirthPlaceScreen({ navigation, route }: Props) {
             onPress={onContinue}
             style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
           >
-            <Text style={styles.buttonText}>Continue</Text>
+            <Text style={styles.buttonText}>{t('common.continue')}</Text>
           </GentlePressable>
         </View>
       </KeyboardAvoidingView>

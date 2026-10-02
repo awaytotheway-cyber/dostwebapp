@@ -8,33 +8,15 @@ import OnboardingProgress from './OnboardingProgress';
 import PreferenceGlyph from './PreferenceGlyph';
 import { onboardingStyles as styles } from './styles';
 import type { OnboardingStackParamList, SocialStyle } from './types';
+import { useI18n, type TKey } from '../../lib/i18n';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'SocialEnergy'>;
 
-const OPTIONS: Array<{
-  value: SocialStyle;
-  label: string;
-  description: string;
-}> = [
-  {
-    value: 'introvert',
-    label: 'Introvert',
-    description: 'I recharge with quiet and space.',
-  },
-  {
-    value: 'ambivert',
-    label: 'Ambivert',
-    description: 'I move between solitude and company.',
-  },
-  {
-    value: 'extrovert',
-    label: 'Extrovert',
-    description: 'I recharge through shared energy.',
-  },
-];
+const OPTIONS: SocialStyle[] = ['introvert', 'ambivert', 'extrovert'];
 
 export default function SocialEnergyScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
+  const { t } = useI18n();
   const [socialStyle, setSocialStyle] = useState<SocialStyle | null>(null);
 
   return (
@@ -49,12 +31,17 @@ export default function SocialEnergyScreen({ navigation, route }: Props) {
         style={styles.contentTop}
         contentContainerStyle={styles.centeredScrollContent}
       >
-        <Text style={styles.eyebrow}>Your social energy</Text>
+        <Text style={styles.eyebrow}>{t('onboarding.socialEyebrow')}</Text>
         <Text accessibilityRole="header" style={[styles.headingLeft, styles.headingWithLead]}>
-          How do you tend to recharge?
+          {t('onboarding.socialHeading')}
         </Text>
-        <Text style={styles.screenLead}>Choose the description that feels closest, not perfect.</Text>
-        {OPTIONS.map((option) => {
+        <Text style={styles.screenLead}>{t('onboarding.socialLead')}</Text>
+        {OPTIONS.map((value) => {
+          const option = {
+            value,
+            label: t(`social.${value}.label` as TKey),
+            description: t(`social.${value}.description` as TKey),
+          };
           const selected = socialStyle === option.value;
           return (
             <GentlePressable
@@ -93,7 +80,7 @@ export default function SocialEnergyScreen({ navigation, route }: Props) {
             !socialStyle && styles.buttonDisabled,
           ]}
         >
-          <Text style={styles.buttonText}>Continue</Text>
+          <Text style={styles.buttonText}>{t('common.continue')}</Text>
         </GentlePressable>
       </View>
     </View>

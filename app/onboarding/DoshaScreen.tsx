@@ -7,6 +7,7 @@ import type { DoshaPick, OnboardingStackParamList } from './types';
 import { onboardingStyles as styles } from './styles';
 import OnboardingProgress from './OnboardingProgress';
 import DoshaGlyph from './DoshaGlyph';
+import { useI18n, type TKey } from '../../lib/i18n';
 import { spacing } from '../../lib/theme';
 import GentlePressable from '../GentlePressable';
 
@@ -14,54 +15,54 @@ type Props = NativeStackScreenProps<OnboardingStackParamList, 'Dosha'>;
 
 export type Question = {
   key: string;
-  prompt: string;
-  options: Array<{ label: string; value: DoshaPick }>;
+  prompt: TKey;
+  options: Array<{ label: TKey; value: DoshaPick }>;
 };
 
 export const DOSHA_QUESTIONS: Question[] = [
   {
     key: 'body_frame',
-    prompt: 'My body frame is naturally:',
+    prompt: 'doshaQuiz.body_frame.prompt',
     options: [
-      { label: 'Thin and light (V)', value: 'vata' },
-      { label: 'Medium and muscular (P)', value: 'pitta' },
-      { label: 'Broad and solid (K)', value: 'kapha' },
+      { label: 'doshaQuiz.body_frame.vata', value: 'vata' },
+      { label: 'doshaQuiz.body_frame.pitta', value: 'pitta' },
+      { label: 'doshaQuiz.body_frame.kapha', value: 'kapha' },
     ],
   },
   {
     key: 'stress',
-    prompt: 'Under stress, I tend to become:',
+    prompt: 'doshaQuiz.stress.prompt',
     options: [
-      { label: 'Anxious and scattered (V)', value: 'vata' },
-      { label: 'Irritable and sharp (P)', value: 'pitta' },
-      { label: 'Withdrawn and heavy (K)', value: 'kapha' },
+      { label: 'doshaQuiz.stress.vata', value: 'vata' },
+      { label: 'doshaQuiz.stress.pitta', value: 'pitta' },
+      { label: 'doshaQuiz.stress.kapha', value: 'kapha' },
     ],
   },
   {
     key: 'energy',
-    prompt: 'My energy through the day is:',
+    prompt: 'doshaQuiz.energy.prompt',
     options: [
-      { label: 'Comes in bursts, tires quickly (V)', value: 'vata' },
-      { label: 'Strong and focused, then crashes (P)', value: 'pitta' },
-      { label: 'Steady but slow to start (K)', value: 'kapha' },
+      { label: 'doshaQuiz.energy.vata', value: 'vata' },
+      { label: 'doshaQuiz.energy.pitta', value: 'pitta' },
+      { label: 'doshaQuiz.energy.kapha', value: 'kapha' },
     ],
   },
   {
     key: 'sleep',
-    prompt: 'My sleep is usually:',
+    prompt: 'doshaQuiz.sleep.prompt',
     options: [
-      { label: 'Light, easily disturbed (V)', value: 'vata' },
-      { label: 'Sound but shorter (P)', value: 'pitta' },
-      { label: 'Deep and long (K)', value: 'kapha' },
+      { label: 'doshaQuiz.sleep.vata', value: 'vata' },
+      { label: 'doshaQuiz.sleep.pitta', value: 'pitta' },
+      { label: 'doshaQuiz.sleep.kapha', value: 'kapha' },
     ],
   },
   {
     key: 'learning',
-    prompt: 'When learning something new, I:',
+    prompt: 'doshaQuiz.learning.prompt',
     options: [
-      { label: 'Grasp fast, forget fast (V)', value: 'vata' },
-      { label: 'Grasp with sharp focus, remember well (P)', value: 'pitta' },
-      { label: 'Slow to grasp, never forget (K)', value: 'kapha' },
+      { label: 'doshaQuiz.learning.vata', value: 'vata' },
+      { label: 'doshaQuiz.learning.pitta', value: 'pitta' },
+      { label: 'doshaQuiz.learning.kapha', value: 'kapha' },
     ],
   },
 ];
@@ -78,6 +79,7 @@ export function scoreDosha(answers: Record<string, DoshaPick>): Dosha {
 
 export default function DoshaScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
+  const { t } = useI18n();
   const [answers, setAnswers] = useState<Partial<Record<string, DoshaPick>>>({});
 
   const complete = useMemo(
@@ -110,7 +112,7 @@ export default function DoshaScreen({ navigation, route }: Props) {
       >
         {DOSHA_QUESTIONS.map((question) => (
           <View key={question.key}>
-            <Text style={styles.question}>{question.prompt}</Text>
+            <Text style={styles.question}>{t(question.prompt)}</Text>
             {question.options.map((option) => {
               const selected = answers[question.key] === option.value;
               return (
@@ -121,7 +123,7 @@ export default function DoshaScreen({ navigation, route }: Props) {
                   }
                   accessibilityRole="radio"
                   accessibilityState={{ selected }}
-                  accessibilityLabel={option.label}
+                  accessibilityLabel={t(option.label)}
                   style={({ pressed }) => [
                     styles.option,
                     selected && styles.optionSelected,
@@ -131,7 +133,7 @@ export default function DoshaScreen({ navigation, route }: Props) {
                   <View style={styles.doshaGlyphFrame}>
                     <DoshaGlyph dosha={option.value} selected={selected} />
                   </View>
-                  <Text style={styles.optionText}>{option.label}</Text>
+                  <Text style={styles.optionText}>{t(option.label)}</Text>
                 </Pressable>
               );
             })}
@@ -148,7 +150,7 @@ export default function DoshaScreen({ navigation, route }: Props) {
             !complete && styles.buttonDisabled,
           ]}
         >
-          <Text style={styles.buttonText}>Continue</Text>
+          <Text style={styles.buttonText}>{t('common.continue')}</Text>
         </GentlePressable>
       </View>
     </View>

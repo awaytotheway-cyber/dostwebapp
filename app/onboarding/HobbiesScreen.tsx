@@ -8,24 +8,26 @@ import OnboardingProgress from './OnboardingProgress';
 import PreferenceGlyph from './PreferenceGlyph';
 import { onboardingStyles as styles } from './styles';
 import type { Hobby, OnboardingStackParamList } from './types';
+import { useI18n, type TKey } from '../../lib/i18n';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'Hobbies'>;
 
 const MAX_HOBBIES = 5;
-const OPTIONS: Array<{ value: Hobby; label: string }> = [
-  { value: 'reading', label: 'Reading' },
-  { value: 'music', label: 'Music' },
-  { value: 'movement', label: 'Movement' },
-  { value: 'nature', label: 'Nature' },
-  { value: 'art', label: 'Art' },
-  { value: 'cooking', label: 'Cooking' },
-  { value: 'travel', label: 'Travel' },
-  { value: 'games', label: 'Games' },
-  { value: 'spiritual_practice', label: 'Spiritual practice' },
+const OPTIONS: Hobby[] = [
+  'reading',
+  'music',
+  'movement',
+  'nature',
+  'art',
+  'cooking',
+  'travel',
+  'games',
+  'spiritual_practice',
 ];
 
 export default function HobbiesScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
+  const { t } = useI18n();
   const [hobbies, setHobbies] = useState<Hobby[]>([]);
 
   const toggleHobby = (hobby: Hobby) => {
@@ -49,15 +51,16 @@ export default function HobbiesScreen({ navigation, route }: Props) {
         style={styles.contentTop}
         contentContainerStyle={styles.scrollContent}
       >
-        <Text style={styles.eyebrow}>What restores you</Text>
+        <Text style={styles.eyebrow}>{t('onboarding.hobbiesEyebrow')}</Text>
         <Text accessibilityRole="header" style={[styles.headingLeft, styles.headingWithLead]}>
-          What do you enjoy making time for?
+          {t('onboarding.hobbiesHeading')}
         </Text>
-        <Text style={styles.screenLead}>Choose up to five. These can change as you do.</Text>
+        <Text style={styles.screenLead}>{t('onboarding.hobbiesLead')}</Text>
         <Text accessibilityLiveRegion="polite" style={styles.selectionCount}>
-          {hobbies.length} of {MAX_HOBBIES} selected
+          {t('onboarding.hobbiesCount', { count: hobbies.length, max: MAX_HOBBIES })}
         </Text>
-        {OPTIONS.map((option) => {
+        {OPTIONS.map((value) => {
+          const option = { value, label: t(`hobbies.${value}` as TKey) };
           const selected = hobbies.includes(option.value);
           const unavailable = !selected && hobbies.length >= MAX_HOBBIES;
           return (
@@ -67,7 +70,7 @@ export default function HobbiesScreen({ navigation, route }: Props) {
               disabled={unavailable}
               accessibilityRole="checkbox"
               accessibilityLabel={option.label}
-              accessibilityHint={unavailable ? 'Remove another interest to select this one' : undefined}
+              accessibilityHint={unavailable ? t('onboarding.hobbiesUnavailableHint') : undefined}
               accessibilityState={{ checked: selected, disabled: unavailable }}
               style={({ pressed }) => [
                 styles.option,
@@ -93,7 +96,7 @@ export default function HobbiesScreen({ navigation, route }: Props) {
             hobbies.length === 0 && styles.buttonDisabled,
           ]}
         >
-          <Text style={styles.buttonText}>Continue</Text>
+          <Text style={styles.buttonText}>{t('common.continue')}</Text>
         </GentlePressable>
       </View>
     </View>

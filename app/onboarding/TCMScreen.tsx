@@ -13,41 +13,38 @@ import {
   type TcmElement,
 } from '../../lib/personalityProfile';
 import { usePersonalityStepExit } from './usePersonalityStepExit';
+import { t as translate, useI18n, type TKey } from '../../lib/i18n';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'TCM'>;
 
 type ViewMode = 'emotion' | 'climate' | 'result';
 
-export const TCM_EMOTIONAL_STATES: Array<{ label: string; element: TcmElement }> = [
-  { label: 'I tend to feel anger or frustration first', element: 'Wood' },
-  { label: 'I tend to feel joy or overexcitement first', element: 'Fire' },
-  { label: 'I tend to feel worry or overthinking first', element: 'Earth' },
-  { label: 'I tend to feel grief or sadness first', element: 'Metal' },
-  { label: 'I tend to feel fear or anxiety first', element: 'Water' },
+// `label` is the English text stored in the profile; `key` is what is shown.
+export const TCM_EMOTIONAL_STATES: Array<{ label: string; key: TKey; element: TcmElement }> = [
+  { label: 'I tend to feel anger or frustration first', key: 'tcm.emotion.Wood', element: 'Wood' },
+  { label: 'I tend to feel joy or overexcitement first', key: 'tcm.emotion.Fire', element: 'Fire' },
+  { label: 'I tend to feel worry or overthinking first', key: 'tcm.emotion.Earth', element: 'Earth' },
+  { label: 'I tend to feel grief or sadness first', key: 'tcm.emotion.Metal', element: 'Metal' },
+  { label: 'I tend to feel fear or anxiety first', key: 'tcm.emotion.Water', element: 'Water' },
 ];
 
-export const TCM_CLIMATE_PREFERENCES: Array<{ label: string; element: TcmElement }> = [
-  { label: 'Warm and dry', element: 'Fire' },
-  { label: 'Cool and breezy', element: 'Wood' },
-  { label: 'Humid and mild', element: 'Earth' },
-  { label: 'Crisp and clear', element: 'Metal' },
-  { label: 'Cold, I run warm naturally', element: 'Water' },
+export const TCM_CLIMATE_PREFERENCES: Array<{ label: string; key: TKey; element: TcmElement }> = [
+  { label: 'Warm and dry', key: 'tcm.climate.Fire', element: 'Fire' },
+  { label: 'Cool and breezy', key: 'tcm.climate.Wood', element: 'Wood' },
+  { label: 'Humid and mild', key: 'tcm.climate.Earth', element: 'Earth' },
+  { label: 'Crisp and clear', key: 'tcm.climate.Metal', element: 'Metal' },
+  { label: 'Cold, I run warm naturally', key: 'tcm.climate.Water', element: 'Water' },
 ];
-
-export const TCM_ELEMENT_LENS: Record<TcmElement, string> = {
-  Wood: 'growing, driven, and quick to feel anger or frustration when blocked, but capable of remarkable direction when given space to move',
-  Fire: 'expressive, warm, and quick to feel joy, but prone to burning out when overextended',
-  Earth: 'centering, thoughtful, and quick to worry or overthink, but deeply steady when they feel nourished and held',
-  Metal: 'precise, discerning, and quick to feel grief or letting-go, but clear and principled when they have room to refine',
-  Water: 'deep, quiet, and quick to feel fear or anxiety, but wise and resilient when they can rest in their own depth',
-};
 
 export function scoreTCM(emotionalStateElement: TcmElement, _climateElement: TcmElement): TcmElement {
   return emotionalStateElement;
 }
 
 function resultCopy(element: TcmElement): string {
-  return `Your dominant element is ${element} — ${TCM_ELEMENT_LENS[element]}. This isn't a box — just one lens DOST can use to understand you better.`;
+  return translate('tcm.resultCopy', {
+    element: translate(`tcm.elements.${element}` as TKey),
+    lens: translate(`tcm.lens.${element}` as TKey),
+  });
 }
 
 export default function TCMScreen({ navigation, route }: Props) {
@@ -60,6 +57,7 @@ export default function TCMScreen({ navigation, route }: Props) {
     (typeof TCM_CLIMATE_PREFERENCES)[number] | null
   >(null);
   const [saving, setSaving] = useState(false);
+  const { t } = useI18n();
 
   const resultElement =
     emotionalState != null && climatePreference != null
@@ -93,11 +91,11 @@ export default function TCMScreen({ navigation, route }: Props) {
         tcm_climate_preference: climatePreference.label,
       });
       if (!saved.ok) {
-        Alert.alert('Could not save', saved.message);
+        Alert.alert(t('common.couldNotSave'), saved.message);
       }
       exitStep();
     } catch {
-      Alert.alert('Could not save', 'Please try again.');
+      Alert.alert(t('common.couldNotSave'), t('common.pleaseTryAgain'));
       exitStep();
     } finally {
       setSaving(false);
@@ -121,13 +119,11 @@ export default function TCMScreen({ navigation, route }: Props) {
       >
         {mode === 'emotion' ? (
           <>
-            <Text style={styles.eyebrow}>1 of 2</Text>
+            <Text style={styles.eyebrow}>{t('tcm.step', { current: 1, total: 2 })}</Text>
             <Text accessibilityRole="header" style={[styles.headingLeft, styles.headingWithLead]}>
-              When a feeling arrives first, which one is it usually?
+              {t('tcm.emotionHeading')}
             </Text>
-            <Text style={styles.screenLead}>
-              There is no right answer — pick the one that feels most familiar.
-            </Text>
+            <Text style={styles.screenLead}>{t('tcm.emotionLead')}</Text>
             {TCM_EMOTIONAL_STATES.map((option) => {
               const selected = emotionalState?.label === option.label;
               return (
@@ -138,7 +134,7 @@ export default function TCMScreen({ navigation, route }: Props) {
                     setMode('climate');
                   }}
                   accessibilityRole="button"
-                  accessibilityLabel={option.label}
+                  accessibilityLabel={t(option.key)}
                   accessibilityState={{ selected }}
                   style={({ pressed }) => [
                     styles.option,
@@ -146,7 +142,7 @@ export default function TCMScreen({ navigation, route }: Props) {
                     (selected || pressed) && styles.optionSelected,
                   ]}
                 >
-                  <Text style={styles.optionText}>{option.label}</Text>
+                  <Text style={styles.optionText}>{t(option.key)}</Text>
                 </GentlePressable>
               );
             })}
@@ -155,13 +151,11 @@ export default function TCMScreen({ navigation, route }: Props) {
 
         {mode === 'climate' ? (
           <>
-            <Text style={styles.eyebrow}>2 of 2</Text>
+            <Text style={styles.eyebrow}>{t('tcm.step', { current: 2, total: 2 })}</Text>
             <Text accessibilityRole="header" style={[styles.headingLeft, styles.headingWithLead]}>
-              Which climate feels most like home?
+              {t('tcm.climateHeading')}
             </Text>
-            <Text style={styles.screenLead}>
-              Think of where your body settles, not where you live right now.
-            </Text>
+            <Text style={styles.screenLead}>{t('tcm.climateLead')}</Text>
             {TCM_CLIMATE_PREFERENCES.map((option) => {
               const selected = climatePreference?.label === option.label;
               return (
@@ -172,7 +166,7 @@ export default function TCMScreen({ navigation, route }: Props) {
                     setMode('result');
                   }}
                   accessibilityRole="button"
-                  accessibilityLabel={option.label}
+                  accessibilityLabel={t(option.key)}
                   accessibilityState={{ selected }}
                   style={({ pressed }) => [
                     styles.option,
@@ -180,7 +174,7 @@ export default function TCMScreen({ navigation, route }: Props) {
                     (selected || pressed) && styles.optionSelected,
                   ]}
                 >
-                  <Text style={styles.optionText}>{option.label}</Text>
+                  <Text style={styles.optionText}>{t(option.key)}</Text>
                 </GentlePressable>
               );
             })}
@@ -189,9 +183,9 @@ export default function TCMScreen({ navigation, route }: Props) {
 
         {mode === 'result' && resultElement != null ? (
           <>
-            <Text style={styles.eyebrow}>{resultElement}</Text>
+            <Text style={styles.eyebrow}>{t(`tcm.elements.${resultElement}` as TKey)}</Text>
             <Text accessibilityRole="header" style={[styles.headingLeft, styles.headingWithLead]}>
-              A lens, not a box
+              {t('enneagram.lensNotBox')}
             </Text>
             <Text style={styles.copyLeft}>{resultCopy(resultElement)}</Text>
           </>
@@ -202,14 +196,14 @@ export default function TCMScreen({ navigation, route }: Props) {
         <View style={styles.footer}>
           <GentlePressable
             accessibilityRole="button"
-            accessibilityLabel="Skip this for now"
+            accessibilityLabel={t('enneagram.skipForNow')}
             onPress={() => {
               void onSkip();
             }}
             disabled={saving}
             style={styles.textLinkWrap}
           >
-            <Text style={styles.textLink}>Skip this for now</Text>
+            <Text style={styles.textLink}>{t('enneagram.skipForNow')}</Text>
           </GentlePressable>
         </View>
       ) : null}
@@ -228,7 +222,7 @@ export default function TCMScreen({ navigation, route }: Props) {
             ]}
           >
             <Text style={styles.buttonText}>
-              {saving ? 'Saving…' : standalone ? 'Save' : 'Continue'}
+              {saving ? t('common.saving') : standalone ? t('common.save') : t('common.continue')}
             </Text>
           </GentlePressable>
         </View>

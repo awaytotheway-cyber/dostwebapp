@@ -9,7 +9,7 @@ import { spacing } from '../../lib/theme';
 import GentlePressable from '../GentlePressable';
 import {
   calculateLifePathNumber,
-  LIFE_PATH_THEMES,
+  LIFE_PATH_NUMBERS,
   lifePathRevealCopy,
 } from '../../lib/personality/numerology';
 import {
@@ -17,18 +17,20 @@ import {
   skipNumerologyModule,
 } from '../../lib/personalityProfile';
 import { usePersonalityStepExit } from './usePersonalityStepExit';
+import { useI18n } from '../../lib/i18n';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'Numerology'>;
 
 export default function NumerologyScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
   const [saving, setSaving] = useState(false);
+  const { t } = useI18n();
 
   const lifePathNumber = useMemo(() => {
     const dob = (route.params as { dob?: string } | undefined)?.dob;
     if (!dob) return null;
     const computed = calculateLifePathNumber(dob);
-    return LIFE_PATH_THEMES[computed] != null ? computed : null;
+    return LIFE_PATH_NUMBERS.includes(computed) ? computed : null;
   }, [route.params]);
 
   const { standalone, exitStep } = usePersonalityStepExit(() => {
@@ -56,11 +58,11 @@ export default function NumerologyScreen({ navigation, route }: Props) {
     try {
       const saved = await saveLifePathNumber(lifePathNumber);
       if (!saved.ok) {
-        Alert.alert('Could not save', saved.message);
+        Alert.alert(t('common.couldNotSave'), saved.message);
       }
       exitStep();
     } catch {
-      Alert.alert('Could not save', 'Please try again.');
+      Alert.alert(t('common.couldNotSave'), t('common.pleaseTryAgain'));
       exitStep();
     } finally {
       setSaving(false);
@@ -80,31 +82,31 @@ export default function NumerologyScreen({ navigation, route }: Props) {
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.eyebrow}>From your birth date</Text>
+        <Text style={styles.eyebrow}>{t('numerology.eyebrow')}</Text>
         <Text accessibilityRole="header" style={[styles.headingLeft, styles.headingWithLead]}>
-          {lifePathNumber != null ? `Life Path ${lifePathNumber}` : 'Life Path'}
+          {lifePathNumber != null
+            ? t('numerology.lifePathNumber', { number: lifePathNumber })
+            : t('numerology.lifePath')}
         </Text>
         <Text style={styles.copyLeft}>
           {lifePathNumber != null
             ? lifePathRevealCopy(lifePathNumber)
-            : 'We could not read a life path from this birth date. You can skip this and continue.'}
+            : t('numerology.unreadable')}
         </Text>
-        <Text style={styles.screenLead}>
-          This is just one lens — not a prediction, and not something you have to keep.
-        </Text>
+        <Text style={styles.screenLead}>{t('numerology.lensNote')}</Text>
       </ScrollView>
 
       <View style={styles.footer}>
         <GentlePressable
           accessibilityRole="button"
-          accessibilityLabel="Skip / I'd rather not see this"
+          accessibilityLabel={t('numerology.skip')}
           onPress={() => {
             void onSkip();
           }}
           disabled={saving}
           style={styles.textLinkWrap}
         >
-          <Text style={styles.textLink}>Skip / I'd rather not see this</Text>
+          <Text style={styles.textLink}>{t('numerology.skip')}</Text>
         </GentlePressable>
         {lifePathNumber != null ? (
           <GentlePressable
@@ -119,7 +121,7 @@ export default function NumerologyScreen({ navigation, route }: Props) {
             ]}
           >
             <Text style={styles.buttonText}>
-              {saving ? 'Saving…' : standalone ? 'Save' : 'Continue'}
+              {saving ? t('common.saving') : standalone ? t('common.save') : t('common.continue')}
             </Text>
           </GentlePressable>
         ) : null}

@@ -8,6 +8,7 @@ import { onboardingStyles as styles } from './styles';
 import OnboardingProgress from './OnboardingProgress';
 import { spacing } from '../../lib/theme';
 import GentlePressable from '../GentlePressable';
+import { useI18n } from '../../lib/i18n';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'Confirm'> & {
   onFinished: () => void;
@@ -15,6 +16,7 @@ type Props = NativeStackScreenProps<OnboardingStackParamList, 'Confirm'> & {
 
 export default function ConfirmScreen({ route, onFinished }: Props) {
   const insets = useSafeAreaInsets();
+  const { t } = useI18n();
   const [saving, setSaving] = useState(false);
   const {
     name,
@@ -52,12 +54,12 @@ export default function ConfirmScreen({ route, onFinished }: Props) {
         socialStyle,
       });
       if (!result.ok) {
-        Alert.alert('Could not save', result.message);
+        Alert.alert(t('common.couldNotSave'), result.message);
         return;
       }
       onFinished();
     } catch {
-      Alert.alert('Could not save', 'Please try again.');
+      Alert.alert(t('common.couldNotSave'), t('common.pleaseTryAgain'));
     } finally {
       setSaving(false);
     }
@@ -73,7 +75,7 @@ export default function ConfirmScreen({ route, onFinished }: Props) {
       <OnboardingProgress />
       <View style={styles.content}>
         <Text accessibilityRole="header" style={styles.heading}>
-          Namaste, {name}. Whenever you're ready.
+          {t('onboarding.confirmHeading', { name })}
         </Text>
         <GentlePressable
           onPress={() => {
@@ -86,7 +88,9 @@ export default function ConfirmScreen({ route, onFinished }: Props) {
             saving && styles.buttonDisabled,
           ]}
         >
-          <Text style={styles.buttonText}>{saving ? 'Saving…' : 'Start'}</Text>
+          <Text style={styles.buttonText}>
+            {saving ? t('common.saving') : t('onboarding.start')}
+          </Text>
         </GentlePressable>
       </View>
     </View>
