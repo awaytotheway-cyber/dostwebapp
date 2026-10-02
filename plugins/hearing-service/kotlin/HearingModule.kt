@@ -29,6 +29,15 @@ class HearingModule(reactContext: ReactApplicationContext) :
 
   private val enrollmentRecorder by lazy { EnrollmentRecorder(reactApplicationContext) }
 
+  init {
+    HearingService.attachReactContext(reactContext)
+  }
+
+  override fun invalidate() {
+    HearingService.detachReactContext(reactApplicationContext)
+    super.invalidate()
+  }
+
   @ReactMethod
   fun startSession(promise: Promise) {
     try {

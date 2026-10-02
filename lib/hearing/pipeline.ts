@@ -118,6 +118,8 @@ type SessionCtx = {
   activeTasks: number;
   unsubscribe: () => void;
   lastSummary?: HearingSessionStopped;
+  lastTickTotalMs: number;
+  lastTickSpeechMs: number;
 };
 
 let ctx: SessionCtx | null = null;
@@ -219,6 +221,8 @@ export async function startHearingSession(
     },
     onTick: (t) => {
       if (!ctx) return;
+      ctx.lastTickTotalMs = t.totalMs;
+      ctx.lastTickSpeechMs = t.speechMs;
       if (state.status !== 'active') return;
       setState({
         ...state,
@@ -255,6 +259,8 @@ export async function startHearingSession(
       : 0,
     activeTasks: 0,
     unsubscribe,
+    lastTickTotalMs: 0,
+    lastTickSpeechMs: 0,
   };
 
   setState({
@@ -300,9 +306,12 @@ export async function stopHearingSession(): Promise<void> {
   // Give any in-flight tasks a brief chance to finish so their rows land
   // before we write the session summary.
   await waitForTasks(active, 3000);
+  // The stop intent is handled asynchronously by the service, so its
+  // summary event can land after nativeStopSession() resolves.
+  await waitFor(() => active.lastSummary !== undefined, 1500);
 
-  const totalMs = active.lastSummary?.totalMs ?? 0;
-  const speechMs = active.lastSummary?.speechMs ?? 0;
+  const totalMs = active.lastSummary?.totalMs ?? active.lastTickTotalMs;
+  const speechMs = active.lastSummary?.speechMs ?? active.lastTickSpeechMs;
   const endedAt = active.lastSummary?.endedAt ?? Date.now();
 
   await supabase
@@ -335,8 +344,12 @@ async function abortSession(reason: string): Promise<void> {
 }
 
 async function waitForTasks(active: SessionCtx, timeoutMs: number): Promise<void> {
+  await waitFor(() => active.activeTasks === 0, timeoutMs);
+}
+
+async function waitFor(done: () => boolean, timeoutMs: number): Promise<void> {
   const start = Date.now();
-  while (active.activeTasks > 0 && Date.now() - start < timeoutMs) {
+  while (!done() && Date.now() - start < timeoutMs) {
     await sleep(50);
   }
 }

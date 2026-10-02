@@ -17,10 +17,10 @@ import android.os.PowerManager
 import android.util.Base64
 import android.util.Log
 import androidx.core.app.NotificationCompat
-import com.facebook.react.ReactApplication
 import com.facebook.react.bridge.Arguments
+import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.WritableMap
-import com.facebook.react.modules.core.DeviceEventManagerModule
+import java.lang.ref.WeakReference
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import kotlin.concurrent.thread
@@ -73,6 +73,20 @@ class HearingService : Service() {
     @Volatile
     var isRunning: Boolean = false
       private set
+
+    // Set by HearingModule. Under the bridgeless New Architecture,
+    // ReactNativeHost.reactInstanceManager has no live context, so the
+    // service must emit through the module's own context.
+    @Volatile
+    private var reactContextRef: WeakReference<ReactApplicationContext>? = null
+
+    fun attachReactContext(ctx: ReactApplicationContext) {
+      reactContextRef = WeakReference(ctx)
+    }
+
+    fun detachReactContext(ctx: ReactApplicationContext) {
+      if (reactContextRef?.get() === ctx) reactContextRef = null
+    }
   }
 
   private var wakeLock: PowerManager.WakeLock? = null
@@ -361,15 +375,15 @@ class HearingService : Service() {
   }
 
   private fun emitEvent(name: String, payload: WritableMap) {
-    val app = application
-    if (app is ReactApplication) {
-      try {
-        val ctx = app.reactNativeHost.reactInstanceManager.currentReactContext
-        ctx?.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
-          ?.emit(name, payload)
-      } catch (e: Throwable) {
-        Log.w(TAG, "emitEvent($name) failed: ${e.message}")
-      }
+    val ctx = reactContextRef?.get()
+    if (ctx == null || !ctx.hasActiveReactInstance()) {
+      Log.w(TAG, "emitEvent($name) dropped: no active React context")
+      return
+    }
+    try {
+      ctx.emitDeviceEvent(name, payload)
+    } catch (e: Throwable) {
+      Log.w(TAG, "emitEvent($name) failed: ${e.message}")
     }
   }
 

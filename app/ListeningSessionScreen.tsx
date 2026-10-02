@@ -223,7 +223,6 @@ function Header({ onBack }: { onBack: () => void }) {
       >
         <Text style={styles.backChipText}>← Back</Text>
       </GentlePressable>
-      <Text style={styles.eyebrow}>Listening</Text>
     </View>
   );
 }
@@ -601,12 +600,6 @@ const styles = StyleSheet.create({
   },
   backChipPressed: { opacity: 0.6 },
   backChipText: { ...theme.type.label, color: theme.colors.sand },
-  eyebrow: {
-    ...theme.type.label,
-    color: theme.colors.gold,
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-  },
   centerColumn: {
     alignItems: 'center',
   },

@@ -195,7 +195,7 @@ export default function HomeScreen({ navigation }: Props) {
           style={({ pressed }) => [styles.journeyRow, pressed && styles.cardPressed]}
         >
           <View style={styles.journeyLeft}>
-            <Svg width={18} height={18} viewBox="0 0 28 28" accessible={false} focusable={false}>
+            <Svg width={22} height={22} viewBox="0 0 28 28" accessible={false} focusable={false}>
               <Path
                 d="M14 6c-2 0-3.6 1.6-3.6 3.6v6.8c0 2 1.6 3.6 3.6 3.6s3.6-1.6 3.6-3.6V9.6C17.6 7.6 16 6 14 6Z"
                 fill="none"
@@ -216,7 +216,7 @@ export default function HomeScreen({ navigation }: Props) {
             </Svg>
             <Text style={styles.journeyLabel}>Listening session</Text>
           </View>
-          <Ionicons name="chevron-forward" size={16} color={home.muted} />
+          <Ionicons name="chevron-forward" size={20} color={home.muted} />
         </GentlePressable>
 
         {/* ── Your Journey ── */}
@@ -227,7 +227,7 @@ export default function HomeScreen({ navigation }: Props) {
           style={({ pressed }) => [styles.journeyRow, pressed && styles.cardPressed]}
         >
           <View style={styles.journeyLeft}>
-            <Svg width={18} height={18} viewBox="0 0 28 28" accessible={false} focusable={false}>
+            <Svg width={22} height={22} viewBox="0 0 28 28" accessible={false} focusable={false}>
               <Path
                 d="M4 18.5c4.2-6.2 7.8-9.4 10-9.4s5.8 3.2 10 9.4"
                 fill="none"
@@ -240,7 +240,7 @@ export default function HomeScreen({ navigation }: Props) {
             </Svg>
             <Text style={styles.journeyLabel}>Your journey</Text>
           </View>
-          <Ionicons name="chevron-forward" size={16} color={home.muted} />
+          <Ionicons name="chevron-forward" size={20} color={home.muted} />
         </GentlePressable>
       </View>
     </View>
@@ -405,6 +405,8 @@ const styles = StyleSheet.create({
   },
   journeyLabel: {
     ...typography.label,
+    fontSize: 16,
+    lineHeight: 22,
     color: home.muted,
   },
 });
