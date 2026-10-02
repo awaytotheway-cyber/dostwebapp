@@ -38,6 +38,7 @@ const MEL_HIGH_HZ = 7600;
 // Frames quieter than this never count as speech (same floor as the
 // native VAD's absolute minimum in HearingService.kt).
 const SPEECH_MIN_RMS = 0.006;
+const DIGITAL_SILENCE_DB = -90;
 
 export const VOICEPRINT_LENGTH = NUM_CEPS * 2;
 
@@ -230,7 +231,12 @@ export function analyzeVoiceprint(
 
   const sortedDb = Array.from(energyDb).sort((a, b) => a - b);
   const loudDb = sortedDb[Math.floor(0.95 * (sortedDb.length - 1))];
-  const floorDb = sortedDb[Math.floor(0.1 * (sortedDb.length - 1))];
+  // Digital silence (exact zeros, common at the start of a recording) is
+  // not the room's background and would make any audio look noise-free.
+  const audibleDb = sortedDb.filter((d) => d > DIGITAL_SILENCE_DB);
+  const floorDb = audibleDb.length
+    ? audibleDb[Math.floor(0.1 * (audibleDb.length - 1))]
+    : DIGITAL_SILENCE_DB;
   let kept = 0;
   const keep = new Uint8Array(frameCount);
   for (let f = 0; f < frameCount; f++) {

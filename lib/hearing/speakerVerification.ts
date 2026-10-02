@@ -17,20 +17,29 @@ import {
  * everyone on some devices. Instead, each user's thresholds come from
  * their own enrollment: 3 s windows of each clip are scored against the
  * other clips, and the accept line sits at a percentile of those
- * self-scores. A segment noticeably noisier than the enrollment is
- * discarded outright, because noise pulls strangers' voices toward the
- * user's reference.
+ * self-scores. Segments that are noisy (absolutely, or compared with the
+ * enrollment) are discarded outright, because noise pulls strangers'
+ * voices toward the user's reference.
  *
  * Measured per 1.5–4 s segment, own voice kept / others accepted:
- *                      quiet room    people talking nearby   fan noise
- *   strict   (p60)     40% / 1%      44% / 2%                discarded
- *   balanced (p50)     48% / 1%      52% / 3%                discarded
- *   lenient  (p30)     66% / 2%      69% / 6%                discarded
- * on 200 held-out Speech Commands speakers (different words at
- * enrollment and test). On 60 speakers from an unseen recording setup
- * (AudioMNIST, everyone on the same mic), balanced kept 78% with 2%
- * others accepted in a quiet room. Real Hindi/Marathi conversation
- * will differ; speaker_verification_calibration logs real scores.
+ *
+ *   Speech Commands, 200 held-out speakers, each on their own device,
+ *   different words at enrollment and test:
+ *                 quiet room   others talking nearby   fan noise
+ *     strict      40% / 1%     40% / 2%                discarded
+ *     balanced    48% / 1%     48% / 2%                discarded
+ *     lenient     58% / 1%     56% / 4%                discarded
+ *
+ *   AudioMNIST, 60 speakers all on the same mic (closest to bystanders
+ *   on the user's own phone):
+ *     strict      69% / 6%     80% / 17%               discarded
+ *     balanced    81% / 9%     88% / 23%               discarded
+ *     lenient     91% / 13%    93% / 31%               discarded
+ *
+ * MFCC voiceprints cannot reliably separate people recorded on the same
+ * phone, especially with background speech; a neural speaker-embedding
+ * model is the upgrade path. Real Hindi/Marathi conversation will also
+ * differ; speaker_verification_calibration logs real scores.
  */
 
 export type Sensitivity = 'strict' | 'balanced' | 'lenient';
@@ -51,12 +60,16 @@ export type SpeakerCalibration = {
 const ACCEPT_PERCENTILE: Record<Sensitivity, number> = {
   strict: 0.6,
   balanced: 0.5,
-  lenient: 0.3,
+  lenient: 0.4,
 };
 const REJECT_PERCENTILE = 0.05;
 // Guards against a poor enrollment producing a near-zero accept line.
 const MIN_ACCEPT_SIMILARITY = 0.2;
-const NOISE_VETO_DB = 15;
+// A segment must be at least this clear (speech above background), both
+// absolutely and relative to the user's enrollment. Not tied to the
+// sensitivity setting: in noise the voiceprint can't tell people apart.
+const MIN_SNR_DB = 25;
+const MAX_SNR_DROP_FROM_ENROLLMENT_DB = 12;
 export const MIN_SPEECH_SECONDS = 0.5;
 
 function percentile(values: number[], p: number): number {
@@ -86,10 +99,11 @@ export function verifySpeaker(
   sensitivity: Sensitivity = 'balanced',
 ): VerificationOutcome {
   const similarity = voiceprintSimilarity(segment.voiceprint, reference);
-  if (
-    segment.speechSeconds < MIN_SPEECH_SECONDS ||
-    segment.snrDb < calibration.enrollmentSnrDb - NOISE_VETO_DB
-  ) {
+  const minSnrDb = Math.max(
+    MIN_SNR_DB,
+    calibration.enrollmentSnrDb - MAX_SNR_DROP_FROM_ENROLLMENT_DB,
+  );
+  if (segment.speechSeconds < MIN_SPEECH_SECONDS || segment.snrDb < minSnrDb) {
     return { result: 'ambiguous', similarity };
   }
   if (similarity >= calibration.accept[sensitivity]) return { result: 'match', similarity };
