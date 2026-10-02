@@ -1,4 +1,5 @@
-import { cosineSimilarity, type Voiceprint } from './speakerFingerprint';
+import { voiceprintSimilarity, type Voiceprint } from './speakerFingerprint';
+import { MODEL_THRESHOLDS } from './voiceprintModel';
 
 /**
  * Speaker verification gate.
@@ -21,28 +22,27 @@ export type VerificationOutcome = {
 };
 
 /**
- * Similarity thresholds per sensitivity setting.
- *
  *   accept  — at or above this, the segment is confidently the user
  *   reject  — strictly below this, the segment is confidently someone else
  *   between — ambiguous → discard (Rule 5)
  *
- * Numbers chosen based on the MFCC voiceprint's expected same-speaker
- * vs cross-speaker distribution. Step 8's calibration table will let
- * us re-tune these against real user data.
+ * Fitted alongside the LDA projection; see voiceprintModel.ts for the
+ * measured false-accept / false-reject rates behind each setting.
  */
-export const THRESHOLDS: Record<Sensitivity, { accept: number; reject: number }> = {
-  strict:   { accept: 0.85, reject: 0.75 },
-  balanced: { accept: 0.78, reject: 0.65 },
-  lenient:  { accept: 0.70, reject: 0.55 },
-};
+export const THRESHOLDS: Record<Sensitivity, { accept: number; reject: number }> =
+  MODEL_THRESHOLDS;
+
+// Segments with less voiced audio than this can't be judged reliably.
+export const MIN_SPEECH_SECONDS = 0.5;
 
 export function verifySpeaker(
   segmentVoiceprint: Voiceprint,
   referenceVoiceprint: Voiceprint,
   sensitivity: Sensitivity = 'balanced',
+  speechSeconds: number = Infinity,
 ): VerificationOutcome {
-  const similarity = cosineSimilarity(segmentVoiceprint, referenceVoiceprint);
+  const similarity = voiceprintSimilarity(segmentVoiceprint, referenceVoiceprint);
+  if (speechSeconds < MIN_SPEECH_SECONDS) return { result: 'ambiguous', similarity };
   const { accept, reject } = THRESHOLDS[sensitivity];
   if (similarity >= accept) return { result: 'match', similarity };
   if (similarity < reject) return { result: 'mismatch', similarity };

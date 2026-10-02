@@ -2,11 +2,12 @@ import { NativeModules, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../supabase';
 import {
+  analyzeVoiceprint,
   averageVoiceprints,
-  extractVoiceprint,
   VOICEPRINT_LENGTH,
   type Voiceprint,
 } from './speakerFingerprint';
+import { VOICEPRINT_MODEL_VERSION } from './voiceprintModel';
 
 /**
  * Speaker-enrollment orchestration.
@@ -34,7 +35,12 @@ const ENROLLMENT_LANGS_KEY = 'dost.hearing.enrollment.languages.v1';
 // Method identifier used by upserts. Matches the check constraint on
 // speaker_enrollment.enrollment_method.
 const ENROLLMENT_METHOD: 'mfcc_fingerprint' | 'embedding_model' = 'mfcc_fingerprint';
-const MODEL_VERSION = 'mfcc-13-v1';
+// Enrollments saved under any other version are treated as missing, so
+// the user is sent back through enrollment after a model change.
+const MODEL_VERSION = VOICEPRINT_MODEL_VERSION;
+
+// Each 12 s clip must contain at least this much voiced audio.
+const MIN_CLIP_SPEECH_SECONDS = 3;
 
 export type EnrollmentLanguage = 'en' | 'hi' | 'mr';
 
@@ -344,7 +350,14 @@ export async function cancelEnrollmentCapture(): Promise<void> {
  * directly.
  */
 export function voiceprintFromClip(clip: CapturedClip): Voiceprint {
-  return extractVoiceprint(clip.pcm, clip.sampleRate);
+  const { voiceprint, speechSeconds } = analyzeVoiceprint(clip.pcm, clip.sampleRate);
+  if (speechSeconds < MIN_CLIP_SPEECH_SECONDS) {
+    throw new Error(
+      `We only heard about ${Math.round(speechSeconds)} seconds of your voice. ` +
+        'Please read the whole passage aloud, holding the phone a little closer.',
+    );
+  }
+  return voiceprint;
 }
 
 export async function saveEnrollment(
@@ -396,10 +409,10 @@ export async function loadReferenceVoiceprint(): Promise<Voiceprint | null> {
 
   const { data, error } = await supabase
     .from('speaker_enrollment')
-    .select('voiceprint, clips_used')
+    .select('voiceprint, clips_used, model_version')
     .eq('user_id', userId)
     .maybeSingle();
-  if (error || !data) return null;
+  if (error || !data || data.model_version !== MODEL_VERSION) return null;
   return parseVoiceprint(data.voiceprint);
 }
 
@@ -414,10 +427,12 @@ export async function isEnrolled(): Promise<boolean> {
   if (!userId) return false;
   const { data } = await supabase
     .from('speaker_enrollment')
-    .select('user_id, clips_used')
+    .select('user_id, clips_used, model_version')
     .eq('user_id', userId)
     .maybeSingle();
-  return Boolean(data && (data.clips_used ?? 0) > 0);
+  return Boolean(
+    data && (data.clips_used ?? 0) > 0 && data.model_version === MODEL_VERSION,
+  );
 }
 
 export async function deleteEnrollment(): Promise<void> {

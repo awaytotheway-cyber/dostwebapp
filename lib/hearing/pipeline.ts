@@ -19,7 +19,7 @@ import {
 } from './hearingBridge';
 import { redactPII } from './redaction';
 import { getSensitivity } from './sensitivity';
-import { extractVoiceprint, type Voiceprint } from './speakerFingerprint';
+import { analyzeVoiceprint, type Voiceprint } from './speakerFingerprint';
 import {
   verifySpeaker,
   type Sensitivity,
@@ -184,11 +184,12 @@ export async function startHearingSession(
       // reference. On match: proceed. On mismatch or ambiguous: drop
       // the segment without any downstream processing (no acoustic
       // features, no transcription, no DB insert). Rule 5.
-      const segVoiceprint = extractVoiceprint(seg.pcm, seg.sampleRate);
+      const segPrint = analyzeVoiceprint(seg.pcm, seg.sampleRate);
       const gate = verifySpeaker(
-        segVoiceprint,
+        segPrint.voiceprint,
         ctx.referenceVoiceprint,
         ctx.sensitivity,
+        segPrint.speechSeconds,
       );
 
       // Time-boxed calibration logging (Step 8). Fire-and-forget; never
