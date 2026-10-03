@@ -17,7 +17,14 @@ import {
   LOCALE_TAGS,
   type AppLanguage,
 } from './languages';
+import { de } from './locales/de';
 import { en } from './locales/en';
+import { es } from './locales/es';
+import { hi } from './locales/hi';
+import { ja } from './locales/ja';
+import { mr } from './locales/mr';
+import { ru } from './locales/ru';
+import { zh } from './locales/zh';
 
 export * from './languages';
 
@@ -25,7 +32,7 @@ type EnMessages = typeof en;
 export type TKey = StringKey<EnMessages>;
 export type TPluralKey = PluralKey<EnMessages>;
 
-const MESSAGES: Partial<Record<AppLanguage, Messages<EnMessages>>> = { en };
+const MESSAGES: Record<AppLanguage, Messages<EnMessages>> = { en, hi, mr, es, de, ru, zh, ja };
 
 const STORAGE_KEY = 'dost.app.language.v1';
 
