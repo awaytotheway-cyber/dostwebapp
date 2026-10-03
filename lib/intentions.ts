@@ -1,3 +1,4 @@
+import { t as translate } from './i18n';
 import { supabase } from './supabase';
 
 export type HmTime = { hour: number; minute: number };
@@ -68,7 +69,7 @@ export async function saveReflectionTime(time: HmTime): Promise<{ ok: true } | {
   const { data, error: userError } = await supabase.auth.getUser();
   const userId = data?.user?.id;
   if (userError || !userId) {
-    return { ok: false, message: "Couldn't verify your session. Close the app and open it again." };
+    return { ok: false, message: translate('errors.verifySession') };
   }
 
   const { error } = await supabase
@@ -79,7 +80,7 @@ export async function saveReflectionTime(time: HmTime): Promise<{ ok: true } | {
   if (error) {
     return {
       ok: false,
-      message: 'Could not save the time. Paste the Step 5 SQL in Supabase, then try again.',
+      message: translate('errors.reflectionTimeSaveFailed'),
     };
   }
   return { ok: true };
@@ -92,13 +93,13 @@ export async function saveDailyIntentions(
   const one = noticing1.trim().slice(0, 120);
   const two = noticing2.trim().slice(0, 120);
   if (!one || !two) {
-    return { ok: false, message: 'Please name two things to notice.' };
+    return { ok: false, message: translate('errors.nameTwoThings') };
   }
 
   const { data, error: userError } = await supabase.auth.getUser();
   const userId = data?.user?.id;
   if (userError || !userId) {
-    return { ok: false, message: "Couldn't verify your session. Close the app and open it again." };
+    return { ok: false, message: translate('errors.verifySession') };
   }
 
   const forDate = tomorrowDateLocal();
@@ -117,7 +118,7 @@ export async function saveDailyIntentions(
     if (insert.error) {
       return {
         ok: false,
-        message: 'Could not save those noticings. Paste the Step 5 SQL in Supabase, then try again.',
+        message: translate('errors.noticingsSaveFailed'),
       };
     }
   }

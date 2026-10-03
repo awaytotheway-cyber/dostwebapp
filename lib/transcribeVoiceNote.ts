@@ -1,18 +1,14 @@
 import { FunctionsFetchError, FunctionsHttpError } from '@supabase/supabase-js';
 import NetInfo from '@react-native-community/netinfo';
 import { ensureAnonymousSession } from './session';
+import { t as translate } from './i18n';
 import { supabase } from './supabase';
 
-const GENTLE_ERROR =
-  "Couldn't catch that clearly. Try again when you're ready.";
-const SILENCE_ERROR =
-  "I didn't catch any words. Hold a little longer and speak when you're ready.";
-const OFFLINE_ERROR =
-  "You're offline right now. Connect and try again.";
-const SESSION_ERROR =
-  "We couldn't connect right now. Check your internet and try again.";
-const SESSION_DISABLED_ERROR =
-  "We couldn't connect right now. If this keeps happening, the app may need a moment — try again in a few minutes.";
+const gentleError = () => translate('errors.transcribeUnclear');
+const silenceError = () => translate('errors.silence');
+const offlineError = () => translate('errors.offline');
+const sessionError = () => translate('errors.connect');
+const sessionDisabledError = () => translate('errors.connectDisabled');
 
 export type TranscribeResult =
   | { ok: true; transcript: string }
@@ -57,12 +53,12 @@ function messageForStatus(
   status: number | undefined,
   isNetwork: boolean,
 ): string {
-  if (isNetwork) return OFFLINE_ERROR;
-  if (status === 401) return SESSION_ERROR;
+  if (isNetwork) return offlineError();
+  if (status === 401) return sessionError();
   if (status === 400) {
-    return "That recording didn't come through. Try holding a little longer.";
+    return translate('errors.recordingTooShort');
   }
-  return GENTLE_ERROR;
+  return gentleError();
 }
 
 async function assertOnline(): Promise<boolean> {
@@ -86,12 +82,12 @@ export async function transcribeVoiceNote(
 ): Promise<TranscribeResult> {
   const trimmed = typeof uri === 'string' ? uri.trim() : '';
   if (!trimmed) {
-    return { ok: false, message: GENTLE_ERROR };
+    return { ok: false, message: gentleError() };
   }
 
   const online = await assertOnline();
   if (!online) {
-    return { ok: false, message: OFFLINE_ERROR };
+    return { ok: false, message: offlineError() };
   }
 
   const session = await ensureAnonymousSession();
@@ -100,8 +96,8 @@ export async function transcribeVoiceNote(
       ok: false,
       message:
         session.kind === 'anonymous_disabled'
-          ? SESSION_DISABLED_ERROR
-          : SESSION_ERROR,
+          ? sessionDisabledError()
+          : sessionError(),
     };
   }
 
@@ -135,17 +131,17 @@ export async function transcribeVoiceNote(
     const transcript =
       typeof data?.transcript === 'string' ? data.transcript.trim() : '';
     if (isBlankOrSilentTranscript(transcript)) {
-      return { ok: false, message: SILENCE_ERROR };
+      return { ok: false, message: silenceError() };
     }
 
     return { ok: true, transcript };
   } catch (caught) {
     if (caught instanceof FunctionsHttpError) {
-      return { ok: false, message: GENTLE_ERROR };
+      return { ok: false, message: gentleError() };
     }
     if (isNetworkError(caught)) {
-      return { ok: false, message: OFFLINE_ERROR };
+      return { ok: false, message: offlineError() };
     }
-    return { ok: false, message: GENTLE_ERROR };
+    return { ok: false, message: gentleError() };
   }
 }

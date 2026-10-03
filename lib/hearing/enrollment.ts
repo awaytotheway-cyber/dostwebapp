@@ -1,5 +1,6 @@
 import { NativeModules, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { t as translate, tn } from '../i18n';
 import { supabase } from '../supabase';
 import {
   analyzeVoiceprint,
@@ -338,7 +339,7 @@ export async function captureEnrollmentClip(
 ): Promise<CapturedClip> {
   const mod = nativeModule();
   if (!mod) {
-    throw new Error('Enrollment is Android-only for now');
+    throw new Error(translate('errors.enrollmentAndroidOnly'));
   }
   const raw = await mod.captureEnrollmentClip(durationMs);
   return {
@@ -373,10 +374,7 @@ export type EnrollmentClipPrint = {
 export function voiceprintFromClip(clip: CapturedClip): EnrollmentClipPrint {
   const whole = analyzeVoiceprint(clip.pcm, clip.sampleRate);
   if (whole.speechSeconds < MIN_CLIP_SPEECH_SECONDS) {
-    throw new Error(
-      `We only heard about ${Math.round(whole.speechSeconds)} seconds of your voice. ` +
-        'Please read the whole passage aloud, holding the phone a little closer.',
-    );
+    throw new Error(tn('errors.tooLittleSpeech', Math.round(whole.speechSeconds)));
   }
   const win = Math.round(WINDOW_SECONDS * clip.sampleRate);
   const hop = Math.round(WINDOW_HOP_SECONDS * clip.sampleRate);
@@ -414,7 +412,7 @@ export async function saveEnrollment(clips: EnrollmentClipPrint[]): Promise<void
 
   const { data: userData, error: userErr } = await supabase.auth.getUser();
   if (userErr || !userData?.user) {
-    throw new Error('Sign in required to enroll');
+    throw new Error(translate('errors.signInToEnroll'));
   }
   const userId = userData.user.id;
 

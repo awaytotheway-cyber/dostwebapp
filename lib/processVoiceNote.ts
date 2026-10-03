@@ -1,19 +1,15 @@
 import NetInfo from '@react-native-community/netinfo';
 import { sendChatMessage } from './chat';
+import { t as translate } from './i18n';
 import { ensureAnonymousSession } from './session';
 import { supabase } from './supabase';
 import { isBlankOrSilentTranscript } from './transcribeVoiceNote';
 
-const SILENCE_ERROR =
-  "I didn't catch any words. Hold a little longer and speak when you're ready.";
-const OFFLINE_ERROR =
-  "You're offline right now. Connect and try again.";
-const SESSION_ERROR =
-  "We couldn't connect right now. Check your internet and try again.";
-const SESSION_DISABLED_ERROR =
-  "We couldn't connect right now. If this keeps happening, the app may need a moment — try again in a few minutes.";
-const SAVE_ERROR =
-  "Couldn't save that note. Try again when you're ready.";
+const silenceError = () => translate('errors.silence');
+const offlineError = () => translate('errors.offline');
+const sessionError = () => translate('errors.connect');
+const sessionDisabledError = () => translate('errors.connectDisabled');
+const saveError = () => translate('errors.noteSaveFailed');
 
 async function assertOnline(): Promise<boolean> {
   try {
@@ -221,12 +217,12 @@ export async function processVoiceNoteAfterTranscript(opts: {
   const transcript =
     typeof opts.transcript === 'string' ? opts.transcript.trim() : '';
   if (isBlankOrSilentTranscript(transcript)) {
-    return { ok: false, message: SILENCE_ERROR };
+    return { ok: false, message: silenceError() };
   }
 
   const online = await assertOnline();
   if (!online) {
-    return { ok: false, message: OFFLINE_ERROR };
+    return { ok: false, message: offlineError() };
   }
 
   const session = await ensureAnonymousSession();
@@ -235,15 +231,15 @@ export async function processVoiceNoteAfterTranscript(opts: {
       ok: false,
       message:
         session.kind === 'anonymous_disabled'
-          ? SESSION_DISABLED_ERROR
-          : SESSION_ERROR,
+          ? sessionDisabledError()
+          : sessionError(),
     };
   }
 
   const { data: userData, error: userError } = await supabase.auth.getUser();
   const userId = userData?.user?.id;
   if (userError || !userId) {
-    return { ok: false, message: SESSION_ERROR };
+    return { ok: false, message: sessionError() };
   }
 
   opts.onProgress?.('reflecting');
@@ -254,7 +250,7 @@ export async function processVoiceNoteAfterTranscript(opts: {
   if (!chat.ok) {
     const stillOnline = await assertOnline();
     if (!stillOnline) {
-      return { ok: false, message: OFFLINE_ERROR };
+      return { ok: false, message: offlineError() };
     }
     return { ok: false, message: chat.message };
   }
@@ -303,12 +299,12 @@ export async function processVoiceNoteAfterTranscript(opts: {
     .single();
 
   if (insertError || !inserted || typeof inserted !== 'object') {
-    return { ok: false, message: SAVE_ERROR };
+    return { ok: false, message: saveError() };
   }
 
   const note = inserted as VoiceNoteRecord;
   if (typeof note.id !== 'string' || typeof note.transcript !== 'string') {
-    return { ok: false, message: SAVE_ERROR };
+    return { ok: false, message: saveError() };
   }
 
   return { ok: true, note };
@@ -358,7 +354,7 @@ export async function deleteVoiceNote(opts: {
 }): Promise<{ ok: true } | { ok: false; message: string }> {
   const id = typeof opts.id === 'string' ? opts.id.trim() : '';
   if (!id) {
-    return { ok: false, message: "Couldn't delete that note." };
+    return { ok: false, message: translate('errors.noteDeleteFailed') };
   }
 
   const audioPath =
@@ -376,7 +372,7 @@ export async function deleteVoiceNote(opts: {
 
   const { error } = await supabase.from('voice_notes').delete().eq('id', id);
   if (error) {
-    return { ok: false, message: "Couldn't delete that note. Try again." };
+    return { ok: false, message: translate('errors.noteDeleteRetry') };
   }
   return { ok: true };
 }

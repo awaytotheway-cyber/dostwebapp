@@ -1,9 +1,10 @@
 import { FunctionsFetchError } from '@supabase/supabase-js';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
+import { t as translate } from './i18n';
 import { supabase } from './supabase';
 
-const GENTLE_ERROR = "Something's off on my end. Try again in a moment.";
+const gentleError = () => translate('errors.gentle');
 
 export type PrivacyResult = { ok: true } | { ok: false; message: string };
 
@@ -25,14 +26,14 @@ function statusFromInvoke(
 }
 
 function messageForStatus(status: number | undefined, isNetwork: boolean, kind: 'export' | 'delete'): string {
-  if (status === 401) return "Couldn't verify your session. Close the app and open it again.";
+  if (status === 401) return translate('errors.verifySession');
   if (status === 429 && kind === 'export') {
-    return 'Too many exports today. You can export up to 3 times per day.';
+    return translate('errors.tooManyExports');
   }
-  if (status === 400 && kind === 'delete') return 'Type DELETE to confirm.';
-  if (isNetwork) return GENTLE_ERROR;
+  if (status === 400 && kind === 'delete') return translate('errors.typeDelete');
+  if (isNetwork) return gentleError();
   // Never show raw HTTP codes (500) or FunctionsHttpError text.
-  return GENTLE_ERROR;
+  return gentleError();
 }
 
 function isNetworkError(error: unknown): boolean {
@@ -60,19 +61,19 @@ export async function exportMyData(): Promise<PrivacyResult> {
     }
 
     if (!data || typeof data !== 'object') {
-      return { ok: false, message: GENTLE_ERROR };
+      return { ok: false, message: gentleError() };
     }
 
     let json: string;
     try {
       json = JSON.stringify(data, null, 2);
     } catch {
-      return { ok: false, message: GENTLE_ERROR };
+      return { ok: false, message: gentleError() };
     }
 
     const dir = FileSystem.cacheDirectory;
     if (!dir) {
-      return { ok: false, message: 'Could not save the export on this device.' };
+      return { ok: false, message: translate('errors.exportSaveFailed') };
     }
 
     const name = `dost-export-${new Date().toISOString().slice(0, 10)}.json`;
@@ -80,29 +81,29 @@ export async function exportMyData(): Promise<PrivacyResult> {
     try {
       await FileSystem.writeAsStringAsync(uri, json);
     } catch {
-      return { ok: false, message: 'Could not save the export on this device.' };
+      return { ok: false, message: translate('errors.exportSaveFailed') };
     }
 
     const available = await Sharing.isAvailableAsync();
     if (!available) {
-      return { ok: false, message: 'Sharing is not available on this device.' };
+      return { ok: false, message: translate('errors.sharingUnavailable') };
     }
 
     try {
       await Sharing.shareAsync(uri, {
         mimeType: 'application/json',
-        dialogTitle: 'Export my DOST data',
+        dialogTitle: translate('errors.exportDialogTitle'),
         UTI: 'public.json',
       });
     } catch (shareError) {
       const msg = shareError instanceof Error ? shareError.message : '';
       if (/cancel/i.test(msg)) return { ok: true };
-      return { ok: false, message: 'Could not share the export.' };
+      return { ok: false, message: translate('errors.exportShareFailed') };
     }
 
     return { ok: true };
   } catch {
-    return { ok: false, message: GENTLE_ERROR };
+    return { ok: false, message: gentleError() };
   }
 }
 
@@ -121,7 +122,7 @@ export async function deleteMyConversations(): Promise<PrivacyResult> {
 
     return { ok: true };
   } catch {
-    return { ok: false, message: GENTLE_ERROR };
+    return { ok: false, message: gentleError() };
   }
 }
 
@@ -140,6 +141,6 @@ export async function deleteMyAccount(): Promise<PrivacyResult> {
 
     return { ok: true };
   } catch {
-    return { ok: false, message: GENTLE_ERROR };
+    return { ok: false, message: gentleError() };
   }
 }

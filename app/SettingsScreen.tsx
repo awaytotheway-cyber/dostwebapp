@@ -22,6 +22,7 @@ import type { ChatStackParamList } from './chatTypes';
 import { loadReflectionTime, saveReflectionTime, type HmTime } from '../lib/intentions';
 import {
   requestNotificationPermission,
+  restoreEveningScheduleIfAllowed,
   scheduleEveningCheckIn,
 } from '../lib/notifications';
 import { loadMyProfile, updateMyBirthPlace, updateMyNameAndIntention, type Dosha } from '../lib/profile';
@@ -393,7 +394,11 @@ export default function SettingsScreen({ navigation, onStartOver }: Props) {
               {APP_LANGUAGES.map((code) => (
                 <Pressable
                   key={code}
-                  onPress={() => void setLanguage(code)}
+                  onPress={() => {
+                    if (code === lang) return;
+                    // Re-schedule so the evening reminder text follows the new language.
+                    void setLanguage(code).then(restoreEveningScheduleIfAllowed);
+                  }}
                   accessibilityRole="button"
                   accessibilityState={{ selected: lang === code }}
                   accessibilityLabel={NATIVE_LANGUAGE_NAMES[code]}

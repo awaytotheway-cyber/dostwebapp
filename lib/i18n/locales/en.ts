@@ -914,6 +914,64 @@ export const en = {
     doneBody:
       'From here on, listening sessions will process only the segments that match you. Anything else — a stranger, background chatter — gets dropped before it’s ever transcribed.',
   },
+  errors: {
+    gentle: 'Something’s off on my end. Try again in a moment.',
+    slowDown: 'Let’s slow down together — take a breath.',
+    connect: 'We couldn’t connect right now. Check your internet and try again.',
+    connectDisabled:
+      'We couldn’t connect right now. If this keeps happening, the app may need a moment — try again in a few minutes.',
+    offline: 'You’re offline right now. Connect and try again.',
+    invalidMessage: 'Invalid message.',
+    verifySession: 'Couldn’t verify your session. Close the app and open it again.',
+    tooManyRefreshes: 'Too many refreshes. Please wait a bit.',
+    tooManyExports: 'Too many exports today. You can export up to 3 times per day.',
+    typeDelete: 'Type DELETE to confirm.',
+    exportSaveFailed: 'Could not save the export on this device.',
+    sharingUnavailable: 'Sharing is not available on this device.',
+    exportDialogTitle: 'Export my DOST data',
+    exportShareFailed: 'Could not share the export.',
+    transcribeUnclear: 'Couldn’t catch that clearly. Try again when you’re ready.',
+    silence: 'I didn’t catch any words. Hold a little longer and speak when you’re ready.',
+    recordingTooShort: 'That recording didn’t come through. Try holding a little longer.',
+    noteSaveFailed: 'Couldn’t save that note. Try again when you’re ready.',
+    noteDeleteFailed: 'Couldn’t delete that note.',
+    noteDeleteRetry: 'Couldn’t delete that note. Try again.',
+    enterName: 'Please enter a name.',
+    profileSaveFailed: 'Could not save your profile. Please try again.',
+    doshaSaveFailed: 'Could not save your dosha. Please try again.',
+    birthPlaceSaveFailed:
+      'Could not save place of birth. If this keeps happening, run the place-of-birth SQL in Supabase, then try again.',
+    profileDeleteFailed: 'Could not delete your profile. Please try again.',
+    personalitySaveFailed:
+      'Could not save this step. If it keeps happening, run the personality_profile SQL in Supabase, then try again.',
+    personalityLoadFailed:
+      'Could not load your personality profile. If it keeps happening, run the personality_profile SQL in Supabase, then try again.',
+    reflectionTimeSaveFailed: 'Could not save the time. Paste the Step 5 SQL in Supabase, then try again.',
+    nameTwoThings: 'Please name two things to notice.',
+    noticingsSaveFailed:
+      'Could not save those noticings. Paste the Step 5 SQL in Supabase, then try again.',
+    signInToListen: 'Sign in required to start a listening session.',
+    enrollFirst: 'You need to enroll your voice before starting a listening session.',
+    enrollmentAndroidOnly: 'Voice enrollment is Android-only for now.',
+    signInToEnroll: 'Sign in required to enroll your voice.',
+    tooLittleSpeech: plural({
+      one: 'We only heard about {count} second of your voice. Please read the whole passage aloud, holding the phone a little closer.',
+      other:
+        'We only heard about {count} seconds of your voice. Please read the whole passage aloud, holding the phone a little closer.',
+    }),
+  },
+  permissions: {
+    notYetAvailable: 'Not yet available',
+    androidOnly: 'Listening sessions are Android-only for now.',
+    micTitle: 'Microphone access',
+    micBody:
+      'DOST needs your microphone to hear the texture of how you speak during a session. Audio never leaves your phone.',
+    notificationTitle: 'Show a listening indicator',
+    notificationBody:
+      'DOST shows a notification whenever a session is active, so you always know when it is listening.',
+    allow: 'Allow',
+    notNow: 'Not now',
+  },
   language: {
     title: 'Language',
     hint: 'DOST’s screens and replies will use this language.',

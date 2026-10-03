@@ -1,4 +1,5 @@
 import { PermissionsAndroid, Platform, Alert } from 'react-native';
+import { t as translate } from '../i18n';
 
 export type HearingPermissionResult = {
   granted: boolean;
@@ -7,21 +8,17 @@ export type HearingPermissionResult = {
 
 export async function requestHearingPermissions(): Promise<HearingPermissionResult> {
   if (Platform.OS !== 'android') {
-    Alert.alert(
-      'Not yet available',
-      'Listening sessions are Android-only for now.',
-    );
+    Alert.alert(translate('permissions.notYetAvailable'), translate('permissions.androidOnly'));
     return { granted: false, reason: 'not-android' };
   }
 
   const mic = await PermissionsAndroid.request(
     PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
     {
-      title: 'Microphone access',
-      message:
-        'DOST needs your microphone to hear the texture of how you speak during a session. Audio never leaves your phone.',
-      buttonPositive: 'Allow',
-      buttonNegative: 'Not now',
+      title: translate('permissions.micTitle'),
+      message: translate('permissions.micBody'),
+      buttonPositive: translate('permissions.allow'),
+      buttonNegative: translate('permissions.notNow'),
     },
   );
   if (mic !== PermissionsAndroid.RESULTS.GRANTED) {
@@ -32,11 +29,10 @@ export async function requestHearingPermissions(): Promise<HearingPermissionResu
     const notif = await PermissionsAndroid.request(
       PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
       {
-        title: 'Show a listening indicator',
-        message:
-          'DOST shows a notification whenever a session is active, so you always know when it is listening.',
-        buttonPositive: 'Allow',
-        buttonNegative: 'Not now',
+        title: translate('permissions.notificationTitle'),
+        message: translate('permissions.notificationBody'),
+        buttonPositive: translate('permissions.allow'),
+        buttonNegative: translate('permissions.notNow'),
       },
     );
     if (notif !== PermissionsAndroid.RESULTS.GRANTED) {

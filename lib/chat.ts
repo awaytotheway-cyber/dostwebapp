@@ -2,16 +2,15 @@ import { FunctionsFetchError, FunctionsHttpError } from '@supabase/supabase-js';
 import { recordApiError } from './diagnostics';
 import type { ConversationStage } from './emotionalStates';
 import { ensureAnonymousSession } from './session';
+import { getAppLanguage, t as translate } from './i18n';
 import { supabase } from './supabase';
 
 const MAX_MESSAGE_LEN = 2000;
 
-const GENTLE_ERROR = "Something's off on my end. Try again in a moment.";
-const SLOW_DOWN = "Let's slow down together — take a breath.";
-const SESSION_ERROR =
-  "We couldn't connect right now. Check your internet and try again.";
-const SESSION_DISABLED_ERROR =
-  "We couldn't connect right now. If this keeps happening, the app may need a moment — try again in a few minutes.";
+const gentleError = () => translate('errors.gentle');
+const slowDown = () => translate('errors.slowDown');
+const sessionError = () => translate('errors.connect');
+const sessionDisabledError = () => translate('errors.connectDisabled');
 
 export type StoredChatRow = {
   id: string;
@@ -77,15 +76,15 @@ function statusFromInvoke(
   return undefined;
 }
 
-const OFFLINE_ERROR = "You're offline right now. Connect and try again.";
+const offlineError = () => translate('errors.offline');
 
 function messageForStatus(status: number | undefined, isNetwork: boolean): string {
-  if (status === 429) return SLOW_DOWN;
+  if (status === 429) return slowDown();
   if (status === 401) {
-    return SESSION_ERROR;
+    return sessionError();
   }
-  if (isNetwork) return OFFLINE_ERROR;
-  return GENTLE_ERROR;
+  if (isNetwork) return offlineError();
+  return gentleError();
 }
 
 function isNetworkError(error: unknown): boolean {
@@ -158,6 +157,7 @@ function userFacingChatError(
   const fromServer = serverError?.trim();
   if (
     fromServer &&
+    getAppLanguage() === 'en' &&
     !/\b500\b|\b502\b|\b503\b|non-2xx|FunctionsHttp|Edge Function/i.test(fromServer)
   ) {
     return fromServer.slice(0, 280);
@@ -167,28 +167,28 @@ function userFacingChatError(
 
 /** Never surface raw HTTP codes like "500" or FunctionsHttpError text to the user. */
 function sanitizeUserFacingMessage(raw: unknown): string {
-  if (typeof raw !== 'string') return GENTLE_ERROR;
+  if (typeof raw !== 'string') return gentleError();
   const trimmed = raw.trim();
-  if (!trimmed) return GENTLE_ERROR;
+  if (!trimmed) return gentleError();
   if (/\b500\b|\b502\b|\b503\b|non-2xx|FunctionsHttp|Edge Function/i.test(trimmed)) {
-    return GENTLE_ERROR;
+    return gentleError();
   }
   if (
-    trimmed === SLOW_DOWN ||
-    trimmed === GENTLE_ERROR ||
-    trimmed === OFFLINE_ERROR
+    trimmed === slowDown() ||
+    trimmed === gentleError() ||
+    trimmed === offlineError()
   ) {
     return trimmed;
   }
-  if (trimmed.toLowerCase().includes('slow down')) return SLOW_DOWN;
-  return GENTLE_ERROR;
+  if (trimmed.toLowerCase().includes('slow down')) return slowDown();
+  return gentleError();
 }
 
 export function formatChatErrorForUi(message: string): string {
   const trimmed = message.trim();
-  if (!trimmed) return GENTLE_ERROR;
+  if (!trimmed) return gentleError();
   if (/\b500\b|\b502\b|\b503\b|non-2xx|FunctionsHttp|Edge Function/i.test(trimmed)) {
-    return GENTLE_ERROR;
+    return gentleError();
   }
   return trimmed;
 }
@@ -202,12 +202,12 @@ export async function sendChatMessage(
   },
 ): Promise<ChatSendResult> {
   if (typeof raw !== 'string') {
-    return { ok: false, message: 'Invalid message.' };
+    return { ok: false, message: translate('errors.invalidMessage') };
   }
 
   const text = raw.trim();
   if (!text || text.length > MAX_MESSAGE_LEN) {
-    return { ok: false, message: 'Invalid message.' };
+    return { ok: false, message: translate('errors.invalidMessage') };
   }
 
   const body: {
@@ -244,8 +244,8 @@ export async function sendChatMessage(
       ok: false,
       message:
         session.kind === 'anonymous_disabled'
-          ? SESSION_DISABLED_ERROR
-          : SESSION_ERROR,
+          ? sessionDisabledError()
+          : sessionError(),
     };
   }
 
@@ -300,7 +300,7 @@ export async function sendChatMessage(
         code: 'empty-reply',
         detail: 'chat returned 200 but reply field empty',
       });
-      return { ok: false, message: GENTLE_ERROR };
+      return { ok: false, message: gentleError() };
     }
 
     return {
@@ -322,7 +322,7 @@ export async function sendChatMessage(
       code: caught instanceof FunctionsHttpError ? 'http-catch' : `catch-${caughtName}`,
       errorName: caughtName,
     });
-    return { ok: false, message: GENTLE_ERROR };
+    return { ok: false, message: gentleError() };
   }
 }
 

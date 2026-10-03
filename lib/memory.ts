@@ -1,7 +1,8 @@
 import { FunctionsFetchError } from '@supabase/supabase-js';
+import { t as translate } from './i18n';
 import { supabase } from './supabase';
 
-const GENTLE_ERROR = "Something's off on my end. Try again in a moment.";
+const gentleError = () => translate('errors.gentle');
 
 export type MemoryRefreshResult =
   | { ok: true; status: 'ok' | 'skipped' }
@@ -43,21 +44,21 @@ export async function refreshUserMemory(): Promise<MemoryRefreshResult> {
           'name' in error &&
           (error as { name?: string }).name === 'FunctionsFetchError');
       if (status === 429) {
-        return { ok: false, message: 'Too many refreshes. Please wait a bit.' };
+        return { ok: false, message: translate('errors.tooManyRefreshes') };
       }
       if (status === 401) {
         return {
           ok: false,
-          message: "Couldn't verify your session. Close the app and open it again.",
+          message: translate('errors.verifySession'),
         };
       }
-      return { ok: false, message: isNetwork ? GENTLE_ERROR : GENTLE_ERROR };
+      return { ok: false, message: isNetwork ? gentleError() : gentleError() };
     }
 
     const status = data?.status === 'skipped' ? 'skipped' : 'ok';
     return { ok: true, status };
   } catch {
-    return { ok: false, message: GENTLE_ERROR };
+    return { ok: false, message: gentleError() };
   }
 }
 

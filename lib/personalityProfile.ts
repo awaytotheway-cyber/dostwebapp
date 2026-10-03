@@ -1,3 +1,4 @@
+import { t as translate } from './i18n';
 import { supabase } from './supabase';
 
 export const ENNEAGRAM_MODULE = 'enneagram';
@@ -87,7 +88,7 @@ async function loadModuleArrays(userId: string): Promise<ModuleArrays> {
 }
 
 function saveFailedMessage(): string {
-  return 'Could not save this step. If it keeps happening, run the personality_profile SQL in Supabase, then try again.';
+  return translate('errors.personalitySaveFailed');
 }
 
 export async function saveEnneagramResult(
@@ -96,7 +97,7 @@ export async function saveEnneagramResult(
 ): Promise<PersonalityProfileWrite> {
   const userId = await currentUserId();
   if (!userId) {
-    return { ok: false, message: "Couldn't verify your session. Close the app and open it again." };
+    return { ok: false, message: translate('errors.verifySession') };
   }
 
   const existing = await loadModuleArrays(userId);
@@ -124,7 +125,7 @@ export async function saveEnneagramResult(
 export async function skipEnneagramModule(): Promise<PersonalityProfileWrite> {
   const userId = await currentUserId();
   if (!userId) {
-    return { ok: false, message: "Couldn't verify your session. Close the app and open it again." };
+    return { ok: false, message: translate('errors.verifySession') };
   }
 
   const existing = await loadModuleArrays(userId);
@@ -150,7 +151,7 @@ export async function skipEnneagramModule(): Promise<PersonalityProfileWrite> {
 export async function saveLifePathNumber(lifePathNumber: number): Promise<PersonalityProfileWrite> {
   const userId = await currentUserId();
   if (!userId) {
-    return { ok: false, message: "Couldn't verify your session. Close the app and open it again." };
+    return { ok: false, message: translate('errors.verifySession') };
   }
 
   const existing = await loadModuleArrays(userId);
@@ -177,7 +178,7 @@ export async function saveLifePathNumber(lifePathNumber: number): Promise<Person
 export async function skipNumerologyModule(): Promise<PersonalityProfileWrite> {
   const userId = await currentUserId();
   if (!userId) {
-    return { ok: false, message: "Couldn't verify your session. Close the app and open it again." };
+    return { ok: false, message: translate('errors.verifySession') };
   }
 
   const existing = await loadModuleArrays(userId);
@@ -207,7 +208,7 @@ export async function saveTcmResult(input: {
 }): Promise<PersonalityProfileWrite> {
   const userId = await currentUserId();
   if (!userId) {
-    return { ok: false, message: "Couldn't verify your session. Close the app and open it again." };
+    return { ok: false, message: translate('errors.verifySession') };
   }
 
   const existing = await loadModuleArrays(userId);
@@ -236,7 +237,7 @@ export async function saveTcmResult(input: {
 export async function skipTcmModule(): Promise<PersonalityProfileWrite> {
   const userId = await currentUserId();
   if (!userId) {
-    return { ok: false, message: "Couldn't verify your session. Close the app and open it again." };
+    return { ok: false, message: translate('errors.verifySession') };
   }
 
   const existing = await loadModuleArrays(userId);
@@ -262,7 +263,7 @@ export async function skipTcmModule(): Promise<PersonalityProfileWrite> {
 export async function saveMbtiType(mbtiType: string): Promise<PersonalityProfileWrite> {
   const userId = await currentUserId();
   if (!userId) {
-    return { ok: false, message: "Couldn't verify your session. Close the app and open it again." };
+    return { ok: false, message: translate('errors.verifySession') };
   }
 
   const existing = await loadModuleArrays(userId);
@@ -289,7 +290,7 @@ export async function saveMbtiType(mbtiType: string): Promise<PersonalityProfile
 export async function skipMbtiModule(): Promise<PersonalityProfileWrite> {
   const userId = await currentUserId();
   if (!userId) {
-    return { ok: false, message: "Couldn't verify your session. Close the app and open it again." };
+    return { ok: false, message: translate('errors.verifySession') };
   }
 
   const existing = await loadModuleArrays(userId);
@@ -406,15 +407,14 @@ export function moduleIsSkipped(profile: PersonalityProfileRow | null, module: s
 export async function loadPersonalityProfile(): Promise<PersonalityProfileLoad> {
   const userId = await currentUserId();
   if (!userId) {
-    return { ok: false, message: "Couldn't verify your session. Close the app and open it again." };
+    return { ok: false, message: translate('errors.verifySession') };
   }
 
   const result = await supabase.from('personality_profile').select('*').eq('user_id', userId).maybeSingle();
   if (result.error) {
     return {
       ok: false,
-      message:
-        'Could not load your personality profile. If it keeps happening, run the personality_profile SQL in Supabase, then try again.',
+      message: translate('errors.personalityLoadFailed'),
     };
   }
   if (!result.data) {
@@ -428,7 +428,7 @@ export async function skipRemainingPersonalityModules(
 ): Promise<PersonalityProfileWrite> {
   const userId = await currentUserId();
   if (!userId) {
-    return { ok: false, message: "Couldn't verify your session. Close the app and open it again." };
+    return { ok: false, message: translate('errors.verifySession') };
   }
 
   const fromIndex = PERSONALITY_MODULE_ORDER.indexOf(fromModule);

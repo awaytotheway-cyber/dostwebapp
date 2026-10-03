@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { birthPlaceForDb, type BirthPlace } from './birthPlace';
+import { t as translate } from './i18n';
 import { supabase } from './supabase';
 import { ONBOARDING_COMPLETE_KEY } from './onboardingStorage';
 
@@ -143,12 +144,12 @@ export async function updateMyNameAndIntention(
   const { data, error: userError } = await supabase.auth.getUser();
   const userId = data?.user?.id;
   if (userError || !userId) {
-    return { ok: false, message: "Couldn't verify your session. Close the app and open it again." };
+    return { ok: false, message: translate('errors.verifySession') };
   }
 
   const trimmedName = name.trim().slice(0, 40);
   if (!trimmedName) {
-    return { ok: false, message: 'Please enter a name.' };
+    return { ok: false, message: translate('errors.enterName') };
   }
 
   const { error } = await supabase
@@ -160,7 +161,7 @@ export async function updateMyNameAndIntention(
     .eq('id', userId);
 
   if (error) {
-    return { ok: false, message: 'Could not save your profile. Please try again.' };
+    return { ok: false, message: translate('errors.profileSaveFailed') };
   }
   return { ok: true };
 }
@@ -172,7 +173,7 @@ export async function updateMyDosha(
   const { data, error: userError } = await supabase.auth.getUser();
   const userId = data?.user?.id;
   if (userError || !userId) {
-    return { ok: false, message: "Couldn't verify your session. Close the app and open it again." };
+    return { ok: false, message: translate('errors.verifySession') };
   }
 
   const { error } = await supabase
@@ -181,7 +182,7 @@ export async function updateMyDosha(
     .eq('id', userId);
 
   if (error) {
-    return { ok: false, message: 'Could not save your dosha. Please try again.' };
+    return { ok: false, message: translate('errors.doshaSaveFailed') };
   }
   return { ok: true };
 }
@@ -190,7 +191,7 @@ export async function updateMyBirthPlace(place: BirthPlace): Promise<ProfileWrit
   const { data, error: userError } = await supabase.auth.getUser();
   const userId = data?.user?.id;
   if (userError || !userId) {
-    return { ok: false, message: "Couldn't verify your session. Close the app and open it again." };
+    return { ok: false, message: translate('errors.verifySession') };
   }
 
   const { error } = await supabase
@@ -201,8 +202,7 @@ export async function updateMyBirthPlace(place: BirthPlace): Promise<ProfileWrit
   if (error) {
     return {
       ok: false,
-      message:
-        'Could not save place of birth. If this keeps happening, run the place-of-birth SQL in Supabase, then try again.',
+      message: translate('errors.birthPlaceSaveFailed'),
     };
   }
   return { ok: true };
@@ -212,12 +212,12 @@ export async function saveMyProfile(input: ProfileInput): Promise<ProfileWrite> 
   const { data, error: userError } = await supabase.auth.getUser();
   const userId = data?.user?.id;
   if (userError || !userId) {
-    return { ok: false, message: "Couldn't verify your session. Close the app and open it again." };
+    return { ok: false, message: translate('errors.verifySession') };
   }
 
   const name = input.name.trim().slice(0, 40);
   if (!name) {
-    return { ok: false, message: 'Please enter a name.' };
+    return { ok: false, message: translate('errors.enterName') };
   }
 
   const core = {
@@ -247,7 +247,7 @@ export async function saveMyProfile(input: ProfileInput): Promise<ProfileWrite> 
   const result = first.error ? await supabase.from('profiles').upsert(core) : first;
 
   if (result.error) {
-    return { ok: false, message: 'Could not save your profile. Please try again.' };
+    return { ok: false, message: translate('errors.profileSaveFailed') };
   }
 
   await AsyncStorage.setItem(ONBOARDING_COMPLETE_KEY, 'true');
@@ -258,14 +258,14 @@ export async function clearProfileAndSignOut(): Promise<ProfileWrite> {
   const { data, error: userError } = await supabase.auth.getUser();
   const userId = data?.user?.id;
   if (userError || !userId) {
-    return { ok: false, message: "Couldn't verify your session. Close the app and open it again." };
+    return { ok: false, message: translate('errors.verifySession') };
   }
 
   await supabase.from('messages').delete().eq('user_id', userId);
 
   const { error } = await supabase.from('profiles').delete().eq('id', userId);
   if (error) {
-    return { ok: false, message: 'Could not delete your profile. Please try again.' };
+    return { ok: false, message: translate('errors.profileDeleteFailed') };
   }
 
   await AsyncStorage.removeItem(ONBOARDING_COMPLETE_KEY);

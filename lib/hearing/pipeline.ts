@@ -1,3 +1,4 @@
+import { t as translate } from '../i18n';
 import { supabase } from '../supabase';
 import { extractAcousticFeatures } from './acousticFeatures';
 import type { AcousticFeatures } from './acousticFeatures';
@@ -133,7 +134,7 @@ export async function startHearingSession(
 
   const { data: userData, error: userErr } = await supabase.auth.getUser();
   if (userErr || !userData?.user) {
-    throw new Error('Sign in required to start a listening session');
+    throw new Error(translate('errors.signInToListen'));
   }
   const userId = userData.user.id;
 
@@ -142,9 +143,7 @@ export async function startHearingSession(
   // enrollment gate is the primary defense, this is the safety net.
   const profile = await loadSpeakerProfile();
   if (!profile) {
-    throw new Error(
-      'You need to enroll your voice before starting a listening session.',
-    );
+    throw new Error(translate('errors.enrollFirst'));
   }
   const sensitivity = await getSensitivity();
   const calibrationDecision = await shouldLogCalibration(userId);
