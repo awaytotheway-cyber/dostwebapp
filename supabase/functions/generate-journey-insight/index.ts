@@ -20,6 +20,18 @@ const RANGE_LABELS: Record<string, string> = {
   all: "all the time you have shared here",
 };
 
+// App languages (lib/i18n/languages.ts) → name used in the prompt.
+const LANGUAGE_NAMES: Record<string, string> = {
+  en: "English",
+  hi: "Hindi (Devanagari script)",
+  mr: "Marathi (Devanagari script)",
+  es: "Spanish",
+  de: "German",
+  ru: "Russian",
+  zh: "Simplified Chinese",
+  ja: "Japanese",
+};
+
 const GENERIC_UNAUTHORIZED = "Please sign in to continue.";
 const GENERIC_INVALID = "Invalid request.";
 const GENERIC_ERROR = "Something went wrong.";
@@ -242,7 +254,7 @@ async function handleRequest(req: Request): Promise<Response> {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
-    const cached = await loadCached(admin, userId, parsed.rangeKey);
+    const cached = await loadCached(admin, userId, parsed.rangeKey, parsed.language);
     if (cached && Date.now() - cached.generatedAt < CACHE_TTL_MS) {
       return json(200, {
         status: "ok",
@@ -273,12 +285,13 @@ async function handleRequest(req: Request): Promise<Response> {
       {
         user_id: userId,
         range_key: parsed.rangeKey,
+        language: parsed.language,
         insight_text: insight,
         emotion_counts: parsed.emotionCounts,
         top_needs: parsed.topNeeds,
         generated_at: generatedAt,
       },
-      { onConflict: "user_id,range_key" },
+      { onConflict: "user_id,range_key,language" },
     );
 
     if (upsertError) {
@@ -303,6 +316,7 @@ type ParsedBody = {
   rangeLabel: string;
   emotionCounts: Record<string, number>;
   topNeeds: string[];
+  language: string;
 };
 
 function parseBody(body: unknown): ParsedBody | null {
@@ -333,7 +347,11 @@ function parseBody(body: unknown): ParsedBody | null {
 
   const topNeeds = sanitizeNeeds(record.top_needs ?? record.topNeeds);
 
-  return { rangeKey, rangeLabel, emotionCounts, topNeeds };
+  const languageRaw =
+    typeof record.language === "string" ? record.language.trim().toLowerCase() : "";
+  const language = languageRaw in LANGUAGE_NAMES ? languageRaw : "en";
+
+  return { rangeKey, rangeLabel, emotionCounts, topNeeds, language };
 }
 
 function sanitizeCounts(value: unknown): Record<string, number> | null {
@@ -377,12 +395,14 @@ async function loadCached(
   admin: SupabaseClient,
   userId: string,
   rangeKey: string,
+  language: string,
 ): Promise<CachedInsight | null> {
   const { data, error } = await admin
     .from("journey_insights")
     .select("insight_text, generated_at")
     .eq("user_id", userId)
     .eq("range_key", rangeKey)
+    .eq("language", language)
     .maybeSingle();
 
   if (error) {
@@ -435,6 +455,7 @@ Voice:
 - Do not diagnose, prescribe, or list coping strategies. No medical/therapy jargon.
 - Never invent specific events, names, places, or quote private words.
 - If one emotion dominates, name its weather softly; if several share the sky, hold them together.
+- Write the reflection in ${LANGUAGE_NAMES[parsed.language]}, in natural everyday wording rather than a literal translation. Keep the JSON key "insight" in English.
 
 Respond ONLY with valid JSON:
 { "insight": "your reflection here" }`;

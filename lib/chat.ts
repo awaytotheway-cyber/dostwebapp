@@ -215,7 +215,8 @@ export async function sendChatMessage(
     emotional_state?: string;
     selected_emotion?: string;
     selected_need?: string;
-  } = { message: text };
+    language: string;
+  } = { message: text, language: getAppLanguage() };
   const emotion =
     typeof options?.emotionalState === 'string'
       ? options.emotionalState.trim()

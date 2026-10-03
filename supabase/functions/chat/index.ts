@@ -8,6 +8,10 @@ import {
 import { DOST_SAMPLE_CONVERSATIONS } from "../_shared/sampleConversations.ts";
 import { resolveTurnStage } from "../_shared/conversationStage.ts";
 import {
+  parseReplyLanguage,
+  replyLanguageInstruction,
+} from "../_shared/replyLanguage.ts";
+import {
   generateSuggestionChips,
   type Stage,
 } from "../_shared/suggestionChips.ts";
@@ -565,6 +569,7 @@ async function handleRequest(req: Request): Promise<Response> {
         ? { ...emotionSnapshot, conversation_stage: conversationStage }
         : null,
       personalityProfile,
+      parsed.language,
     );
 
     let assistantText: string;
@@ -611,6 +616,7 @@ function parseBody(
     emotionalState: string | null;
     selectedEmotion: string | null;
     selectedNeed: string | null;
+    language: string;
   }
   | { ok: false } {
   if (!body || typeof body !== "object") return { ok: false };
@@ -650,6 +656,7 @@ function parseBody(
     emotionalState,
     selectedEmotion,
     selectedNeed,
+    language: parseReplyLanguage(record.language),
   };
 }
 
@@ -1399,6 +1406,7 @@ function buildSystemPrompt(
   emotionalState: string | null,
   extracted: EmotionSnapshot | null = null,
   personalityProfile: PersonalityPromptProfile | null = null,
+  language = "en",
 ): string {
   const stage = extracted?.conversation_stage ?? "meeting";
   const themeRepeatNote =
@@ -1454,6 +1462,12 @@ function buildSystemPrompt(
     sections.push(
       `Example dialogues showing this emotional pattern handled well:\n${dialogueExamples.trim()}`,
     );
+  }
+
+  // Last, so it outweighs the English examples above.
+  const languageSection = replyLanguageInstruction(language);
+  if (languageSection) {
+    sections.push(languageSection);
   }
 
   return sections.join("\n\n");
