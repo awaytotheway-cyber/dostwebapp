@@ -31,6 +31,7 @@ import {
 } from '../lib/hearing/pipeline';
 import { supabase } from '../lib/supabase';
 import { labelForEmotionChip } from '../lib/dost/suggestionChips';
+import { t as translate, useI18n, type TKey } from '../lib/i18n';
 
 type Props = NativeStackScreenProps<ChatStackParamList, 'ListeningSession'>;
 
@@ -114,14 +115,11 @@ export default function ListeningSessionScreen({ navigation }: Props) {
       const perms = await requestHearingPermissions();
       if (!perms.granted) {
         if (perms.reason === 'mic-denied') {
-          Alert.alert(
-            'Microphone needed',
-            'DOST needs microphone access to run a listening session. You can grant it in Settings.',
-          );
+          Alert.alert(translate('listening.micNeeded'), translate('listening.micNeededBody'));
         } else if (perms.reason === 'notification-denied') {
           Alert.alert(
-            'Notification needed',
-            'DOST shows a notification while a session is active. Please allow it in Settings.',
+            translate('listening.notificationNeeded'),
+            translate('listening.notificationNeededBody'),
           );
         }
         return;
@@ -136,8 +134,8 @@ export default function ListeningSessionScreen({ navigation }: Props) {
         } catch (err) {
           setPhase('idle');
           Alert.alert(
-            'Model download failed',
-            'DOST could not download its on-device ear. Please check your connection and try again.',
+            translate('listening.downloadFailed'),
+            translate('listening.downloadFailedBody'),
           );
           return;
         }
@@ -148,7 +146,10 @@ export default function ListeningSessionScreen({ navigation }: Props) {
       setPhase('active');
     } catch (err) {
       setPhase('idle');
-      Alert.alert('Could not start', err instanceof Error ? err.message : 'Please try again.');
+      Alert.alert(
+        translate('listening.couldNotStart'),
+        err instanceof Error ? err.message : translate('common.pleaseTryAgain'),
+      );
     } finally {
       startingRef.current = false;
     }
@@ -213,15 +214,16 @@ export default function ListeningSessionScreen({ navigation }: Props) {
 // ─── views ────────────────────────────────────────────────────────
 
 function Header({ onBack }: { onBack: () => void }) {
+  const { t } = useI18n();
   return (
     <View style={styles.header}>
       <GentlePressable
         accessibilityRole="button"
-        accessibilityLabel="Back"
+        accessibilityLabel={t('common.backPlain')}
         onPress={onBack}
         style={({ pressed }) => [styles.backChip, pressed && styles.backChipPressed]}
       >
-        <Text style={styles.backChipText}>← Back</Text>
+        <Text style={styles.backChipText}>{t('common.back')}</Text>
       </GentlePressable>
     </View>
   );
@@ -238,19 +240,20 @@ function IdleView({
   onStart: () => void;
   onLearnMore: () => void;
 }) {
+  const { t } = useI18n();
   return (
     <View style={styles.centerColumn}>
-      <Text style={styles.title}>Listening session</Text>
-      <Text style={styles.subtitle}>Let DOST hear how you speak.</Text>
+      <Text style={styles.title}>{t('listening.title')}</Text>
+      <Text style={styles.subtitle}>{t('listening.subtitle')}</Text>
 
       <View style={styles.circleWrap}>
         <GentlePressable
           accessibilityRole="button"
-          accessibilityLabel="Start a listening session"
+          accessibilityLabel={t('listening.startA11y')}
           onPress={onStart}
           style={({ pressed }) => [styles.startCircle, pressed && styles.startCirclePressed]}
         >
-          <Text style={styles.startLabel}>Start{'\n'}a session</Text>
+          <Text style={styles.startLabel}>{t('listening.start')}</Text>
         </GentlePressable>
       </View>
 
@@ -259,7 +262,7 @@ function IdleView({
           <GentlePressable
             key={m}
             accessibilityRole="button"
-            accessibilityLabel={`Battery mode: ${m}`}
+            accessibilityLabel={t('listening.modeA11y', { mode: t(`listening.mode.${m}` as TKey) })}
             onPress={() => onSelectMode(m)}
             style={({ pressed }) => [
               styles.modeChip,
@@ -273,7 +276,7 @@ function IdleView({
                 batteryMode === m && styles.modeChipTextActive,
               ]}
             >
-              {m[0].toUpperCase() + m.slice(1)}
+              {t(`listening.mode.${m}` as TKey)}
             </Text>
           </GentlePressable>
         ))}
@@ -282,11 +285,11 @@ function IdleView({
 
       <GentlePressable
         accessibilityRole="button"
-        accessibilityLabel="How this works"
+        accessibilityLabel={t('listening.howItWorks')}
         onPress={onLearnMore}
         style={({ pressed }) => [styles.linkRow, pressed && { opacity: 0.6 }]}
       >
-        <Text style={styles.linkText}>How this works →</Text>
+        <Text style={styles.linkText}>{t('listening.howItWorksLink')}</Text>
       </GentlePressable>
     </View>
   );
@@ -294,11 +297,12 @@ function IdleView({
 
 function PreparingView({ downloadPct }: { downloadPct: number }) {
   const pct = Math.max(0, Math.min(1, downloadPct));
+  const { t } = useI18n();
   return (
     <View style={styles.centerColumn}>
-      <Text style={styles.title}>Preparing DOST&#39;s ear</Text>
+      <Text style={styles.title}>{t('listening.preparingTitle')}</Text>
       <Text style={styles.subtitle}>
-        One-time download, about {MODEL_APPROX_MB} MB. Runs entirely on your phone after this.
+        {t('listening.preparingBody', { mb: MODEL_APPROX_MB })}
       </Text>
       <View style={styles.progressTrack}>
         <View style={[styles.progressFill, { width: `${Math.round(pct * 100)}%` }]} />
@@ -315,19 +319,20 @@ function ActiveView({
   state: PipelineState;
   onStop: () => void;
 }) {
+  const { t } = useI18n();
   if (state.status !== 'active') {
     return (
       <View style={styles.centerColumn}>
-        <Text style={styles.subtitle}>Starting…</Text>
+        <Text style={styles.subtitle}>{t('listening.starting')}</Text>
       </View>
     );
   }
   const elapsedMs = Date.now() - state.startedAt;
   return (
     <View style={styles.centerColumn}>
-      <Text style={styles.title}>Listening…</Text>
+      <Text style={styles.title}>{t('listening.listeningTitle')}</Text>
       <Text style={styles.subtitle}>
-        {state.calibrating ? 'Warming up.' : 'Tap Stop when you’re done.'}
+        {state.calibrating ? t('listening.warmingUp') : t('listening.tapStop')}
       </Text>
 
       <View style={styles.dotWrap}>
@@ -344,19 +349,19 @@ function ActiveView({
 
       <View style={styles.metricRow}>
         <MetricTile
-          label="Speech / total"
+          label={t('listening.speechTotal')}
           value={`${formatDurationShort(state.speechMs)} / ${formatDurationShort(state.totalMs)}`}
         />
-        <MetricTile label="Segments" value={String(state.segmentsProcessed)} />
+        <MetricTile label={t('listening.segments')} value={String(state.segmentsProcessed)} />
       </View>
 
       <GentlePressable
         accessibilityRole="button"
-        accessibilityLabel="Stop the session"
+        accessibilityLabel={t('listening.stopA11y')}
         onPress={onStop}
         style={({ pressed }) => [styles.stopButton, pressed && styles.stopButtonPressed]}
       >
-        <Text style={styles.stopButtonText}>Stop session</Text>
+        <Text style={styles.stopButtonText}>{t('listening.stop')}</Text>
       </GentlePressable>
     </View>
   );
@@ -369,43 +374,45 @@ function SummaryView({
   summary: SessionSummary;
   onNewSession: () => void;
 }) {
+  const { t } = useI18n();
   return (
     <View style={styles.summaryColumn}>
-      <Text style={styles.title}>Session done</Text>
+      <Text style={styles.title}>{t('listening.doneTitle')}</Text>
       <Text style={styles.subtitle}>{acousticSummarySentence(summary)}</Text>
 
       <View style={styles.summaryCard}>
-        <SummaryRow label="Duration" value={formatDurationShort(summary.totalMs)} />
-        <SummaryRow label="Speech time" value={formatDurationShort(summary.speechMs)} />
+        <SummaryRow label={t('listening.duration')} value={formatDurationShort(summary.totalMs)} />
         <SummaryRow
-          label="Segments processed"
+          label={t('listening.speechTime')}
+          value={formatDurationShort(summary.speechMs)}
+        />
+        <SummaryRow
+          label={t('listening.segmentsProcessed')}
           value={String(summary.segmentsProcessed)}
         />
         {summary.avgWpm !== null && (
           <SummaryRow
-            label="Speaking rate"
-            value={`${Math.round(summary.avgWpm)} WPM`}
+            label={t('listening.speakingRate')}
+            value={t('listening.wpm', { value: Math.round(summary.avgWpm) })}
           />
         )}
         {summary.avgPitchHz !== null && summary.avgPitchHz > 0 && (
           <SummaryRow
-            label="Average pitch"
-            value={`${Math.round(summary.avgPitchHz)} Hz`}
+            label={t('listening.averagePitch')}
+            value={t('listening.hz', { value: Math.round(summary.avgPitchHz) })}
           />
         )}
-        <Text style={styles.summaryDisclaimer}>
-          &quot;Vocal stress&quot; here is a heuristic composite — not a clinical measure.
-        </Text>
+        <Text style={styles.summaryDisclaimer}>{t('listening.stressDisclaimer')}</Text>
       </View>
 
       <View style={styles.summaryCard}>
-        <Text style={styles.summarySubheading}>Speaker gate</Text>
+        <Text style={styles.summarySubheading}>{t('listening.speakerGate')}</Text>
         <SummaryRow
-          label="Segments matched to your voice"
+          label={t('listening.matched')}
           value={String(summary.segmentsMatched)}
         />
         <SummaryRow
-          label="Segments skipped (other speaker or unclear)"
+          label={t('listening.skipped')}
           value={String(
             summary.segmentsDiscardedOtherSpeaker +
               summary.segmentsDiscardedAmbiguous,
@@ -415,7 +422,7 @@ function SummaryView({
 
       {summary.emotions.length > 0 && (
         <View style={styles.themeCard}>
-          <Text style={styles.themeHeading}>What DOST heard, in themes</Text>
+          <Text style={styles.themeHeading}>{t('listening.themesHeading')}</Text>
           <View style={styles.chipsWrap}>
             {summary.emotions.map((e) => (
               <View key={e.emotion} style={styles.themeChip}>
@@ -431,19 +438,17 @@ function SummaryView({
 
       {summary.allMock && (
         <View style={styles.mockBanner}>
-          <Text style={styles.mockBannerText}>
-            Acoustic emotion inference is not yet active — DOST is not using this data.
-          </Text>
+          <Text style={styles.mockBannerText}>{t('listening.mockBanner')}</Text>
         </View>
       )}
 
       <GentlePressable
         accessibilityRole="button"
-        accessibilityLabel="Start another session"
+        accessibilityLabel={t('listening.anotherA11y')}
         onPress={onNewSession}
         style={({ pressed }) => [styles.secondaryButton, pressed && { opacity: 0.7 }]}
       >
-        <Text style={styles.secondaryButtonText}>Start another session</Text>
+        <Text style={styles.secondaryButtonText}>{t('listening.another')}</Text>
       </GentlePressable>
     </View>
   );
@@ -470,14 +475,7 @@ function MetricTile({ label, value }: { label: string; value: string }) {
 // ─── helpers ──────────────────────────────────────────────────────
 
 function modeHint(mode: BatteryMode): string {
-  switch (mode) {
-    case 'attentive':
-      return 'Highest fidelity. Best when your phone is charging.';
-    case 'balanced':
-      return 'Every segment, one at a time. Best default.';
-    case 'light':
-      return 'Samples one segment in three. Battery-first.';
-  }
+  return translate(`listening.modeHint.${mode}` as TKey);
 }
 
 function formatDuration(ms: number): string {
@@ -491,21 +489,22 @@ function formatDurationShort(ms: number): string {
   const s = Math.max(0, Math.floor(ms / 1000));
   const m = Math.floor(s / 60);
   const r = s % 60;
-  if (m === 0) return `${r}s`;
-  return `${m}m ${r}s`;
+  if (m === 0) return translate('listening.secondsShort', { s: r });
+  return translate('listening.minutesShort', { m, s: r });
 }
 
 function acousticSummarySentence(s: SessionSummary): string {
-  if (!s.avgWpm && !s.avgPitchVariability) return 'Session recorded.';
-  const rate = s.avgWpm ? `at about ${Math.round(s.avgWpm)} words per minute` : null;
+  if (!s.avgWpm && !s.avgPitchVariability) return translate('listening.recorded');
   let variation: string | null = null;
   if (s.avgPitchVariability !== null) {
-    if (s.avgPitchVariability < 0.15) variation = 'with little variation in tone';
-    else if (s.avgPitchVariability < 0.3) variation = 'with moderate variation in tone';
-    else variation = 'with a lot of variation in tone';
+    if (s.avgPitchVariability < 0.15) variation = translate('listening.variationLow');
+    else if (s.avgPitchVariability < 0.3) variation = translate('listening.variationMid');
+    else variation = translate('listening.variationHigh');
   }
-  const parts = ['You spoke', rate, variation].filter(Boolean);
-  return `${parts.join(' ')}.`;
+  const wpm = s.avgWpm ? Math.round(s.avgWpm) : null;
+  if (wpm && variation) return translate('listening.spokeRateVariation', { wpm, variation });
+  if (wpm) return translate('listening.spokeRate', { wpm });
+  return translate('listening.spokeVariation', { variation: variation ?? '' });
 }
 
 async function loadSessionSummary(sessionId: string): Promise<SessionSummary> {

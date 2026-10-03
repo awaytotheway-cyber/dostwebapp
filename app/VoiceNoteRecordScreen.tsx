@@ -18,6 +18,7 @@ import { useReducedMotion } from '../lib/useReducedMotion';
 import type { ChatStackParamList } from './chatTypes';
 import GentlePressable from './GentlePressable';
 import PaperGrain from './PaperGrain';
+import { t as translate, useI18n } from '../lib/i18n';
 
 type Props = NativeStackScreenProps<ChatStackParamList, 'VoiceNoteRecord'>;
 
@@ -35,8 +36,6 @@ const MAX_MS = 3 * 60 * 1000;
 const MIN_MS = 2000;
 const BUTTON_SIZE = 180;
 
-const MIC_DENIED =
-  'Microphone access is needed for voice notes. You can turn it on in your phone settings.';
 
 const RECORDING_OPTIONS: Audio.RecordingOptions = {
   isMeteringEnabled: false,
@@ -73,6 +72,7 @@ function formatMmSs(ms: number): string {
 }
 
 export default function VoiceNoteRecordScreen({ navigation }: Props) {
+  const { t } = useI18n();
   const insets = useSafeAreaInsets();
   const reduceMotion = useReducedMotion();
 
@@ -195,13 +195,13 @@ export default function VoiceNoteRecordScreen({ navigation }: Props) {
       const asked = await Audio.requestPermissionsAsync();
       if (asked.granted) return true;
       if (mountedRef.current) {
-        setStatusMessage(MIC_DENIED);
+        setStatusMessage(translate('voiceRecord.micDenied'));
         setPhase('idle');
       }
       return false;
     } catch {
       if (mountedRef.current) {
-        setStatusMessage(MIC_DENIED);
+        setStatusMessage(translate('voiceRecord.micDenied'));
         setPhase('idle');
       }
       return false;
@@ -249,12 +249,12 @@ export default function VoiceNoteRecordScreen({ navigation }: Props) {
       autoStoppedRef.current = false;
       setPhase('recording');
       startTimers();
-      AccessibilityInfo.announceForAccessibility('Recording');
+      AccessibilityInfo.announceForAccessibility(translate('voiceRecord.announceRecording'));
     } catch {
       recordingRef.current = null;
       if (mountedRef.current) {
         setPhase('idle');
-        setStatusMessage('Could not start recording. Try again when you are ready.');
+        setStatusMessage(translate('voiceRecord.couldNotStart'));
       }
       pressActiveRef.current = false;
     }
@@ -269,9 +269,9 @@ export default function VoiceNoteRecordScreen({ navigation }: Props) {
     if (mountedRef.current) {
       setPhase('processing');
       setFailKind(null);
-      setStatusMessage('DOST is reflecting...');
+      setStatusMessage(translate('voiceRecord.reflecting'));
     }
-    AccessibilityInfo.announceForAccessibility('DOST is reflecting');
+    AccessibilityInfo.announceForAccessibility(translate('voiceRecord.reflectingA11y'));
 
     const result = await processVoiceNoteAfterTranscript({
       transcript: text,
@@ -280,11 +280,11 @@ export default function VoiceNoteRecordScreen({ navigation }: Props) {
       onProgress: (step) => {
         if (!mountedRef.current || gen !== pipelineGenRef.current) return;
         if (step === 'reflecting') {
-          setStatusMessage('DOST is reflecting...');
+          setStatusMessage(translate('voiceRecord.reflecting'));
         } else if (step === 'sensing') {
-          setStatusMessage('Sensing what\'s underneath...');
+          setStatusMessage(translate('voiceRecord.sensing'));
         } else {
-          setStatusMessage('Saving your note...');
+          setStatusMessage(translate('voiceRecord.savingNote'));
         }
       },
     });
@@ -323,7 +323,7 @@ export default function VoiceNoteRecordScreen({ navigation }: Props) {
       setFailKind(null);
       setTranscript(null);
     }
-    AccessibilityInfo.announceForAccessibility('Listening back');
+    AccessibilityInfo.announceForAccessibility(translate('voiceRecord.announceListeningBack'));
 
     const result = await transcribeVoiceNote(uri);
     if (!mountedRef.current || gen !== pipelineGenRef.current) return;
@@ -393,7 +393,7 @@ export default function VoiceNoteRecordScreen({ navigation }: Props) {
       setTranscript(null);
       setFailKind(null);
       setPhase('idle');
-      setStatusMessage('Just a moment longer, whenever you\'re ready.');
+      setStatusMessage(translate('voiceRecord.tooShort'));
       return;
     }
 
@@ -403,7 +403,7 @@ export default function VoiceNoteRecordScreen({ navigation }: Props) {
       setTranscript(null);
       setFailKind(null);
       setPhase('error');
-      setStatusMessage("Couldn't save that recording. Try again when you're ready.");
+      setStatusMessage(translate('voiceRecord.couldNotSaveRecording'));
       return;
     }
 
@@ -412,9 +412,9 @@ export default function VoiceNoteRecordScreen({ navigation }: Props) {
 
     if (reason === 'max') {
       if (mountedRef.current) {
-        setStatusMessage("That's a full note. Listening back...");
+        setStatusMessage(translate('voiceRecord.fullNote'));
       }
-      AccessibilityInfo.announceForAccessibility("That's a full note. Listening back.");
+      AccessibilityInfo.announceForAccessibility(translate('voiceRecord.fullNoteA11y'));
     }
 
     void runTranscription(uri, durationMs);
@@ -457,10 +457,10 @@ export default function VoiceNoteRecordScreen({ navigation }: Props) {
   const label =
     statusMessage ??
     (phase === 'recording'
-      ? `${formatMmSs(elapsedMs)} Release when done`
+      ? t('voiceRecord.releaseWhenDone', { time: formatMmSs(elapsedMs) })
       : phase === 'processing'
-        ? 'Listening back...'
-        : 'Hold to speak');
+        ? t('voiceRecord.listeningBack')
+        : t('voiceRecord.holdToSpeak'));
 
   const labelColor =
     recording || phase === 'processing' || phase === 'error' || statusMessage
@@ -482,7 +482,7 @@ export default function VoiceNoteRecordScreen({ navigation }: Props) {
         <View style={styles.header}>
           <GentlePressable
             accessibilityRole="button"
-            accessibilityLabel="Back"
+            accessibilityLabel={t('common.backPlain')}
             onPress={() => {
               if (phase === 'processing') return;
               pipelineGenRef.current += 1;
@@ -499,7 +499,7 @@ export default function VoiceNoteRecordScreen({ navigation }: Props) {
             <Ionicons name="chevron-back" size={26} color={dawn.cream} />
           </GentlePressable>
           <Text accessibilityRole="header" style={styles.title}>
-            Voice Note
+            {t('voiceRecord.title')}
           </Text>
           <View style={styles.headerSpacer} />
         </View>
@@ -529,11 +529,9 @@ export default function VoiceNoteRecordScreen({ navigation }: Props) {
                 disabled={phase === 'processing'}
                 accessibilityRole="button"
                 accessibilityLabel={
-                  recording
-                    ? 'Recording — release when done'
-                    : 'Hold to speak'
+                  recording ? t('voiceRecord.recordingA11y') : t('voiceRecord.holdToSpeak')
                 }
-                accessibilityHint="Press and hold to record a voice note, up to three minutes."
+                accessibilityHint={t('voiceRecord.buttonHint')}
                 accessibilityState={{
                   busy: recording || phase === 'processing',
                   disabled: phase === 'processing',
@@ -564,21 +562,19 @@ export default function VoiceNoteRecordScreen({ navigation }: Props) {
           {phase === 'error' && recordingUri ? (
             <GentlePressable
               accessibilityRole="button"
-              accessibilityLabel="Try again"
+              accessibilityLabel={t('common.tryAgain')}
               onPress={onRetry}
               style={({ pressed }) => [
                 styles.retryButton,
                 pressed && styles.pressed,
               ]}
             >
-              <Text style={styles.retryLabel}>Try again</Text>
+              <Text style={styles.retryLabel}>{t('common.tryAgain')}</Text>
             </GentlePressable>
           ) : null}
         </View>
 
-        <Text style={styles.footer}>
-          Up to 3 minutes. Speak freely — DOST will meet what you share.
-        </Text>
+        <Text style={styles.footer}>{t('voiceRecord.footer')}</Text>
       </View>
     </View>
   );

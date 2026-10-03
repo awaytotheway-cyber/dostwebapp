@@ -6,6 +6,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import theme from '../lib/theme';
 import GentlePressable from './GentlePressable';
 import type { ChatStackParamList } from './chatTypes';
+import { useI18n } from '../lib/i18n';
 
 export const HEARING_DISCLOSURE_ACK_KEY = 'dost.hearing.disclosure.ack.v1';
 
@@ -13,6 +14,7 @@ type Props = NativeStackScreenProps<ChatStackParamList, 'HearingDisclosure'>;
 
 export default function HearingDisclosureScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
+  const { t } = useI18n();
   const returnTo = route.params?.returnTo;
 
   const onContinue = async () => {
@@ -42,43 +44,34 @@ export default function HearingDisclosureScreen({ navigation, route }: Props) {
       keyboardShouldPersistTaps="handled"
     >
       <View style={styles.card}>
-        <Text style={styles.eyebrow}>Before we begin</Text>
+        <Text style={styles.eyebrow}>{t('disclosure.eyebrow')}</Text>
         <Text accessibilityRole="header" style={styles.heading}>
-          DOST can listen
+          {t('disclosure.heading')}
         </Text>
-        <Text style={styles.copy}>
-          When you start a listening session, DOST captures audio from your
-          microphone to understand the emotional texture of how you speak —
-          your energy, pace, and tone.
-        </Text>
+        <Text style={styles.copy}>{t('disclosure.copy')}</Text>
 
         <View style={styles.divider} />
 
-        <Text style={styles.sectionLabel}>What happens to your voice</Text>
+        <Text style={styles.sectionLabel}>{t('disclosure.sectionLabel')}</Text>
         <View style={styles.bulletList}>
           <Bullet>
-            Audio is processed entirely on your phone. It never leaves your device.
+            {t('disclosure.bullet1')}
           </Bullet>
           <Bullet>
-            Recordings are never saved. Audio exists only in memory for a few
-            seconds, then is discarded.
+            {t('disclosure.bullet2')}
           </Bullet>
           <Bullet>
-            Only anonymous signals — like energy level and speaking pace — and
-            emotional themes are stored.
+            {t('disclosure.bullet3')}
           </Bullet>
           <Bullet>
-            You start and stop each session yourself. DOST never listens in the
-            background.
+            {t('disclosure.bullet4')}
           </Bullet>
         </View>
 
         <View style={styles.divider} />
 
         <Text style={styles.notice}>
-          Please note: anyone speaking near your phone during a session may be
-          captured. Only start a session when you&#39;re comfortable with who&#39;s
-          around you.
+          {t('disclosure.notice')}
         </Text>
 
         <View style={styles.actions}>
@@ -90,7 +83,7 @@ export default function HearingDisclosureScreen({ navigation, route }: Props) {
               pressed && styles.primaryButtonPressed,
             ]}
           >
-            <Text style={styles.primaryButtonText}>I understand — continue</Text>
+            <Text style={styles.primaryButtonText}>{t('disclosure.continue')}</Text>
           </GentlePressable>
           <GentlePressable
             accessibilityRole="button"
@@ -100,7 +93,7 @@ export default function HearingDisclosureScreen({ navigation, route }: Props) {
               pressed && styles.secondaryButtonPressed,
             ]}
           >
-            <Text style={styles.secondaryButtonText}>Not now</Text>
+            <Text style={styles.secondaryButtonText}>{t('disclosure.notNow')}</Text>
           </GentlePressable>
         </View>
       </View>

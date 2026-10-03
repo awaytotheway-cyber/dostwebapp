@@ -27,6 +27,7 @@ import {
   type EnrollmentLanguage,
   type EnrollmentPrompt,
 } from '../lib/hearing/enrollment';
+import { NATIVE_LANGUAGE_NAMES, t as translate, useI18n } from '../lib/i18n';
 
 type Props = NativeStackScreenProps<ChatStackParamList, 'SpeakerEnrollment'>;
 
@@ -51,6 +52,7 @@ export default function SpeakerEnrollmentScreen({ navigation, route }: Props) {
   const [prompts, setPrompts] = useState<EnrollmentPrompt[]>([]);
   const voiceprints = useRef<EnrollmentClipPrint[]>([]);
   const returnTo = route.params?.returnTo;
+  const { t } = useI18n();
 
   const totalClips = prompts.length || TARGET_CLIP_COUNT;
   const clipMs = ENROLLMENT_CLIP_MS;
@@ -79,10 +81,7 @@ export default function SpeakerEnrollmentScreen({ navigation, route }: Props) {
 
   const onLanguagesContinue = useCallback(async () => {
     if (languages.length === 0) {
-      Alert.alert(
-        'Pick at least one language',
-        'DOST needs to know which languages you speak so it can show only those prompts.',
-      );
+      Alert.alert(translate('enrollment.pickOneTitle'), translate('enrollment.pickOneBody'));
       return;
     }
     await saveEnrollmentLanguages(languages);
@@ -99,10 +98,7 @@ export default function SpeakerEnrollmentScreen({ navigation, route }: Props) {
   const onBegin = useCallback(async () => {
     const perms = await requestHearingPermissions();
     if (!perms.granted) {
-      Alert.alert(
-        'Microphone needed',
-        'DOST needs microphone access to learn the sound of your voice. You can grant it in Settings.',
-      );
+      Alert.alert(translate('enrollment.micNeeded'), translate('enrollment.micNeededBody'));
       return;
     }
     voiceprints.current = [];
@@ -135,8 +131,8 @@ export default function SpeakerEnrollmentScreen({ navigation, route }: Props) {
       } catch (err) {
         setPhase({ kind: 'prompt', index });
         Alert.alert(
-          'Recording failed',
-          err instanceof Error ? err.message : 'Please try again.',
+          translate('enrollment.recordingFailed'),
+          err instanceof Error ? err.message : translate('common.pleaseTryAgain'),
         );
       }
     },
@@ -155,8 +151,8 @@ export default function SpeakerEnrollmentScreen({ navigation, route }: Props) {
       setPhase({ kind: 'intro' });
       voiceprints.current = [];
       Alert.alert(
-        'Could not save enrollment',
-        err instanceof Error ? err.message : 'Please try again.',
+        translate('enrollment.couldNotSave'),
+        err instanceof Error ? err.message : translate('common.pleaseTryAgain'),
       );
     }
   }, []);
@@ -180,13 +176,13 @@ export default function SpeakerEnrollmentScreen({ navigation, route }: Props) {
       <View style={styles.header}>
         <GentlePressable
           accessibilityRole="button"
-          accessibilityLabel="Back"
+          accessibilityLabel={t('common.backPlain')}
           onPress={() => navigation.goBack()}
           style={({ pressed }) => [styles.backChip, pressed && styles.backChipPressed]}
         >
-          <Text style={styles.backChipText}>← Back</Text>
+          <Text style={styles.backChipText}>{t('common.back')}</Text>
         </GentlePressable>
-        <Text style={styles.eyebrow}>Voice enrollment</Text>
+        <Text style={styles.eyebrow}>{t('enrollment.eyebrow')}</Text>
       </View>
 
       {phase.kind === 'languages' && (
@@ -251,20 +247,18 @@ function LanguageSelectView({
   onContinue: () => void;
 }) {
   const canContinue = languages.length > 0;
+  const { t } = useI18n();
   return (
     <View style={styles.column}>
-      <Text style={styles.title}>Which languages do you speak most?</Text>
-      <Text style={styles.subtitle}>
-        Pick one or more. DOST will only ask you to read in these languages
-        during enrollment — nothing else.
-      </Text>
+      <Text style={styles.title}>{t('enrollment.languagesTitle')}</Text>
+      <Text style={styles.subtitle}>{t('enrollment.languagesSubtitle')}</Text>
 
       <View style={styles.langRow}>
         {ENROLLMENT_LANGUAGES.map((lang) => (
           <GentlePressable
             key={lang}
             accessibilityRole="button"
-            accessibilityLabel={`Toggle ${languageLabel(lang)}`}
+            accessibilityLabel={t('enrollment.toggleA11y', { language: languageLabel(lang) })}
             onPress={() => toggle(lang)}
             style={({ pressed }) => [
               styles.langChip,
@@ -286,13 +280,13 @@ function LanguageSelectView({
 
       <Text style={styles.helper}>
         {languages.length === 0
-          ? 'Pick at least one language to continue.'
-          : `Selected: ${languages.map(languageLabel).join(', ')}.`}
+          ? t('enrollment.pickOneHelper')
+          : t('enrollment.selected', { languages: languages.map(languageLabel).join(', ') })}
       </Text>
 
       <GentlePressable
         accessibilityRole="button"
-        accessibilityLabel="Continue to enrollment"
+        accessibilityLabel={t('enrollment.continueA11y')}
         onPress={onContinue}
         style={({ pressed }) => [
           styles.primaryButton,
@@ -300,7 +294,7 @@ function LanguageSelectView({
           pressed && styles.primaryButtonPressed,
         ]}
       >
-        <Text style={styles.primaryButtonText}>Continue</Text>
+        <Text style={styles.primaryButtonText}>{t('common.continue')}</Text>
       </GentlePressable>
     </View>
   );
@@ -319,36 +313,29 @@ function IntroView({
 }) {
   const approxSeconds = Math.round((totalClips * clipMs) / 1000);
   const langList = languages.map(languageLabel).join(', ');
+  const { t } = useI18n();
   return (
     <View style={styles.column}>
-      <Text style={styles.title}>Before DOST can listen for just you</Text>
+      <Text style={styles.title}>{t('enrollment.introTitle')}</Text>
       <Text style={styles.subtitle}>
-        it needs to learn the sound of your voice. Read a few short lines aloud
-        — it takes about {approxSeconds} seconds.
+        {t('enrollment.introSubtitle', { seconds: approxSeconds })}
       </Text>
 
       <View style={styles.infoCard}>
+        <InfoRow>{t('enrollment.introNothingStored')}</InfoRow>
         <InfoRow>
-          Nothing is recorded to disk. Your voice becomes a small numeric
-          fingerprint, then the audio is discarded.
+          {t('enrollment.introLines', { count: totalClips, languages: langList })}
         </InfoRow>
-        <InfoRow>
-          You&#39;ll read {totalClips} short lines, all in {langList}. That way
-          DOST hears the shape of your voice across the languages you
-          actually use.
-        </InfoRow>
-        <InfoRow>
-          You can re-record this anytime in Settings → Listening.
-        </InfoRow>
+        <InfoRow>{t('enrollment.rerecordAnytime')}</InfoRow>
       </View>
 
       <GentlePressable
         accessibilityRole="button"
-        accessibilityLabel="Begin voice enrollment"
+        accessibilityLabel={t('enrollment.beginA11y')}
         onPress={onBegin}
         style={({ pressed }) => [styles.primaryButton, pressed && styles.primaryButtonPressed]}
       >
-        <Text style={styles.primaryButtonText}>Begin</Text>
+        <Text style={styles.primaryButtonText}>{t('enrollment.begin')}</Text>
       </GentlePressable>
     </View>
   );
@@ -365,10 +352,15 @@ function PromptView({
   total: number;
   onRecord: () => void;
 }) {
+  const { t } = useI18n();
   return (
     <View style={styles.column}>
       <Text style={styles.stepLabel}>
-        Line {index + 1} of {total} · {languageLabel(prompt.language)}
+        {t('enrollment.lineOfLanguage', {
+          current: index + 1,
+          total,
+          language: languageLabel(prompt.language),
+        })}
       </Text>
       <View style={styles.promptCard}>
         <Text style={styles.promptText}>{prompt.primary}</Text>
@@ -377,17 +369,14 @@ function PromptView({
         )}
         <Text style={styles.gloss}>— {prompt.gloss}</Text>
       </View>
-      <Text style={styles.helper}>
-        Tap the button, then read the line aloud at a natural pace. Recording
-        stops on its own.
-      </Text>
+      <Text style={styles.helper}>{t('enrollment.promptHelper')}</Text>
       <GentlePressable
         accessibilityRole="button"
-        accessibilityLabel="Start recording this line"
+        accessibilityLabel={t('enrollment.recordA11y')}
         onPress={onRecord}
         style={({ pressed }) => [styles.primaryButton, pressed && styles.primaryButtonPressed]}
       >
-        <Text style={styles.primaryButtonText}>Record</Text>
+        <Text style={styles.primaryButtonText}>{t('enrollment.record')}</Text>
       </GentlePressable>
     </View>
   );
@@ -409,10 +398,15 @@ function RecordingView({
   const elapsed = Date.now() - startedAt;
   const remaining = Math.max(0, clipMs - elapsed);
   const pct = Math.min(1, elapsed / clipMs);
+  const { t } = useI18n();
   return (
     <View style={styles.column}>
       <Text style={styles.stepLabel}>
-        Line {index + 1} of {total} · {languageLabel(prompt.language)}
+        {t('enrollment.lineOfLanguage', {
+          current: index + 1,
+          total,
+          language: languageLabel(prompt.language),
+        })}
       </Text>
       <View style={styles.promptCard}>
         <Text style={styles.promptText}>{prompt.primary}</Text>
@@ -424,7 +418,7 @@ function RecordingView({
         <View style={styles.speechDotActive} />
       </View>
       <Text style={styles.countdown}>
-        Listening… {Math.ceil(remaining / 1000)}s
+        {t('enrollment.listeningCountdown', { seconds: Math.ceil(remaining / 1000) })}
       </Text>
       <View style={styles.progressTrack}>
         <View style={[styles.progressFill, { width: `${Math.round(pct * 100)}%` }]} />
@@ -434,48 +428,42 @@ function RecordingView({
 }
 
 function ProcessingView({ index, total }: { index: number; total: number }) {
+  const { t } = useI18n();
   return (
     <View style={styles.column}>
       <Text style={styles.stepLabel}>
-        Line {index + 1} of {total}
+        {t('enrollment.lineOf', { current: index + 1, total })}
       </Text>
-      <Text style={styles.title}>Reading your voice…</Text>
-      <Text style={styles.subtitle}>
-        DOST is turning that clip into a small numeric fingerprint. Nothing
-        else is happening.
-      </Text>
+      <Text style={styles.title}>{t('enrollment.processingTitle')}</Text>
+      <Text style={styles.subtitle}>{t('enrollment.processingBody')}</Text>
     </View>
   );
 }
 
 function SavingView() {
+  const { t } = useI18n();
   return (
     <View style={styles.column}>
-      <Text style={styles.title}>Saving…</Text>
-      <Text style={styles.subtitle}>Just a moment.</Text>
+      <Text style={styles.title}>{t('enrollment.savingTitle')}</Text>
+      <Text style={styles.subtitle}>{t('enrollment.savingBody')}</Text>
     </View>
   );
 }
 
 function DoneView({ onDone }: { onDone: () => void }) {
+  const { t } = useI18n();
   return (
     <View style={styles.column}>
-      <Text style={styles.title}>DOST now knows your voice</Text>
-      <Text style={styles.subtitle}>
-        From here on, listening sessions will process only the segments that
-        match you. Anything else — a stranger, background chatter — gets
-        dropped before it&#39;s ever transcribed.
-      </Text>
-      <Text style={styles.subtitle}>
-        You can re-record this anytime in Settings → Listening.
-      </Text>
+      <Text style={styles.title}>{t('enrollment.doneTitle')}</Text>
+      <Text style={styles.subtitle}>{t('enrollment.doneBody')}</Text>
+      <Text style={styles.subtitle}>{t('enrollment.rerecordAnytime')}</Text>
       <GentlePressable
         accessibilityRole="button"
-        accessibilityLabel="Continue"
+        accessibilityLabel={t('common.continue')}
         onPress={onDone}
         style={({ pressed }) => [styles.primaryButton, pressed && styles.primaryButtonPressed]}
       >
-        <Text style={styles.primaryButtonText}>Continue</Text>
+        <Text style={styles.primaryButtonText}>{t('common.continue')}</Text>
       </GentlePressable>
     </View>
   );
@@ -490,12 +478,9 @@ function InfoRow({ children }: { children: React.ReactNode }) {
   );
 }
 
+/** Each enrollment language in its own script, matching the app language picker. */
 function languageLabel(lang: EnrollmentPrompt['language']): string {
-  switch (lang) {
-    case 'en': return 'English';
-    case 'hi': return 'Hindi';
-    case 'mr': return 'Marathi';
-  }
+  return NATIVE_LANGUAGE_NAMES[lang];
 }
 
 // ─── styles ───────────────────────────────────────────────────────

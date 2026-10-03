@@ -8,6 +8,7 @@ import { deleteEnrollment, isEnrolled } from '../lib/hearing/enrollment';
 import { getSensitivity, setSensitivity } from '../lib/hearing/sensitivity';
 import type { Sensitivity } from '../lib/hearing/speakerVerification';
 import type { ChatStackParamList } from './chatTypes';
+import { t as translate, useI18n, type TKey } from '../lib/i18n';
 
 type NavProp = NativeStackNavigationProp<ChatStackParamList>;
 
@@ -21,7 +22,8 @@ type NavProp = NativeStackNavigationProp<ChatStackParamList>;
  * self-contained.
  */
 export default function HearingSettingsSection() {
-  const navigation = useNavigation<NavProp>();
+    const navigation = useNavigation<NavProp>();
+  const { t } = useI18n();
   const [totalMs, setTotalMs] = useState<number | null>(null);
   const [sessionCount, setSessionCount] = useState<number>(0);
   const [enrolled, setEnrolled] = useState<boolean | null>(null);
@@ -65,12 +67,12 @@ export default function HearingSettingsSection() {
 
   const onDeleteEnrollment = () => {
     Alert.alert(
-      'Delete voice enrollment',
-      'This removes only the voiceprint DOST uses to recognize you. Past listening data is untouched. You’ll need to re-enroll before starting a new session.',
+      t('hearingSettings.deleteEnrollmentTitle'),
+      t('hearingSettings.deleteEnrollmentBody'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Delete',
+          text: t('common.delete'),
           style: 'destructive',
           onPress: () => void performDeleteEnrollment(),
         },
@@ -84,11 +86,11 @@ export default function HearingSettingsSection() {
     try {
       await deleteEnrollment();
       await refreshEnrollment();
-      Alert.alert('Deleted', 'Voice enrollment has been removed.');
+      Alert.alert(t('hearingSettings.deleted'), t('hearingSettings.enrollmentRemoved'));
     } catch (e) {
       Alert.alert(
-        'Could not delete',
-        e instanceof Error ? e.message : 'Please try again.',
+        t('settings.couldNotDelete'),
+        e instanceof Error ? e.message : t('common.pleaseTryAgain'),
       );
     } finally {
       setBusy(false);
@@ -97,12 +99,12 @@ export default function HearingSettingsSection() {
 
   const onDeleteAll = () => {
     Alert.alert(
-      'Delete all voice signal data',
-      'This removes every listening-session row and every signal DOST captured. Your reflections and voice notes are not affected.',
+      t('hearingSettings.deleteAllTitle'),
+      t('hearingSettings.deleteAllBody'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Delete',
+          text: t('common.delete'),
           style: 'destructive',
           onPress: () => void performDelete(),
         },
@@ -117,7 +119,7 @@ export default function HearingSettingsSection() {
       const { data: userData } = await supabase.auth.getUser();
       const userId = userData?.user?.id;
       if (!userId) {
-        Alert.alert('Not signed in', 'Please sign in and try again.');
+        Alert.alert(t('hearingSettings.notSignedIn'), t('hearingSettings.notSignedInBody'));
         return;
       }
       // Deleting sessions cascades to signals via the FK constraint.
@@ -126,17 +128,17 @@ export default function HearingSettingsSection() {
         .delete()
         .eq('user_id', userId);
       if (sessErr) {
-        Alert.alert('Could not delete', sessErr.message);
+        Alert.alert(t('settings.couldNotDelete'), sessErr.message);
         return;
       }
       // Belt-and-braces: also delete any orphan signals in case cascade fails.
       await supabase.from('voice_signals').delete().eq('user_id', userId);
       await loadTotals();
-      Alert.alert('Deleted', 'All voice signal data has been removed.');
+      Alert.alert(t('hearingSettings.deleted'), t('hearingSettings.allRemoved'));
     } catch (e) {
       Alert.alert(
-        'Could not delete',
-        e instanceof Error ? e.message : 'Please try again.',
+        t('settings.couldNotDelete'),
+        e instanceof Error ? e.message : t('common.pleaseTryAgain'),
       );
     } finally {
       setBusy(false);
@@ -145,33 +147,32 @@ export default function HearingSettingsSection() {
 
   return (
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>Listening</Text>
-      <Text style={styles.sectionIntro}>
-        Signals from your listening sessions live only here — nothing else in
-        DOST reads them yet.
-      </Text>
+      <Text style={styles.sectionTitle}>{t('hearingSettings.title')}</Text>
+      <Text style={styles.sectionIntro}>{t('hearingSettings.intro')}</Text>
 
       <View style={styles.statRow}>
         <View style={styles.stat}>
-          <Text style={styles.statLabel}>Sessions</Text>
+          <Text style={styles.statLabel}>{t('hearingSettings.sessions')}</Text>
           <Text style={styles.statValue}>{sessionCount}</Text>
         </View>
         <View style={styles.stat}>
-          <Text style={styles.statLabel}>Total time</Text>
+          <Text style={styles.statLabel}>{t('hearingSettings.totalTime')}</Text>
           <Text style={styles.statValue}>
             {totalMs === null ? '—' : formatTotal(totalMs)}
           </Text>
         </View>
       </View>
 
-      <Text style={styles.subheading}>Speaker sensitivity</Text>
+      <Text style={styles.subheading}>{t('hearingSettings.sensitivity')}</Text>
       <View style={styles.sensRow}>
         {(['strict', 'balanced', 'lenient'] as Sensitivity[]).map((s) => (
           <Pressable
             key={s}
             onPress={() => onSelectSensitivity(s)}
             accessibilityRole="button"
-            accessibilityLabel={`Sensitivity: ${s}`}
+            accessibilityLabel={t('hearingSettings.sensitivityA11y', {
+              level: t(`hearingSettings.level.${s}` as TKey),
+            })}
             style={({ pressed }) => [
               styles.sensChip,
               sensitivity === s && styles.sensChipActive,
@@ -184,7 +185,7 @@ export default function HearingSettingsSection() {
                 sensitivity === s && styles.sensChipTextActive,
               ]}
             >
-              {s[0].toUpperCase() + s.slice(1)}
+              {t(`hearingSettings.level.${s}` as TKey)}
             </Text>
           </Pressable>
         ))}
@@ -194,17 +195,19 @@ export default function HearingSettingsSection() {
       <Pressable
         onPress={() => navigation.navigate('SpeakerEnrollment', { returnTo: undefined })}
         accessibilityRole="button"
-        accessibilityLabel={enrolled ? 'Re-record my voice' : 'Set up voice enrollment'}
+        accessibilityLabel={
+          enrolled ? t('hearingSettings.rerecordA11y') : t('hearingSettings.setupA11y')
+        }
         style={({ pressed }) => [styles.enrollRow, pressed && { opacity: 0.7 }]}
       >
         <View style={{ flex: 1 }}>
           <Text style={styles.enrollTitle}>
-            {enrolled === false ? 'Set up voice enrollment' : 'Re-record my voice'}
+            {enrolled === false ? t('hearingSettings.setup') : t('hearingSettings.rerecord')}
           </Text>
           <Text style={styles.enrollHint}>
             {enrolled === false
-              ? 'Required before you can start a listening session.'
-              : 'Do this if the gate is missing your voice too often, or if you’ve changed rooms.'}
+              ? t('hearingSettings.setupHint')
+              : t('hearingSettings.rerecordHint')}
           </Text>
         </View>
         <Text style={styles.enrollChevron}>›</Text>
@@ -215,14 +218,14 @@ export default function HearingSettingsSection() {
           onPress={onDeleteEnrollment}
           disabled={busy}
           accessibilityRole="button"
-          accessibilityLabel="Delete voice enrollment"
+          accessibilityLabel={t('hearingSettings.deleteEnrollment')}
           style={({ pressed }) => [
             styles.dangerOutlineButton,
             pressed && { opacity: 0.7 },
             busy && { opacity: 0.5 },
           ]}
         >
-          <Text style={styles.dangerOutlineText}>Delete voice enrollment</Text>
+          <Text style={styles.dangerOutlineText}>{t('hearingSettings.deleteEnrollment')}</Text>
         </Pressable>
       )}
 
@@ -230,7 +233,7 @@ export default function HearingSettingsSection() {
         onPress={onDeleteAll}
         disabled={busy}
         accessibilityRole="button"
-        accessibilityLabel="Delete all voice signal data"
+        accessibilityLabel={t('hearingSettings.deleteAll')}
         style={({ pressed }) => [
           styles.dangerButton,
           pressed && { opacity: 0.7 },
@@ -238,7 +241,7 @@ export default function HearingSettingsSection() {
         ]}
       >
         <Text style={styles.dangerButtonText}>
-          {busy ? 'Deleting…' : 'Delete all voice signal data'}
+          {busy ? t('common.deleting') : t('hearingSettings.deleteAll')}
         </Text>
       </Pressable>
     </View>
@@ -246,23 +249,16 @@ export default function HearingSettingsSection() {
 }
 
 function sensitivityHint(s: Sensitivity): string {
-  switch (s) {
-    case 'strict':
-      return 'Keeps less of your speech, and almost never other people’s. Best when others are often nearby.';
-    case 'balanced':
-      return 'The default. Keeps a good share of your speech and filters out almost all of other people’s. In noisy places DOST skips speech rather than guess.';
-    case 'lenient':
-      return 'Keeps more of your speech, but also lets a little more of other people’s through. Best when you’re usually alone.';
-  }
+  return translate(`hearingSettings.hint.${s}` as TKey);
 }
 
 function formatTotal(ms: number): string {
   const s = Math.floor(ms / 1000);
   const h = Math.floor(s / 3600);
   const m = Math.floor((s % 3600) / 60);
-  if (h > 0) return `${h}h ${m}m`;
-  if (m > 0) return `${m}m`;
-  return `${s}s`;
+  if (h > 0) return translate('hearingSettings.hoursMinutes', { h, m });
+  if (m > 0) return translate('hearingSettings.minutes', { m });
+  return translate('hearingSettings.seconds', { s });
 }
 
 const styles = StyleSheet.create({

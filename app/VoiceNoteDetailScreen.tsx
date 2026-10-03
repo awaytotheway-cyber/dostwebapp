@@ -28,6 +28,7 @@ import BreathingDot from './BreathingDot';
 import GentlePressable from './GentlePressable';
 import PaperGrain from './PaperGrain';
 import { SuggestionChips } from './SuggestionChips';
+import { getLocaleTag, t as translate, useI18n } from '../lib/i18n';
 
 type Props = NativeStackScreenProps<ChatStackParamList, 'VoiceNoteDetail'>;
 
@@ -69,7 +70,7 @@ function formatLetterTimestamp(iso: string | null | undefined): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return '';
 
-  const time = date.toLocaleTimeString(undefined, {
+  const time = date.toLocaleTimeString(getLocaleTag(), {
     hour: 'numeric',
     minute: '2-digit',
   });
@@ -81,10 +82,10 @@ function formatLetterTimestamp(iso: string | null | undefined): string {
     (startToday.getTime() - startThat.getTime()) / (24 * 60 * 60 * 1000),
   );
 
-  if (dayDiff === 0) return `Today, ${time}`;
-  if (dayDiff === 1) return `Yesterday, ${time}`;
+  if (dayDiff === 0) return translate('past.today', { time });
+  if (dayDiff === 1) return translate('past.yesterday', { time });
 
-  const day = date.toLocaleDateString(undefined, {
+  const day = date.toLocaleDateString(getLocaleTag(), {
     month: 'short',
     day: 'numeric',
   });
@@ -118,6 +119,7 @@ function resolveVoiceNoteStage(
 
 export default function VoiceNoteDetailScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
+  const { t, lang } = useI18n();
   const paramId = route.params?.id;
 
   const [note, setNote] = useState<VoiceNoteRecord | null>(() =>
@@ -136,7 +138,7 @@ export default function VoiceNoteDetailScreen({ navigation, route }: Props) {
   useEffect(() => {
     if (!paramId) {
       setLoading(false);
-      setError('This note could not be found.');
+      setError(translate('voiceDetail.notFound'));
       return;
     }
 
@@ -149,7 +151,7 @@ export default function VoiceNoteDetailScreen({ navigation, route }: Props) {
       if (cancelled) return;
       if (!loaded) {
         if (!hasInstant) {
-          setError('This note could not be found.');
+          setError(translate('voiceDetail.notFound'));
           setNote(null);
         }
       } else {
@@ -245,7 +247,7 @@ export default function VoiceNoteDetailScreen({ navigation, route }: Props) {
 
   const detectedLabels = useMemo(
     () => (note ? detectedEmotionLabels(note) : []),
-    [note],
+    [note, lang],
   );
 
   const showSuggestionChips = suggested_emotions.length > 0;
@@ -306,12 +308,12 @@ export default function VoiceNoteDetailScreen({ navigation, route }: Props) {
       }
       navigateToChat({
         autoChipMessage: {
-          text: `That feels like ${labelForEmotionChip(token)}`,
+          text: t('chat.chipEmotionMessage', { label: labelForEmotionChip(token) }),
           selected_emotion: token,
         },
       });
     },
-    [navigateToChat],
+    [navigateToChat, t],
   );
 
   const runDelete = async () => {
@@ -324,12 +326,12 @@ export default function VoiceNoteDetailScreen({ navigation, route }: Props) {
         audio_storage_path: note.audio_storage_path,
       });
       if (!result.ok) {
-        Alert.alert('Could not delete', result.message);
+        Alert.alert(t('settings.couldNotDelete'), result.message);
         return;
       }
       navigation.goBack();
     } catch {
-      Alert.alert('Could not delete', 'Please try again.');
+      Alert.alert(t('settings.couldNotDelete'), t('common.pleaseTryAgain'));
     } finally {
       setDeleting(false);
     }
@@ -337,12 +339,12 @@ export default function VoiceNoteDetailScreen({ navigation, route }: Props) {
 
   const onDelete = () => {
     Alert.alert(
-      'Delete this note?',
-      'This removes the letter and any saved audio. It cannot be undone.',
+      t('voiceDetail.deleteTitle'),
+      t('voiceDetail.deleteBody'),
       [
-        { text: 'Keep', style: 'cancel' },
+        { text: t('voiceDetail.keep'), style: 'cancel' },
         {
-          text: 'Delete',
+          text: t('common.delete'),
           style: 'destructive',
           onPress: () => {
             void runDelete();
@@ -370,7 +372,7 @@ export default function VoiceNoteDetailScreen({ navigation, route }: Props) {
         <View style={styles.header}>
           <GentlePressable
             accessibilityRole="button"
-            accessibilityLabel="Back"
+            accessibilityLabel={t('common.backPlain')}
             onPress={() => navigation.goBack()}
             hitSlop={12}
             style={styles.backButton}
@@ -389,9 +391,9 @@ export default function VoiceNoteDetailScreen({ navigation, route }: Props) {
 
         {loading ? (
           <View style={styles.centered}>
-            <View style={styles.loadingRow} accessibilityLabel="Opening your note">
+            <View style={styles.loadingRow} accessibilityLabel={t('voiceDetail.openingA11y')}>
               <BreathingDot size={10} color={dawn.gold} />
-              <Text style={styles.loadingText}>Opening your note…</Text>
+              <Text style={styles.loadingText}>{t('voiceDetail.opening')}</Text>
             </View>
           </View>
         ) : error ? (
@@ -408,7 +410,7 @@ export default function VoiceNoteDetailScreen({ navigation, route }: Props) {
                 <View style={styles.playbackRow}>
                   <GentlePressable
                     accessibilityRole="button"
-                    accessibilityLabel={playing ? 'Pause recording' : 'Play recording'}
+                    accessibilityLabel={playing ? t('voiceDetail.pause') : t('voiceDetail.play')}
                     onPress={() => {
                       void onTogglePlayback();
                     }}
@@ -463,7 +465,7 @@ export default function VoiceNoteDetailScreen({ navigation, route }: Props) {
                   {suggested_emotions.length > 0 ? (
                     <SuggestionChips
                       options={suggested_emotions}
-                      label="What does this feel like?"
+                      label={t('chat.chipsEmotion')}
                       labelForOption={labelForEmotionChip}
                       onSelect={onEmotionChipSelect}
                     />
@@ -475,21 +477,21 @@ export default function VoiceNoteDetailScreen({ navigation, route }: Props) {
             <View style={styles.footer}>
               <GentlePressable
                 accessibilityRole="button"
-                accessibilityLabel="Continue this reflection"
+                accessibilityLabel={t('voiceDetail.continueReflection')}
                 onPress={onContinue}
                 style={styles.continueButton}
               >
-                <Text style={styles.continueLabel}>Continue this reflection</Text>
+                <Text style={styles.continueLabel}>{t('voiceDetail.continueReflection')}</Text>
               </GentlePressable>
               <GentlePressable
                 accessibilityRole="button"
-                accessibilityLabel="Delete voice note"
+                accessibilityLabel={t('voiceDetail.deleteA11y')}
                 onPress={onDelete}
                 disabled={deleting}
                 style={styles.deleteButton}
               >
                 <Text style={styles.deleteLabel}>
-                  {deleting ? 'Deleting…' : 'Delete'}
+                  {deleting ? t('common.deleting') : t('common.delete')}
                 </Text>
               </GentlePressable>
             </View>
