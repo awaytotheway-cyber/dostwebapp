@@ -1,0 +1,318 @@
+{
+ "desktop_cpu": "Intel Xeon @ 2.10GHz (AVX-512), 4 cores",
+ "sherpa_onnx": "1.13.8",
+ "benchmark": {
+  "speakers": 60,
+  "test_windows": 1800,
+  "vad_ms_per_32ms_frame": 0.15477109646625548,
+  "vad_speech_recall": 0.9987512043281702,
+  "nonspeech_false_triggers": {
+   "noise_minutes": 24.33585520833333,
+   "old_energy_gate_clips_per_hour": 179.9813469674226,
+   "silero_vad_clips_per_hour": 0.0,
+   "per_kind": {
+    "AirConditioner": {
+     "seconds": 324.82312499999995,
+     "old": 10,
+     "silero": 0
+    },
+    "CopyMachine": {
+     "seconds": 109.18299999999999,
+     "old": 2,
+     "silero": 0
+    },
+    "Munching": {
+     "seconds": 349.23637500000007,
+     "old": 26,
+     "silero": 0
+    },
+    "ShuttingDoor": {
+     "seconds": 216.81449999999998,
+     "old": 18,
+     "silero": 0
+    },
+    "Typing": {
+     "seconds": 424.4275,
+     "old": 16,
+     "silero": 0
+    },
+    "VacuumCleaner": {
+     "seconds": 35.6668125,
+     "old": 1,
+     "silero": 0
+    }
+   }
+  },
+  "models": {
+   "wespeaker_en_voxceleb_resnet34_LM.onnx": {
+    "size_mb": 26.53055,
+    "load_s": 0.14661742399994182,
+    "dim": 256,
+    "ms_per_2s_window_1t": 62.301986099998885,
+    "ms_per_2s_window_2t": 39.516427599994586,
+    "rss_mb_delta": 76.30848,
+    "accuracy": {
+     "quiet": {
+      "eer": 0.022259887005649716,
+      "kept_at_far5": 0.99,
+      "threshold_at_far5": 0.5491186380386353,
+      "kept_at_far1": 0.9488888888888889,
+      "threshold_at_far1": 0.6229569911956787
+     },
+     "ac_20db": {
+      "eer": 0.047782485875706215,
+      "kept_at_far5": 0.9544444444444444,
+      "threshold_at_far5": 0.5215369462966919,
+      "kept_at_far1": 0.8433333333333333,
+      "threshold_at_far1": 0.5959644317626953
+     },
+     "ac_10db": {
+      "eer": 0.15666195856873824,
+      "kept_at_far5": 0.653888888888889,
+      "threshold_at_far5": 0.4967648386955261,
+      "kept_at_far1": 0.4294444444444444,
+      "threshold_at_far1": 0.5721206665039062
+     }
+    }
+   },
+   "wespeaker_en_voxceleb_CAM++_LM.onnx": {
+    "size_mb": 29.292687,
+    "load_s": 1.144659848999936,
+    "dim": 512,
+    "ms_per_2s_window_1t": 34.72149299999501,
+    "ms_per_2s_window_2t": 27.856641949995264,
+    "rss_mb_delta": 25.088,
+    "accuracy": {
+     "quiet": {
+      "eer": 0.31222222222222223,
+      "kept_at_far5": 0.3566666666666667,
+      "threshold_at_far5": 0.31125330924987793,
+      "kept_at_far1": 0.23555555555555552,
+      "threshold_at_far1": 0.40762048959732056
+     },
+     "ac_20db": {
+      "eer": 0.33944444444444444,
+      "kept_at_far5": 0.3238888888888889,
+      "threshold_at_far5": 0.3029622435569763,
+      "kept_at_far1": 0.20666666666666667,
+      "threshold_at_far1": 0.3899879455566406
+     },
+     "ac_10db": {
+      "eer": 0.3933427495291902,
+      "kept_at_far5": 0.20277777777777772,
+      "threshold_at_far5": 0.3000198006629944,
+      "kept_at_far1": 0.0922222222222222,
+      "threshold_at_far1": 0.37658751010894775
+     }
+    }
+   },
+   "3dspeaker_speech_campplus_sv_en_voxceleb_16k.onnx": {
+    "size_mb": 29.596978,
+    "load_s": 0.3703433139999106,
+    "dim": 512,
+    "ms_per_2s_window_1t": 33.32401215000118,
+    "ms_per_2s_window_2t": 28.788225200014494,
+    "rss_mb_delta": 17.08032,
+    "accuracy": {
+     "quiet": {
+      "eer": 0.1300894538606403,
+      "kept_at_far5": 0.7622222222222222,
+      "threshold_at_far5": 0.31528836488723755,
+      "kept_at_far1": 0.5916666666666667,
+      "threshold_at_far1": 0.4122415781021118
+     },
+     "ac_20db": {
+      "eer": 0.1337617702448211,
+      "kept_at_far5": 0.7433333333333334,
+      "threshold_at_far5": 0.30269426107406616,
+      "kept_at_far1": 0.5866666666666667,
+      "threshold_at_far1": 0.3973289728164673
+     },
+     "ac_10db": {
+      "eer": 0.15011299435028247,
+      "kept_at_far5": 0.7094444444444444,
+      "threshold_at_far5": 0.2990970015525818,
+      "kept_at_far1": 0.5549999999999999,
+      "threshold_at_far1": 0.39123156666755676
+     }
+    }
+   },
+   "3dspeaker_speech_eres2net_sv_en_voxceleb_16k.onnx": {
+    "size_mb": 26.485263,
+    "load_s": 0.2552123139998912,
+    "dim": 192,
+    "ms_per_2s_window_1t": 83.66103360001489,
+    "ms_per_2s_window_2t": 52.26636385000347,
+    "rss_mb_delta": 77.746176,
+    "accuracy": {
+     "quiet": {
+      "eer": 0.0037806026365348397,
+      "kept_at_far5": 1.0,
+      "threshold_at_far5": 0.37274685502052307,
+      "kept_at_far1": 0.9983333333333333,
+      "threshold_at_far1": 0.45379525423049927
+     },
+     "ac_20db": {
+      "eer": 0.00501412429378531,
+      "kept_at_far5": 1.0,
+      "threshold_at_far5": 0.3658449053764343,
+      "kept_at_far1": 0.9983333333333333,
+      "threshold_at_far1": 0.4467872381210327
+     },
+     "ac_10db": {
+      "eer": 0.006666666666666667,
+      "kept_at_far5": 1.0,
+      "threshold_at_far5": 0.3604278564453125,
+      "kept_at_far1": 0.9944444444444445,
+      "threshold_at_far1": 0.4420733153820038
+     }
+    }
+   },
+   "nemo_en_titanet_small.onnx": {
+    "size_mb": 40.257283,
+    "load_s": 0.1901002750000771,
+    "dim": 192,
+    "ms_per_2s_window_1t": 27.73977745000593,
+    "ms_per_2s_window_2t": 20.7214034999879,
+    "rss_mb_delta": 115.859456,
+    "accuracy": {
+     "quiet": {
+      "eer": 0.018333333333333333,
+      "kept_at_far5": 0.9955555555555555,
+      "threshold_at_far5": 0.43225646018981934,
+      "kept_at_far1": 0.9661111111111111,
+      "threshold_at_far1": 0.5178312659263611
+     },
+     "ac_20db": {
+      "eer": 0.01900659133709981,
+      "kept_at_far5": 0.9944444444444445,
+      "threshold_at_far5": 0.42191657423973083,
+      "kept_at_far1": 0.9638888888888889,
+      "threshold_at_far1": 0.5104085206985474
+     },
+     "ac_10db": {
+      "eer": 0.02666666666666667,
+      "kept_at_far5": 0.9855555555555555,
+      "threshold_at_far5": 0.36784160137176514,
+      "kept_at_far1": 0.9322222222222222,
+      "threshold_at_far1": 0.45742884278297424
+     }
+    }
+   }
+  }
+ },
+ "stress": {
+  "3dspeaker_speech_eres2net_sv_en_voxceleb_16k.onnx": {
+   "babble_10db": {
+    "eer": 0.035,
+    "kept_at_far5": 0.9722222222222222,
+    "threshold_at_far5": 0.3391208052635193,
+    "kept_at_far1": 0.9288888888888889,
+    "threshold_at_far1": 0.42065921425819397
+   },
+   "babble_5db": {
+    "eer": 0.075,
+    "kept_at_far5": 0.9061111111111111,
+    "threshold_at_far5": 0.3178638815879822,
+    "kept_at_far1": 0.8027777777777778,
+    "threshold_at_far1": 0.39878666400909424
+   },
+   "far_reverb_ac15": {
+    "eer": 0.021666666666666667,
+    "kept_at_far5": 0.9905555555555555,
+    "threshold_at_far5": 0.3301982581615448,
+    "kept_at_far1": 0.9555555555555556,
+    "threshold_at_far1": 0.41064196825027466
+   }
+  },
+  "wespeaker_en_voxceleb_resnet34_LM.onnx": {
+   "babble_10db": {
+    "eer": 0.23777777777777778,
+    "kept_at_far5": 0.4683333333333334,
+    "threshold_at_far5": 0.47926440834999084,
+    "kept_at_far1": 0.24277777777777776,
+    "threshold_at_far1": 0.5538860559463501
+   },
+   "babble_5db": {
+    "eer": 0.3677024482109228,
+    "kept_at_far5": 0.2022222222222222,
+    "threshold_at_far5": 0.42423832416534424,
+    "kept_at_far1": 0.08444444444444443,
+    "threshold_at_far1": 0.4982144832611084
+   },
+   "far_reverb_ac15": {
+    "eer": 0.3938888888888889,
+    "kept_at_far5": 0.13722222222222225,
+    "threshold_at_far5": 0.3800857365131378,
+    "kept_at_far1": 0.04555555555555557,
+    "threshold_at_far1": 0.45358213782310486
+   }
+  },
+  "nemo_en_titanet_small.onnx": {
+   "babble_10db": {
+    "eer": 0.03722222222222222,
+    "kept_at_far5": 0.9738888888888889,
+    "threshold_at_far5": 0.3640679717063904,
+    "kept_at_far1": 0.8911111111111111,
+    "threshold_at_far1": 0.45605841279029846
+   },
+   "babble_5db": {
+    "eer": 0.07722222222222222,
+    "kept_at_far5": 0.8961111111111111,
+    "threshold_at_far5": 0.3184821605682373,
+    "kept_at_far1": 0.7611111111111111,
+    "threshold_at_far1": 0.40129852294921875
+   },
+   "far_reverb_ac15": {
+    "eer": 0.07120527306967986,
+    "kept_at_far5": 0.8955555555555555,
+    "threshold_at_far5": 0.3055894374847412,
+    "kept_at_far1": 0.7005555555555556,
+    "threshold_at_far1": 0.38837766647338867
+   }
+  }
+ },
+ "old_mfcc_as_shipped_decisions": {
+  "strict": {
+   "own": {
+    "match": 59,
+    "mismatch": 96,
+    "ambiguous": 1645
+   },
+   "other": {
+    "match": 8,
+    "mismatch": 9850,
+    "ambiguous": 96342
+   }
+  },
+  "balanced": {
+   "own": {
+    "match": 74,
+    "mismatch": 96,
+    "ambiguous": 1630
+   },
+   "other": {
+    "match": 13,
+    "mismatch": 9850,
+    "ambiguous": 96337
+   }
+  },
+  "lenient": {
+   "own": {
+    "match": 83,
+    "mismatch": 96,
+    "ambiguous": 1621
+   },
+   "other": {
+    "match": 18,
+    "mismatch": 9850,
+    "ambiguous": 96332
+   }
+  }
+ },
+ "old_mfcc_raw_scores": {
+  "eer": 0.0989,
+  "kept_at_far5": 0.8422,
+  "kept_at_far1": 0.6261
+ }
+}
