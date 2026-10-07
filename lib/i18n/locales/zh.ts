@@ -973,6 +973,27 @@ export const zh: Messages<typeof en> = {
     allow: '允许',
     notNow: '暂不',
   },
+  menu: {
+    openA11y: '打开菜单',
+    closeA11y: '关闭菜单',
+    about: '关于 DOST',
+  },
+  about: {
+    tagline: '一位可以陪你静心反思的朋友。',
+    version: '版本 {version}',
+    whatTitle: 'DOST 是什么',
+    whatBody:
+      'DOST 是一位陪你反思的伙伴。它不评判地倾听，帮你说出自己的感受和需要，并把答案留给你自己。它不做诊断，只有在你需要时才给出建议。',
+    privacyTitle: '你的隐私',
+    privacyBody:
+      '你的反思只保存在你的账号中。倾听时段里，你的声音只在手机上处理，从不录音。你可以随时在空间设置中导出或删除全部内容。',
+    careTitle: '不能替代专业帮助',
+    careBody:
+      'DOST 不是心理治疗，也不是医疗服务。如果你正处于危机中，或有伤害自己的念头，请立即拨打当地急救电话或心理危机热线。',
+    fontsTitle: '字体',
+    fontsBody:
+      'iA Writer Quattro（以 iM Writing 名称发布）和 Victor Mono，来自 Nerd Fonts。两者均采用 SIL Open Font License 授权。',
+  },
   language: {
     title: '语言',
     hint: 'DOST 的界面和回复都会使用这种语言。',

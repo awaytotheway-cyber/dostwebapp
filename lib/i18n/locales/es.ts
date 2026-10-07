@@ -975,6 +975,27 @@ export const es: Messages<typeof en> = {
     allow: 'Permitir',
     notNow: 'Ahora no',
   },
+  menu: {
+    openA11y: 'Abrir menú',
+    closeA11y: 'Cerrar menú',
+    about: 'Acerca de DOST',
+  },
+  about: {
+    tagline: 'Una presencia amiga y tranquila con quien reflexionar.',
+    version: 'Versión {version}',
+    whatTitle: 'Qué es DOST',
+    whatBody:
+      'DOST es un compañero para reflexionar. Escucha sin juzgar, te ayuda a poner nombre a lo que sientes y a lo que necesitas, y deja las respuestas contigo. No diagnostica y solo ofrece consejos cuando se los pides.',
+    privacyTitle: 'Tu privacidad',
+    privacyBody:
+      'Tus reflexiones se quedan en tu cuenta. En las sesiones de escucha, tu voz se procesa en tu teléfono y nunca se graba. Puedes exportarlo o borrarlo todo cuando quieras desde Ajustes del espacio.',
+    careTitle: 'No sustituye a la atención profesional',
+    careBody:
+      'DOST no es terapia ni atención médica. Si estás en crisis o piensas en hacerte daño, contacta de inmediato con el número de emergencias local o una línea de ayuda en crisis.',
+    fontsTitle: 'Tipografías',
+    fontsBody:
+      'iA Writer Quattro (como iM Writing) y Victor Mono, de Nerd Fonts. Ambas tienen licencia SIL Open Font License.',
+  },
   language: {
     title: 'Idioma',
     hint: 'Las pantallas y las respuestas de DOST usarán este idioma.',

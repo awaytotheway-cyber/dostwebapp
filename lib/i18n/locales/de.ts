@@ -974,6 +974,27 @@ export const de: Messages<typeof en> = {
     allow: 'Erlauben',
     notNow: 'Nicht jetzt',
   },
+  menu: {
+    openA11y: 'Menü öffnen',
+    closeA11y: 'Menü schließen',
+    about: 'Über DOST',
+  },
+  about: {
+    tagline: 'Ein ruhiger Freund zum Nachdenken.',
+    version: 'Version {version}',
+    whatTitle: 'Was DOST ist',
+    whatBody:
+      'DOST ist ein Begleiter zum Nachdenken. Es hört zu, ohne zu urteilen, hilft dir zu benennen, was du fühlst und was du brauchst, und lässt die Antworten bei dir. Es stellt keine Diagnosen und gibt nur Ratschläge, wenn du danach fragst.',
+    privacyTitle: 'Deine Privatsphäre',
+    privacyBody:
+      'Deine Gedanken bleiben in deinem Konto. In Zuhör-Sitzungen wird deine Stimme auf deinem Handy verarbeitet und nie aufgenommen. Du kannst jederzeit in den Einstellungen alles exportieren oder löschen.',
+    careTitle: 'Kein Ersatz für Hilfe',
+    careBody:
+      'DOST ist keine Therapie und keine medizinische Versorgung. Wenn du in einer Krise bist oder daran denkst, dir etwas anzutun, wende dich sofort an den Notruf oder eine Krisenhotline.',
+    fontsTitle: 'Schriften',
+    fontsBody:
+      'iA Writer Quattro (als iM Writing) und Victor Mono, aus Nerd Fonts. Beide stehen unter der SIL Open Font License.',
+  },
   language: {
     title: 'Sprache',
     hint: 'DOSTs Bildschirme und Antworten verwenden diese Sprache.',

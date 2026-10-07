@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -10,6 +10,7 @@ import { fonts, colors, radius, spacing, type as typography } from '../lib/theme
 import type { ChatStackParamList } from './chatTypes';
 import BreathingDot from './BreathingDot';
 import GentlePressable from './GentlePressable';
+import GlassMenu, { type GlassMenuItem } from './GlassMenu';
 import PaperGrain from './PaperGrain';
 
 const logoSource = require('../assets/dost-logo.png');
@@ -40,12 +41,23 @@ export default function HomeScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const [name, setName] = useState<string | null>(null);
   const [pastChatCount, setPastChatCount] = useState<number | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const closeMenu = useCallback(() => setMenuOpen(false), []);
   const timeOfDay = useMemo(() => getTimeOfDay(), []);
   const { t, tn } = useI18n();
   const trimmedName = name?.trim();
   const greeting = trimmedName
     ? t(`home.greetingNamed.${timeOfDay}` as TKey, { name: trimmedName })
     : t(`home.greeting.${timeOfDay}` as TKey);
+
+  const menuItems: GlassMenuItem[] = [
+    { key: 'profile', icon: 'person-outline', label: t('home.profile'), onPress: () => navigation.navigate('Profile') },
+    { key: 'settings', icon: 'options-outline', label: t('settings.heading'), onPress: () => navigation.navigate('Settings') },
+    { key: 'journey', icon: 'trail-sign-outline', label: t('home.yourJourney'), onPress: () => navigation.navigate('YourJourney') },
+    { key: 'past', icon: 'chatbubbles-outline', label: t('home.pastChatsTitle'), onPress: () => navigation.navigate('PastReflections') },
+    { key: 'listening', icon: 'mic-outline', label: t('home.listeningSession'), onPress: () => navigation.navigate('ListeningSession') },
+    { key: 'about', icon: 'information-circle-outline', label: t('menu.about'), onPress: () => navigation.navigate('About') },
+  ];
 
   useEffect(() => {
     let cancelled = false;
@@ -82,12 +94,13 @@ export default function HomeScreen({ navigation }: Props) {
           </View>
           <GentlePressable
             accessibilityRole="button"
-            accessibilityLabel={t('home.profile')}
-            onPress={() => navigation.navigate('Profile')}
+            accessibilityLabel={t('menu.openA11y')}
+            accessibilityState={{ expanded: menuOpen }}
+            onPress={() => setMenuOpen(true)}
             hitSlop={10}
-            style={({ pressed }) => [styles.iconButton, pressed && styles.iconPressed]}
+            style={({ pressed }) => [styles.menuButton, pressed && styles.iconPressed]}
           >
-            <Ionicons name="person-outline" size={22} color={home.description} />
+            <Ionicons name="menu-outline" size={24} color={home.title} />
           </GentlePressable>
         </View>
 
@@ -239,6 +252,13 @@ export default function HomeScreen({ navigation }: Props) {
           <Ionicons name="chevron-forward" size={20} color={home.muted} />
         </GentlePressable>
       </View>
+
+      <GlassMenu
+        visible={menuOpen}
+        onClose={closeMenu}
+        top={insets.top + spacing.lg + 48}
+        items={menuItems}
+      />
     </View>
   );
 }
@@ -282,8 +302,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.sm,
   },
-  iconButton: {
-    padding: spacing.xs,
+  menuButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(237, 228, 211, 0.06)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(237, 228, 211, 0.22)',
   },
   iconPressed: {
     opacity: 0.65,

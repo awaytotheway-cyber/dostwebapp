@@ -973,6 +973,27 @@ export const ja: Messages<typeof en> = {
     allow: '許可',
     notNow: '今はしない',
   },
+  menu: {
+    openA11y: 'メニューを開く',
+    closeA11y: 'メニューを閉じる',
+    about: 'DOST について',
+  },
+  about: {
+    tagline: '一緒に振り返る、静かな友だち。',
+    version: 'バージョン {version}',
+    whatTitle: 'DOST とは',
+    whatBody:
+      'DOST は振り返りのための相棒です。評価せずに耳を傾け、あなたが感じていることや必要としていることに名前をつける手助けをし、答えはあなた自身に委ねます。診断はせず、求められたときだけアドバイスをします。',
+    privacyTitle: 'プライバシー',
+    privacyBody:
+      '振り返りはあなたのアカウントの中だけに保存されます。リスニングセッションの音声は端末内で処理され、録音されることはありません。スペースの設定から、いつでもすべてをエクスポートまたは削除できます。',
+    careTitle: '専門的な支援の代わりではありません',
+    careBody:
+      'DOST はセラピーや医療ではありません。危機的な状況にある場合や、自分を傷つけることを考えている場合は、すぐに地域の緊急番号や相談窓口に連絡してください。',
+    fontsTitle: '書体',
+    fontsBody:
+      'iA Writer Quattro（iM Writing として）と Victor Mono、Nerd Fonts より。どちらも SIL Open Font License で提供されています。',
+  },
   language: {
     title: '言語',
     hint: 'DOST の画面と返信はこの言語になります。',

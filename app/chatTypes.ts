@@ -49,6 +49,7 @@ export type ChatStackParamList = {
   PastReflections: undefined;
   YourJourney: undefined;
   Profile: undefined;
+  About: undefined;
   HearingDisclosure: { returnTo?: 'ListeningSession' } | undefined;
   ListeningSession: undefined;
   SpeakerEnrollment: { returnTo?: 'ListeningSession' } | undefined;

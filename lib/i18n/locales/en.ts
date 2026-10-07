@@ -972,6 +972,27 @@ export const en = {
     allow: 'Allow',
     notNow: 'Not now',
   },
+  menu: {
+    openA11y: 'Open menu',
+    closeA11y: 'Close menu',
+    about: 'About DOST',
+  },
+  about: {
+    tagline: 'A quiet friend to reflect with.',
+    version: 'Version {version}',
+    whatTitle: 'What DOST is',
+    whatBody:
+      'DOST is a companion for reflection. It listens without judging, helps you name what you feel and what you need, and leaves the answers with you. It doesn’t diagnose, and it only offers advice when you ask.',
+    privacyTitle: 'Your privacy',
+    privacyBody:
+      'Your reflections stay in your account. During listening sessions your voice is processed on your phone and never recorded. You can export or delete everything at any time in Space Settings.',
+    careTitle: 'Not a replacement for care',
+    careBody:
+      'DOST is not therapy or medical care. If you are in crisis or thinking about harming yourself, contact your local emergency number or a crisis helpline right away.',
+    fontsTitle: 'Typefaces',
+    fontsBody:
+      'iA Writer Quattro (as iM Writing) and Victor Mono, from Nerd Fonts. Both are licensed under the SIL Open Font License.',
+  },
   language: {
     title: 'Language',
     hint: 'DOST’s screens and replies will use this language.',
