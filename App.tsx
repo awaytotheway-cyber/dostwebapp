@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFonts } from 'expo-font';
@@ -8,6 +8,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ChatNavigator from './app/ChatNavigator';
 import FontLoadingScreen from './app/FontLoadingScreen';
 import PrivacyNoticeScreen from './app/PrivacyNoticeScreen';
+import StartingText from './app/StartingText';
 import AuthScreen from './app/AuthScreen';
 import AuthErrorScreen from './app/AuthErrorScreen';
 import BreathingDot from './app/BreathingDot';
@@ -172,9 +173,7 @@ export default function App() {
           accessibilityIgnoresInvertColors
         />
         <BreathingDot size={10} color={theme.colors.terracottaDot} />
-        <Text accessibilityLiveRegion="polite" style={styles.loadingCopy}>
-          {t('app.starting')}
-        </Text>
+        <StartingText>{t('app.starting')}</StartingText>
       </View>
     );
   } else if (gate === 'privacy') {
@@ -214,10 +213,5 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 16,
-  },
-  loadingCopy: {
-    ...theme.type.body,
-    color: theme.colors.sand,
-    textAlign: 'center',
   },
 });
