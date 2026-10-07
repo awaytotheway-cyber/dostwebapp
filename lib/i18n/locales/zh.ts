@@ -1,5 +1,5 @@
 import { plural, type Messages } from '../core';
-import type { en } from './en';
+import { en } from './en';
 
 // Draft translation (Simplified Chinese).
 export const zh: Messages<typeof en> = {
@@ -752,128 +752,12 @@ export const zh: Messages<typeof en> = {
     continueReflection: '继续这段反思',
     deleteA11y: '删除语音笔记',
   },
-  listening: {
-    micNeeded: '需要麦克风',
-    micNeededBody:
-      'DOST 需要麦克风权限才能进行倾听时段。你可以在设置中授予。',
-    notificationNeeded: '需要通知',
-    notificationNeededBody:
-      '倾听时段进行时 DOST 会显示一条通知。请在设置中允许。',
-    downloadFailed: '模型下载失败',
-    downloadFailedBody:
-      'DOST 无法下载它的本地「耳朵」。请检查网络后重试。',
-    couldNotStart: '无法开始',
-    title: '倾听时段',
-    subtitle: '让 DOST 听听你说话的方式。',
-    startA11y: '开始倾听时段',
-    start: '开始\n倾听',
-    modeA11y: '电池模式：{mode}',
-    mode: {
-      attentive: '专注',
-      balanced: '均衡',
-      light: '轻量',
-    },
-    modeHint: {
-      attentive: '最高精度。手机充电时最合适。',
-      balanced: '逐段处理每个片段。最佳默认选项。',
-      light: '每三个片段处理一个。电量优先。',
-    },
-    howItWorks: '运作方式',
-    howItWorksLink: '运作方式 →',
-    preparingTitle: '正在准备 DOST 的耳朵',
-    preparingBody: '一次性下载，约 {mb} MB。之后完全在你的手机上运行。',
-    starting: '正在开始…',
-    listeningTitle: '正在聆听…',
-    warmingUp: '正在预热。',
-    tapStop: '结束时请点按「结束倾听」。',
-    speechTotal: '说话 / 总计',
-    segments: '片段',
-    stopA11y: '结束本次倾听',
-    stop: '结束倾听',
-    doneTitle: '倾听结束',
-    duration: '时长',
-    speechTime: '说话时间',
-    segmentsProcessed: '已处理片段',
-    speakingRate: '语速',
-    wpm: '每分钟 {value} 词',
-    averagePitch: '平均音高',
-    hz: '{value} Hz',
-    stressDisclaimer: '这里的「声音压力」是启发式的综合指标——不是临床测量。',
-    speakerGate: '说话人过滤',
-    matched: '与你的声音匹配的片段',
-    skipped: '跳过的片段（其他说话人或不清楚）',
-    themesHeading: 'DOST 听到的主题',
-    mockBanner: '基于声音的情绪推断尚未启用——DOST 目前不使用这些数据。',
-    anotherA11y: '再开始一次倾听',
-    another: '再开始一次倾听',
-    secondsShort: '{s} 秒',
-    minutesShort: '{m} 分 {s} 秒',
-    recorded: '本次倾听已记录。',
-    spokeRateVariation: '你的语速约为每分钟 {wpm} 词，{variation}。',
-    spokeRate: '你的语速约为每分钟 {wpm} 词。',
-    spokeVariation: '你说话时{variation}。',
-    variationLow: '语调变化很少',
-    variationMid: '语调变化适中',
-    variationHigh: '语调变化很大',
-  },
-  disclosure: {
-    eyebrow: '开始之前',
-    heading: 'DOST 可以倾听',
-    copy: '当你开始倾听时段时，DOST 会通过麦克风获取音频，以了解你说话时的情绪质感——你的能量、节奏和语气。',
-    sectionLabel: '你的声音会经历什么',
-    bullet1: '音频完全在你的手机上处理，从不离开你的设备。',
-    bullet2:
-      '录音从不保存。音频只在内存中存在几秒钟，然后就会被丢弃。',
-    bullet3:
-      '只会保存匿名信号——比如能量水平和语速——以及情绪主题。',
-    bullet4: '每次倾听都由你亲自开始和结束。DOST 从不在后台偷听。',
-    notice:
-      '请注意：倾听期间，手机附近任何人说话都可能被收录。只在你对周围的人感到放心时才开始。',
-    continue: '我明白了——继续',
-    notNow: '暂不',
-  },
-  hearingSettings: {
-    deleteEnrollmentTitle: '删除声音注册',
-    deleteEnrollmentBody:
-      '这只会删除 DOST 用来识别你的声纹。过往的倾听数据不受影响。开始新的倾听前需要重新注册。',
-    deleted: '已删除',
-    enrollmentRemoved: '声音注册已删除。',
-    deleteAllTitle: '删除所有声音信号数据',
-    deleteAllBody:
-      '这会删除每一条倾听记录和 DOST 收集的每一个信号。你的反思和语音笔记不受影响。',
-    notSignedIn: '未登录',
-    notSignedInBody: '请登录后再试。',
-    allRemoved: '所有声音信号数据已删除。',
-    title: '倾听',
-    intro: '来自倾听时段的信号只保存在这里——DOST 的其他部分目前都不会读取它们。',
-    sessions: '倾听次数',
-    totalTime: '总时长',
-    sensitivity: '说话人灵敏度',
-    sensitivityA11y: '灵敏度：{level}',
-    level: {
-      strict: '严格',
-      balanced: '均衡',
-      lenient: '宽松',
-    },
-    hint: {
-      strict: '保留较少你的语音，几乎从不保留他人的。适合身边经常有人的情况。',
-      balanced:
-        '默认选项。保留你大部分的语音，并过滤掉几乎所有他人的。在嘈杂的地方，DOST 宁可跳过也不乱猜。',
-      lenient:
-        '保留更多你的语音，但也会多放进一些他人的。适合你通常独处的情况。',
-    },
-    rerecordA11y: '重新录制我的声音',
-    setupA11y: '设置声音注册',
-    setup: '设置声音注册',
-    rerecord: '重新录制我的声音',
-    setupHint: '开始倾听前必须完成。',
-    rerecordHint: '如果过滤经常漏掉你的声音，或你换了房间，请重新录制。',
-    deleteEnrollment: '删除声音注册',
-    deleteAll: '删除所有声音信号数据',
-    hoursMinutes: '{h} 小时 {m} 分',
-    minutes: '{m} 分',
-    seconds: '{s} 秒',
-  },
+  // English until the listening copy settles (Phase 2, Step 7).
+  listening: en.listening,
+  // English until the listening copy settles (Phase 2, Step 7).
+  disclosure: en.disclosure,
+  // English until the listening copy settles (Phase 2, Step 7).
+  hearingSettings: en.hearingSettings,
   enrollment: {
     eyebrow: '声音注册',
     pickOneTitle: '请至少选择一种语言',
@@ -966,7 +850,7 @@ export const zh: Messages<typeof en> = {
     androidOnly: '倾听时段目前仅支持 Android。',
     micTitle: '麦克风权限',
     micBody:
-      'DOST 需要使用麦克风，在倾听时段中感受你说话的质感。音频从不离开你的手机。',
+      'DOST 需要使用麦克风来录制倾听时段。录音只保留在你的手机上。',
     notificationTitle: '显示倾听指示',
     notificationBody:
       '倾听时段进行时，DOST 会显示一条通知，让你随时知道它在倾听。',
@@ -986,7 +870,7 @@ export const zh: Messages<typeof en> = {
       'DOST 是一位陪你反思的伙伴。它不评判地倾听，帮你说出自己的感受和需要，并把答案留给你自己。它不做诊断，只有在你需要时才给出建议。',
     privacyTitle: '你的隐私',
     privacyBody:
-      '你的反思只保存在你的账号中。倾听时段里，你的声音只在手机上处理，从不录音。你可以随时在空间设置中导出或删除全部内容。',
+      '你的反思只保存在你的账号中。倾听录音只保存在这部手机上，从不上传。你可以随时在空间设置中导出或删除全部内容。',
     careTitle: '不能替代专业帮助',
     careBody:
       'DOST 不是心理治疗，也不是医疗服务。如果你正处于危机中，或有伤害自己的念头，请立即拨打当地急救电话或心理危机热线。',

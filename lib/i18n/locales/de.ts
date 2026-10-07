@@ -1,5 +1,5 @@
 import { plural, type Messages } from '../core';
-import type { en } from './en';
+import { en } from './en';
 
 // Draft translation (informal "du").
 export const de: Messages<typeof en> = {
@@ -752,128 +752,12 @@ export const de: Messages<typeof en> = {
     continueReflection: 'Diesen Gedanken fortsetzen',
     deleteA11y: 'Sprachnotiz löschen',
   },
-  listening: {
-    micNeeded: 'Mikrofon erforderlich',
-    micNeededBody:
-      'DOST braucht Mikrofonzugriff für eine Zuhör-Sitzung. Du kannst ihn in den Einstellungen erlauben.',
-    notificationNeeded: 'Benachrichtigung erforderlich',
-    notificationNeededBody:
-      'DOST zeigt während einer aktiven Sitzung eine Benachrichtigung. Bitte erlaube sie in den Einstellungen.',
-    downloadFailed: 'Modell-Download fehlgeschlagen',
-    downloadFailedBody:
-      'DOST konnte sein Ohr auf dem Gerät nicht herunterladen. Prüf deine Verbindung und versuch es noch einmal.',
-    couldNotStart: 'Start fehlgeschlagen',
-    title: 'Zuhör-Sitzung',
-    subtitle: 'Lass DOST hören, wie du sprichst.',
-    startA11y: 'Eine Zuhör-Sitzung starten',
-    start: 'Sitzung\nstarten',
-    modeA11y: 'Akkumodus: {mode}',
-    mode: {
-      attentive: 'Aufmerksam',
-      balanced: 'Ausgewogen',
-      light: 'Sparsam',
-    },
-    modeHint: {
-      attentive: 'Höchste Genauigkeit. Am besten, während das Handy lädt.',
-      balanced: 'Jeder Abschnitt, einer nach dem anderen. Die beste Standardwahl.',
-      light: 'Wertet jeden dritten Abschnitt aus. Akku zuerst.',
-    },
-    howItWorks: 'So funktioniert es',
-    howItWorksLink: 'So funktioniert es →',
-    preparingTitle: 'DOSTs Ohr wird vorbereitet',
-    preparingBody: 'Einmaliger Download, etwa {mb} MB. Danach läuft alles auf deinem Handy.',
-    starting: 'Startet…',
-    listeningTitle: 'Hört zu…',
-    warmingUp: 'Wärmt sich auf.',
-    tapStop: 'Tippe auf „Sitzung beenden“, wenn du fertig bist.',
-    speechTotal: 'Sprache / gesamt',
-    segments: 'Abschnitte',
-    stopA11y: 'Die Sitzung beenden',
-    stop: 'Sitzung beenden',
-    doneTitle: 'Sitzung beendet',
-    duration: 'Dauer',
-    speechTime: 'Sprechzeit',
-    segmentsProcessed: 'Verarbeitete Abschnitte',
-    speakingRate: 'Sprechtempo',
-    wpm: '{value} Wörter/Min.',
-    averagePitch: 'Durchschnittliche Tonhöhe',
-    hz: '{value} Hz',
-    stressDisclaimer: '„Stimmstress“ ist hier ein heuristischer Mischwert – keine klinische Messung.',
-    speakerGate: 'Stimmfilter',
-    matched: 'Abschnitte, die zu deiner Stimme passen',
-    skipped: 'Übersprungene Abschnitte (andere Person oder unklar)',
-    themesHeading: 'Was DOST gehört hat, in Themen',
-    mockBanner: 'Die Gefühlserkennung aus der Stimme ist noch nicht aktiv – DOST nutzt diese Daten nicht.',
-    anotherA11y: 'Eine weitere Sitzung starten',
-    another: 'Weitere Sitzung starten',
-    secondsShort: '{s} s',
-    minutesShort: '{m} Min. {s} s',
-    recorded: 'Sitzung aufgezeichnet.',
-    spokeRateVariation: 'Du hast mit etwa {wpm} Wörtern pro Minute gesprochen, {variation}.',
-    spokeRate: 'Du hast mit etwa {wpm} Wörtern pro Minute gesprochen.',
-    spokeVariation: 'Du hast gesprochen, {variation}.',
-    variationLow: 'mit wenig Veränderung im Tonfall',
-    variationMid: 'mit mäßiger Veränderung im Tonfall',
-    variationHigh: 'mit viel Veränderung im Tonfall',
-  },
-  disclosure: {
-    eyebrow: 'Bevor wir beginnen',
-    heading: 'DOST kann zuhören',
-    copy: 'Wenn du eine Zuhör-Sitzung startest, nimmt DOST Audio über dein Mikrofon auf, um die emotionale Färbung deiner Sprache zu verstehen – deine Energie, dein Tempo und deinen Ton.',
-    sectionLabel: 'Was mit deiner Stimme passiert',
-    bullet1: 'Audio wird vollständig auf deinem Handy verarbeitet. Es verlässt dein Gerät nie.',
-    bullet2:
-      'Aufnahmen werden nie gespeichert. Audio existiert nur ein paar Sekunden im Arbeitsspeicher und wird dann verworfen.',
-    bullet3:
-      'Gespeichert werden nur anonyme Signale – etwa Energielevel und Sprechtempo – und emotionale Themen.',
-    bullet4: 'Du startest und beendest jede Sitzung selbst. DOST hört nie im Hintergrund zu.',
-    notice:
-      'Bitte beachte: Wer während einer Sitzung in der Nähe deines Handys spricht, kann miterfasst werden. Starte eine Sitzung nur, wenn du dich mit den Menschen um dich herum wohlfühlst.',
-    continue: 'Verstanden – weiter',
-    notNow: 'Nicht jetzt',
-  },
-  hearingSettings: {
-    deleteEnrollmentTitle: 'Stimmregistrierung löschen',
-    deleteEnrollmentBody:
-      'Damit wird nur der Stimmabdruck entfernt, an dem DOST dich erkennt. Frühere Zuhör-Daten bleiben unverändert. Vor der nächsten Sitzung musst du dich erneut registrieren.',
-    deleted: 'Gelöscht',
-    enrollmentRemoved: 'Die Stimmregistrierung wurde entfernt.',
-    deleteAllTitle: 'Alle Stimmsignal-Daten löschen',
-    deleteAllBody:
-      'Damit werden alle Zuhör-Sitzungen und alle von DOST erfassten Signale entfernt. Deine Gedanken und Sprachnotizen sind nicht betroffen.',
-    notSignedIn: 'Nicht angemeldet',
-    notSignedInBody: 'Bitte melde dich an und versuch es noch einmal.',
-    allRemoved: 'Alle Stimmsignal-Daten wurden entfernt.',
-    title: 'Zuhören',
-    intro: 'Signale aus deinen Zuhör-Sitzungen bleiben nur hier – nichts anderes in DOST liest sie bisher.',
-    sessions: 'Sitzungen',
-    totalTime: 'Gesamtzeit',
-    sensitivity: 'Stimmempfindlichkeit',
-    sensitivityA11y: 'Empfindlichkeit: {level}',
-    level: {
-      strict: 'Streng',
-      balanced: 'Ausgewogen',
-      lenient: 'Locker',
-    },
-    hint: {
-      strict: 'Behält weniger von deiner Sprache und fast nie die anderer. Am besten, wenn oft andere in der Nähe sind.',
-      balanced:
-        'Die Standardeinstellung. Behält einen guten Teil deiner Sprache und filtert fast alles von anderen heraus. An lauten Orten überspringt DOST lieber, statt zu raten.',
-      lenient:
-        'Behält mehr von deiner Sprache, lässt aber auch etwas mehr von anderen durch. Am besten, wenn du meist allein bist.',
-    },
-    rerecordA11y: 'Meine Stimme neu aufnehmen',
-    setupA11y: 'Stimmregistrierung einrichten',
-    setup: 'Stimmregistrierung einrichten',
-    rerecord: 'Meine Stimme neu aufnehmen',
-    setupHint: 'Erforderlich, bevor du eine Zuhör-Sitzung starten kannst.',
-    rerecordHint: 'Mach das, wenn der Filter deine Stimme zu oft verpasst oder du den Raum gewechselt hast.',
-    deleteEnrollment: 'Stimmregistrierung löschen',
-    deleteAll: 'Alle Stimmsignal-Daten löschen',
-    hoursMinutes: '{h} Std. {m} Min.',
-    minutes: '{m} Min.',
-    seconds: '{s} s',
-  },
+  // English until the listening copy settles (Phase 2, Step 7).
+  listening: en.listening,
+  // English until the listening copy settles (Phase 2, Step 7).
+  disclosure: en.disclosure,
+  // English until the listening copy settles (Phase 2, Step 7).
+  hearingSettings: en.hearingSettings,
   enrollment: {
     eyebrow: 'Stimmregistrierung',
     pickOneTitle: 'Wähle mindestens eine Sprache',
@@ -967,7 +851,7 @@ export const de: Messages<typeof en> = {
     androidOnly: 'Zuhör-Sitzungen gibt es vorerst nur auf Android.',
     micTitle: 'Mikrofonzugriff',
     micBody:
-      'DOST braucht dein Mikrofon, um während einer Sitzung die Färbung deiner Sprache zu hören. Audio verlässt dein Handy nie.',
+      'DOST braucht dein Mikrofon, um Zuhör-Sitzungen aufzunehmen. Die Aufnahmen bleiben auf deinem Handy.',
     notificationTitle: 'Zuhör-Hinweis anzeigen',
     notificationBody:
       'DOST zeigt eine Benachrichtigung, solange eine Sitzung läuft – so weißt du immer, wann es zuhört.',
@@ -987,7 +871,7 @@ export const de: Messages<typeof en> = {
       'DOST ist ein Begleiter zum Nachdenken. Es hört zu, ohne zu urteilen, hilft dir zu benennen, was du fühlst und was du brauchst, und lässt die Antworten bei dir. Es stellt keine Diagnosen und gibt nur Ratschläge, wenn du danach fragst.',
     privacyTitle: 'Deine Privatsphäre',
     privacyBody:
-      'Deine Gedanken bleiben in deinem Konto. In Zuhör-Sitzungen wird deine Stimme auf deinem Handy verarbeitet und nie aufgenommen. Du kannst jederzeit in den Einstellungen alles exportieren oder löschen.',
+      'Deine Gedanken bleiben in deinem Konto. Aufnahmen aus dem Zuhören werden nur auf diesem Handy gespeichert und nie hochgeladen. Du kannst jederzeit in den Einstellungen alles exportieren oder löschen.',
     careTitle: 'Kein Ersatz für Hilfe',
     careBody:
       'DOST ist keine Therapie und keine medizinische Versorgung. Wenn du in einer Krise bist oder daran denkst, dir etwas anzutun, wende dich sofort an den Notruf oder eine Krisenhotline.',

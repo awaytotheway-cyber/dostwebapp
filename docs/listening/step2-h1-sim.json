@@ -1,0 +1,61 @@
+{
+ "quiet_room": {
+  "speech_s": 74.9,
+  "utterances_s": 116.7,
+  "saved_s": 130.9,
+  "silence_dropped_s": 469.1,
+  "clips": 19,
+  "speech_kept_pct": 100.0,
+  "mostly_silence_clips": 0,
+  "first_word_margin_ms": {
+   "min": 434,
+   "missed_onsets": 0
+  },
+  "events": []
+ },
+ "fan_ac_-40dB": {
+  "speech_s": 74.9,
+  "utterances_s": 116.7,
+  "saved_s": 142.9,
+  "silence_dropped_s": 456.2,
+  "clips": 32,
+  "speech_kept_pct": 97.7,
+  "mostly_silence_clips": 5,
+  "first_word_margin_ms": {
+   "min": 242,
+   "missed_onsets": 0
+  },
+  "events": []
+ },
+ "phone_call_30s": {
+  "speech_s": 74.9,
+  "utterances_s": 116.7,
+  "saved_s": 122.9,
+  "silence_dropped_s": 449.1,
+  "clips": 19,
+  "speech_kept_pct": 93.3,
+  "mostly_silence_clips": 0,
+  "first_word_margin_ms": {
+   "min": 461,
+   "missed_onsets": 1
+  },
+  "events": [
+   "mic_silenced",
+   "mic_resumed"
+  ]
+ },
+ "household_noise": {
+  "speech_s": 74.9,
+  "utterances_s": 116.7,
+  "saved_s": 166.9,
+  "silence_dropped_s": 433.1,
+  "clips": 24,
+  "speech_kept_pct": 100.0,
+  "mostly_silence_clips": 5,
+  "first_word_margin_ms": {
+   "min": 227,
+   "missed_onsets": 0
+  },
+  "events": []
+ }
+}

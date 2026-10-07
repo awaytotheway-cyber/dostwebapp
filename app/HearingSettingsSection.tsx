@@ -1,92 +1,55 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useFocusEffect } from '@react-navigation/native';
 import theme from '../lib/theme';
-import { supabase } from '../lib/supabase';
-import { deleteEnrollment, isEnrolled } from '../lib/hearing/enrollment';
-import { getSensitivity, setSensitivity } from '../lib/hearing/sensitivity';
-import type { Sensitivity } from '../lib/hearing/speakerVerification';
-import type { ChatStackParamList } from './chatTypes';
-import { t as translate, useI18n, type TKey } from '../lib/i18n';
-
-type NavProp = NativeStackNavigationProp<ChatStackParamList>;
+import { getListenStatus, stopListening } from '../lib/listening/listenBridge';
+import { deleteAllListeningData, recordingsUsage } from '../lib/listening/voiceFiles';
+import { t as translate, useI18n } from '../lib/i18n';
 
 /**
- * Settings block for the hearing feature. Shows total listening time
- * across all sessions and a destructive button that deletes every
- * voice_sessions and voice_signals row for the current user.
- *
- * Kept as its own component so SettingsScreen.tsx stays roughly the
- * same shape as before and the hearing feature's delete flow is
- * self-contained.
+ * Settings → Listening. Shows what listening has stored on this phone and
+ * deletes all of it. Delete means delete from disk: the folder is listed
+ * again afterwards and the number of files left is shown.
  */
 export default function HearingSettingsSection() {
-    const navigation = useNavigation<NavProp>();
   const { t } = useI18n();
-  const [totalMs, setTotalMs] = useState<number | null>(null);
-  const [sessionCount, setSessionCount] = useState<number>(0);
-  const [enrolled, setEnrolled] = useState<boolean | null>(null);
-  const [sensitivity, setLocalSensitivity] = useState<Sensitivity>('balanced');
+  const [usage, setUsage] = useState<{ files: number; bytes: number } | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const loadTotals = useCallback(async () => {
-    const { data, error } = await supabase
-      .from('voice_sessions')
-      .select('total_duration_seconds');
-    if (error || !data) return;
-    let sum = 0;
-    for (const row of data) {
-      const n = Number(row.total_duration_seconds ?? 0);
-      if (Number.isFinite(n) && n > 0) sum += n;
+  const loadUsage = useCallback(async () => {
+    try {
+      setUsage(await recordingsUsage());
+    } catch {
+      setUsage(null);
     }
-    setTotalMs(sum * 1000);
-    setSessionCount(data.length);
   }, []);
 
-  const refreshEnrollment = useCallback(async () => {
-    setEnrolled(await isEnrolled());
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      void loadUsage();
+    }, [loadUsage]),
+  );
 
-  useEffect(() => {
-    void loadTotals();
-    void refreshEnrollment();
-    void getSensitivity().then(setLocalSensitivity);
-    // Refresh on focus so the row reflects a fresh enrollment done
-    // via the Listening screen or the row itself.
-    const unsub = navigation.addListener('focus', () => {
-      void refreshEnrollment();
-    });
-    return unsub;
-  }, [loadTotals, refreshEnrollment, navigation]);
-
-  const onSelectSensitivity = (next: Sensitivity) => {
-    setLocalSensitivity(next);
-    void setSensitivity(next);
-  };
-
-  const onDeleteEnrollment = () => {
-    Alert.alert(
-      t('hearingSettings.deleteEnrollmentTitle'),
-      t('hearingSettings.deleteEnrollmentBody'),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('common.delete'),
-          style: 'destructive',
-          onPress: () => void performDeleteEnrollment(),
-        },
-      ],
-    );
-  };
-
-  const performDeleteEnrollment = async () => {
+  const performDelete = async () => {
     if (busy) return;
     setBusy(true);
     try {
-      await deleteEnrollment();
-      await refreshEnrollment();
-      Alert.alert(t('hearingSettings.deleted'), t('hearingSettings.enrollmentRemoved'));
+      await stopListening();
+      // Wait for the service to write its last lines before deleting.
+      for (let i = 0; i < 50; i++) {
+        if (!(await getListenStatus()).running) break;
+        await new Promise((r) => setTimeout(r, 100));
+      }
+      const left = await deleteAllListeningData();
+      await loadUsage();
+      if (left === 0) {
+        Alert.alert(t('hearingSettings.deleted'), t('hearingSettings.deletedBody', { count: 0 }));
+      } else {
+        Alert.alert(
+          t('settings.couldNotDelete'),
+          t('hearingSettings.notAllDeleted', { count: left }),
+        );
+      }
     } catch (e) {
       Alert.alert(
         t('settings.couldNotDelete'),
@@ -98,51 +61,10 @@ export default function HearingSettingsSection() {
   };
 
   const onDeleteAll = () => {
-    Alert.alert(
-      t('hearingSettings.deleteAllTitle'),
-      t('hearingSettings.deleteAllBody'),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('common.delete'),
-          style: 'destructive',
-          onPress: () => void performDelete(),
-        },
-      ],
-    );
-  };
-
-  const performDelete = async () => {
-    if (busy) return;
-    setBusy(true);
-    try {
-      const { data: userData } = await supabase.auth.getUser();
-      const userId = userData?.user?.id;
-      if (!userId) {
-        Alert.alert(t('hearingSettings.notSignedIn'), t('hearingSettings.notSignedInBody'));
-        return;
-      }
-      // Deleting sessions cascades to signals via the FK constraint.
-      const { error: sessErr } = await supabase
-        .from('voice_sessions')
-        .delete()
-        .eq('user_id', userId);
-      if (sessErr) {
-        Alert.alert(t('settings.couldNotDelete'), sessErr.message);
-        return;
-      }
-      // Belt-and-braces: also delete any orphan signals in case cascade fails.
-      await supabase.from('voice_signals').delete().eq('user_id', userId);
-      await loadTotals();
-      Alert.alert(t('hearingSettings.deleted'), t('hearingSettings.allRemoved'));
-    } catch (e) {
-      Alert.alert(
-        t('settings.couldNotDelete'),
-        e instanceof Error ? e.message : t('common.pleaseTryAgain'),
-      );
-    } finally {
-      setBusy(false);
-    }
+    Alert.alert(t('hearingSettings.deleteAllTitle'), t('hearingSettings.deleteAllBody'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('common.delete'), style: 'destructive', onPress: () => void performDelete() },
+    ]);
   };
 
   return (
@@ -150,90 +72,20 @@ export default function HearingSettingsSection() {
       <Text style={styles.sectionTitle}>{t('hearingSettings.title')}</Text>
       <Text style={styles.sectionIntro}>{t('hearingSettings.intro')}</Text>
 
-      <View style={styles.statRow}>
-        <View style={styles.stat}>
-          <Text style={styles.statLabel}>{t('hearingSettings.sessions')}</Text>
-          <Text style={styles.statValue}>{sessionCount}</Text>
-        </View>
-        <View style={styles.stat}>
-          <Text style={styles.statLabel}>{t('hearingSettings.totalTime')}</Text>
-          <Text style={styles.statValue}>
-            {totalMs === null ? '—' : formatTotal(totalMs)}
-          </Text>
-        </View>
+      <View style={styles.stat}>
+        <Text style={styles.statLabel}>{t('hearingSettings.stored')}</Text>
+        <Text style={styles.statValue}>
+          {usage
+            ? t('hearingSettings.storedValue', { count: usage.files, size: formatSize(usage.bytes) })
+            : '—'}
+        </Text>
       </View>
-
-      <Text style={styles.subheading}>{t('hearingSettings.sensitivity')}</Text>
-      <View style={styles.sensRow}>
-        {(['strict', 'balanced', 'lenient'] as Sensitivity[]).map((s) => (
-          <Pressable
-            key={s}
-            onPress={() => onSelectSensitivity(s)}
-            accessibilityRole="button"
-            accessibilityLabel={t('hearingSettings.sensitivityA11y', {
-              level: t(`hearingSettings.level.${s}` as TKey),
-            })}
-            style={({ pressed }) => [
-              styles.sensChip,
-              sensitivity === s && styles.sensChipActive,
-              pressed && { opacity: 0.7 },
-            ]}
-          >
-            <Text
-              style={[
-                styles.sensChipText,
-                sensitivity === s && styles.sensChipTextActive,
-              ]}
-            >
-              {t(`hearingSettings.level.${s}` as TKey)}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
-      <Text style={styles.sensHint}>{sensitivityHint(sensitivity)}</Text>
-
-      <Pressable
-        onPress={() => navigation.navigate('SpeakerEnrollment', { returnTo: undefined })}
-        accessibilityRole="button"
-        accessibilityLabel={
-          enrolled ? t('hearingSettings.rerecordA11y') : t('hearingSettings.setupA11y')
-        }
-        style={({ pressed }) => [styles.enrollRow, pressed && { opacity: 0.7 }]}
-      >
-        <View style={{ flex: 1 }}>
-          <Text style={styles.enrollTitle}>
-            {enrolled === false ? t('hearingSettings.setup') : t('hearingSettings.rerecord')}
-          </Text>
-          <Text style={styles.enrollHint}>
-            {enrolled === false
-              ? t('hearingSettings.setupHint')
-              : t('hearingSettings.rerecordHint')}
-          </Text>
-        </View>
-        <Text style={styles.enrollChevron}>›</Text>
-      </Pressable>
-
-      {enrolled && (
-        <Pressable
-          onPress={onDeleteEnrollment}
-          disabled={busy}
-          accessibilityRole="button"
-          accessibilityLabel={t('hearingSettings.deleteEnrollment')}
-          style={({ pressed }) => [
-            styles.dangerOutlineButton,
-            pressed && { opacity: 0.7 },
-            busy && { opacity: 0.5 },
-          ]}
-        >
-          <Text style={styles.dangerOutlineText}>{t('hearingSettings.deleteEnrollment')}</Text>
-        </Pressable>
-      )}
 
       <Pressable
         onPress={onDeleteAll}
         disabled={busy}
         accessibilityRole="button"
-        accessibilityLabel={t('hearingSettings.deleteAll')}
+        accessibilityLabel={t('hearingSettings.deleteAllA11y')}
         style={({ pressed }) => [
           styles.dangerButton,
           pressed && { opacity: 0.7 },
@@ -248,17 +100,8 @@ export default function HearingSettingsSection() {
   );
 }
 
-function sensitivityHint(s: Sensitivity): string {
-  return translate(`hearingSettings.hint.${s}` as TKey);
-}
-
-function formatTotal(ms: number): string {
-  const s = Math.floor(ms / 1000);
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  if (h > 0) return translate('hearingSettings.hoursMinutes', { h, m });
-  if (m > 0) return translate('hearingSettings.minutes', { m });
-  return translate('hearingSettings.seconds', { s });
+function formatSize(bytes: number): string {
+  return translate('hearingSettings.mb', { value: (bytes / (1024 * 1024)).toFixed(1) });
 }
 
 const styles = StyleSheet.create({
@@ -281,19 +124,14 @@ const styles = StyleSheet.create({
     color: theme.colors.sand,
     marginBottom: theme.spacing.lg,
   },
-  statRow: {
-    flexDirection: 'row',
-    gap: theme.spacing.md,
-    marginBottom: theme.spacing.lg,
-  },
   stat: {
-    flex: 1,
     borderWidth: 1,
     borderColor: theme.colors.divider,
     borderRadius: theme.radius.lg,
     backgroundColor: theme.colors.surface,
     paddingVertical: theme.spacing.md,
     paddingHorizontal: theme.spacing.md,
+    marginBottom: theme.spacing.lg,
   },
   statLabel: { ...theme.type.caption, color: theme.colors.clay },
   statValue: {
@@ -318,77 +156,5 @@ const styles = StyleSheet.create({
     ...theme.type.label,
     color: theme.colors.error,
     fontSize: 14,
-  },
-  enrollRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: theme.colors.divider,
-    borderRadius: theme.radius.lg,
-    backgroundColor: theme.colors.surface,
-    paddingVertical: theme.spacing.md,
-    paddingHorizontal: theme.spacing.lg,
-    marginBottom: theme.spacing.md,
-  },
-  enrollTitle: { ...theme.type.label, color: theme.colors.cream, fontSize: 15 },
-  enrollHint: {
-    ...theme.type.caption,
-    color: theme.colors.clay,
-    marginTop: 2,
-  },
-  enrollChevron: {
-    ...theme.type.heading,
-    fontSize: 24,
-    color: theme.colors.sand,
-    marginLeft: theme.spacing.md,
-  },
-  dangerOutlineButton: {
-    minHeight: theme.spacing['4xl'],
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: theme.radius.cta,
-    borderWidth: 1,
-    borderColor: theme.colors.error,
-    paddingHorizontal: theme.spacing['2xl'],
-    paddingVertical: theme.spacing.sm,
-    backgroundColor: 'transparent',
-    marginBottom: theme.spacing.md,
-  },
-  dangerOutlineText: {
-    ...theme.type.label,
-    color: theme.colors.error,
-    fontSize: 14,
-  },
-  subheading: {
-    ...theme.type.label,
-    color: theme.colors.cream,
-    marginBottom: theme.spacing.sm,
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
-  },
-  sensRow: {
-    flexDirection: 'row',
-    gap: theme.spacing.sm,
-    marginBottom: theme.spacing.sm,
-  },
-  sensChip: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: theme.colors.divider,
-    borderRadius: theme.radius.full,
-    backgroundColor: theme.colors.surface,
-    paddingVertical: theme.spacing.sm,
-    alignItems: 'center',
-  },
-  sensChipActive: {
-    borderColor: theme.colors.gold,
-    backgroundColor: theme.colors.goldWash,
-  },
-  sensChipText: { ...theme.type.label, color: theme.colors.sand },
-  sensChipTextActive: { color: theme.colors.gold },
-  sensHint: {
-    ...theme.type.caption,
-    color: theme.colors.clay,
-    marginBottom: theme.spacing.lg,
   },
 });

@@ -1,5 +1,5 @@
 import { plural, type Messages } from '../core';
-import type { en } from './en';
+import { en } from './en';
 
 // Draft translation (Spain Spanish, informal "tú"). Phrasing avoids gendered
 // adjectives about the user where Spanish allows it.
@@ -753,128 +753,12 @@ export const es: Messages<typeof en> = {
     continueReflection: 'Continuar esta reflexión',
     deleteA11y: 'Eliminar nota de voz',
   },
-  listening: {
-    micNeeded: 'Se necesita el micrófono',
-    micNeededBody:
-      'DOST necesita acceso al micrófono para hacer una sesión de escucha. Puedes concederlo en Ajustes.',
-    notificationNeeded: 'Se necesita una notificación',
-    notificationNeededBody:
-      'DOST muestra una notificación mientras hay una sesión activa. Permítela en Ajustes.',
-    downloadFailed: 'Falló la descarga del modelo',
-    downloadFailedBody:
-      'DOST no pudo descargar su oído en el dispositivo. Revisa tu conexión e inténtalo de nuevo.',
-    couldNotStart: 'No se pudo iniciar',
-    title: 'Sesión de escucha',
-    subtitle: 'Deja que DOST oiga cómo hablas.',
-    startA11y: 'Iniciar una sesión de escucha',
-    start: 'Iniciar\nuna sesión',
-    modeA11y: 'Modo de batería: {mode}',
-    mode: {
-      attentive: 'Atento',
-      balanced: 'Equilibrado',
-      light: 'Ligero',
-    },
-    modeHint: {
-      attentive: 'Máxima fidelidad. Ideal mientras el teléfono se carga.',
-      balanced: 'Cada fragmento, uno a uno. La mejor opción por defecto.',
-      light: 'Analiza uno de cada tres fragmentos. Prioriza la batería.',
-    },
-    howItWorks: 'Cómo funciona',
-    howItWorksLink: 'Cómo funciona →',
-    preparingTitle: 'Preparando el oído de DOST',
-    preparingBody: 'Descarga única de unos {mb} MB. Después funciona por completo en tu teléfono.',
-    starting: 'Iniciando…',
-    listeningTitle: 'Escuchando…',
-    warmingUp: 'Calentando.',
-    tapStop: 'Toca «Detener sesión» cuando termines.',
-    speechTotal: 'Habla / total',
-    segments: 'Fragmentos',
-    stopA11y: 'Detener la sesión',
-    stop: 'Detener sesión',
-    doneTitle: 'Sesión terminada',
-    duration: 'Duración',
-    speechTime: 'Tiempo de habla',
-    segmentsProcessed: 'Fragmentos procesados',
-    speakingRate: 'Ritmo al hablar',
-    wpm: '{value} ppm',
-    averagePitch: 'Tono medio',
-    hz: '{value} Hz',
-    stressDisclaimer: 'El «estrés vocal» es aquí un indicador heurístico compuesto, no una medida clínica.',
-    speakerGate: 'Filtro de voz',
-    matched: 'Fragmentos que coinciden con tu voz',
-    skipped: 'Fragmentos omitidos (otra persona o poco claros)',
-    themesHeading: 'Lo que DOST oyó, en temas',
-    mockBanner: 'La inferencia de emociones por la voz aún no está activa: DOST no está usando estos datos.',
-    anotherA11y: 'Iniciar otra sesión',
-    another: 'Iniciar otra sesión',
-    secondsShort: '{s} s',
-    minutesShort: '{m} min {s} s',
-    recorded: 'Sesión registrada.',
-    spokeRateVariation: 'Hablaste a unas {wpm} palabras por minuto {variation}.',
-    spokeRate: 'Hablaste a unas {wpm} palabras por minuto.',
-    spokeVariation: 'Hablaste {variation}.',
-    variationLow: 'con poca variación de tono',
-    variationMid: 'con una variación de tono moderada',
-    variationHigh: 'con mucha variación de tono',
-  },
-  disclosure: {
-    eyebrow: 'Antes de empezar',
-    heading: 'DOST puede escuchar',
-    copy: 'Cuando inicias una sesión de escucha, DOST capta el audio del micrófono para entender la textura emocional de cómo hablas: tu energía, tu ritmo y tu tono.',
-    sectionLabel: 'Qué pasa con tu voz',
-    bullet1: 'El audio se procesa por completo en tu teléfono. Nunca sale de tu dispositivo.',
-    bullet2:
-      'Las grabaciones nunca se guardan. El audio solo existe en memoria unos segundos y luego se descarta.',
-    bullet3:
-      'Solo se guardan señales anónimas, como el nivel de energía y el ritmo al hablar, y temas emocionales.',
-    bullet4: 'Tú inicias y detienes cada sesión. DOST nunca escucha en segundo plano.',
-    notice:
-      'Ten en cuenta que durante una sesión puede captarse la voz de cualquier persona que hable cerca del teléfono. Inicia una sesión solo cuando te sientas a gusto con quien tienes alrededor.',
-    continue: 'Entendido, continuar',
-    notNow: 'Ahora no',
-  },
-  hearingSettings: {
-    deleteEnrollmentTitle: 'Eliminar el registro de voz',
-    deleteEnrollmentBody:
-      'Solo se elimina la huella de voz que DOST usa para reconocerte. Los datos de escucha anteriores no cambian. Tendrás que volver a registrar tu voz antes de iniciar una sesión nueva.',
-    deleted: 'Eliminado',
-    enrollmentRemoved: 'Se ha eliminado el registro de voz.',
-    deleteAllTitle: 'Eliminar todos los datos de señales de voz',
-    deleteAllBody:
-      'Se eliminan todas las sesiones de escucha y todas las señales que DOST captó. Tus reflexiones y notas de voz no se ven afectadas.',
-    notSignedIn: 'No has iniciado sesión',
-    notSignedInBody: 'Inicia sesión e inténtalo de nuevo.',
-    allRemoved: 'Se han eliminado todos los datos de señales de voz.',
-    title: 'Escucha',
-    intro: 'Las señales de tus sesiones de escucha solo viven aquí; nada más en DOST las lee todavía.',
-    sessions: 'Sesiones',
-    totalTime: 'Tiempo total',
-    sensitivity: 'Sensibilidad de voz',
-    sensitivityA11y: 'Sensibilidad: {level}',
-    level: {
-      strict: 'Estricta',
-      balanced: 'Equilibrada',
-      lenient: 'Flexible',
-    },
-    hint: {
-      strict: 'Conserva menos de tu habla y casi nunca la de otras personas. Ideal cuando suele haber gente cerca.',
-      balanced:
-        'La opción por defecto. Conserva buena parte de tu habla y filtra casi toda la de los demás. En sitios con ruido, DOST prefiere omitir antes que adivinar.',
-      lenient:
-        'Conserva más de tu habla, pero también deja pasar algo más de la de otras personas. Ideal si sueles estar sin nadie alrededor.',
-    },
-    rerecordA11y: 'Volver a grabar mi voz',
-    setupA11y: 'Configurar el registro de voz',
-    setup: 'Configurar el registro de voz',
-    rerecord: 'Volver a grabar mi voz',
-    setupHint: 'Es necesario antes de iniciar una sesión de escucha.',
-    rerecordHint: 'Hazlo si el filtro se salta tu voz demasiado a menudo o si has cambiado de sitio.',
-    deleteEnrollment: 'Eliminar el registro de voz',
-    deleteAll: 'Eliminar todos los datos de señales de voz',
-    hoursMinutes: '{h} h {m} min',
-    minutes: '{m} min',
-    seconds: '{s} s',
-  },
+  // English until the listening copy settles (Phase 2, Step 7).
+  listening: en.listening,
+  // English until the listening copy settles (Phase 2, Step 7).
+  disclosure: en.disclosure,
+  // English until the listening copy settles (Phase 2, Step 7).
+  hearingSettings: en.hearingSettings,
   enrollment: {
     eyebrow: 'Registro de voz',
     pickOneTitle: 'Elige al menos un idioma',
@@ -968,7 +852,7 @@ export const es: Messages<typeof en> = {
     androidOnly: 'Por ahora, las sesiones de escucha solo están disponibles en Android.',
     micTitle: 'Acceso al micrófono',
     micBody:
-      'DOST necesita el micrófono para oír la textura de cómo hablas durante una sesión. El audio nunca sale de tu teléfono.',
+      'DOST necesita el micrófono para grabar las sesiones de escucha. Las grabaciones se quedan en tu teléfono.',
     notificationTitle: 'Mostrar un indicador de escucha',
     notificationBody:
       'DOST muestra una notificación mientras hay una sesión activa, para que siempre sepas cuándo está escuchando.',
@@ -988,7 +872,7 @@ export const es: Messages<typeof en> = {
       'DOST es un compañero para reflexionar. Escucha sin juzgar, te ayuda a poner nombre a lo que sientes y a lo que necesitas, y deja las respuestas contigo. No diagnostica y solo ofrece consejos cuando se los pides.',
     privacyTitle: 'Tu privacidad',
     privacyBody:
-      'Tus reflexiones se quedan en tu cuenta. En las sesiones de escucha, tu voz se procesa en tu teléfono y nunca se graba. Puedes exportarlo o borrarlo todo cuando quieras desde Ajustes del espacio.',
+      'Tus reflexiones se quedan en tu cuenta. Las grabaciones de escucha se guardan solo en este teléfono y nunca se suben. Puedes exportarlo o borrarlo todo cuando quieras desde Ajustes del espacio.',
     careTitle: 'No sustituye a la atención profesional',
     careBody:
       'DOST no es terapia ni atención médica. Si estás en crisis o piensas en hacerte daño, contacta de inmediato con el número de emergencias local o una línea de ayuda en crisis.',

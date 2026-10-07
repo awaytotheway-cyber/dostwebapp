@@ -1,5 +1,5 @@
 import { plural, type Messages } from '../core';
-import type { en } from './en';
+import { en } from './en';
 
 // Draft translation (polite です／ます style).
 export const ja: Messages<typeof en> = {
@@ -752,128 +752,12 @@ export const ja: Messages<typeof en> = {
     continueReflection: 'この振り返りを続ける',
     deleteA11y: 'ボイスメモを削除',
   },
-  listening: {
-    micNeeded: 'マイクが必要です',
-    micNeededBody:
-      'リスニングセッションには、DOST がマイクにアクセスする必要があります。設定から許可できます。',
-    notificationNeeded: '通知が必要です',
-    notificationNeededBody:
-      'セッション中、DOST は通知を表示します。設定で許可してください。',
-    downloadFailed: 'モデルをダウンロードできませんでした',
-    downloadFailedBody:
-      'DOST の端末内の「耳」をダウンロードできませんでした。接続を確認して、もう一度お試しください。',
-    couldNotStart: '開始できませんでした',
-    title: 'リスニングセッション',
-    subtitle: 'DOST にあなたの話し方を聞いてもらいましょう。',
-    startA11y: 'リスニングセッションを始める',
-    start: 'セッションを\n始める',
-    modeA11y: 'バッテリーモード：{mode}',
-    mode: {
-      attentive: 'しっかり',
-      balanced: 'バランス',
-      light: 'ライト',
-    },
-    modeHint: {
-      attentive: '最高の精度。充電中に使うのがおすすめです。',
-      balanced: 'すべての区間を 1 つずつ処理します。おすすめの標準設定です。',
-      light: '3 区間に 1 つだけ処理します。バッテリー優先です。',
-    },
-    howItWorks: 'しくみ',
-    howItWorksLink: 'しくみ →',
-    preparingTitle: 'DOST の耳を準備しています',
-    preparingBody: '初回のみ約 {mb} MB をダウンロードします。その後はすべて端末内で動作します。',
-    starting: '開始しています…',
-    listeningTitle: '聞いています…',
-    warmingUp: '準備中です。',
-    tapStop: '終わったら「セッションを終了」をタップしてください。',
-    speechTotal: '発話 / 合計',
-    segments: '区間',
-    stopA11y: 'セッションを終了',
-    stop: 'セッションを終了',
-    doneTitle: 'セッションが終わりました',
-    duration: '時間',
-    speechTime: '発話時間',
-    segmentsProcessed: '処理した区間',
-    speakingRate: '話す速さ',
-    wpm: '毎分 {value} 語',
-    averagePitch: '平均の声の高さ',
-    hz: '{value} Hz',
-    stressDisclaimer: 'ここでの「声のストレス」は経験則による合成指標で、臨床的な測定ではありません。',
-    speakerGate: '話者フィルター',
-    matched: 'あなたの声と一致した区間',
-    skipped: 'スキップした区間（ほかの話者、または不明瞭）',
-    themesHeading: 'DOST が聞き取ったテーマ',
-    mockBanner: '声からの感情推定はまだ有効になっていません — DOST はこのデータを使っていません。',
-    anotherA11y: 'もう一度セッションを始める',
-    another: 'もう一度セッションを始める',
-    secondsShort: '{s} 秒',
-    minutesShort: '{m} 分 {s} 秒',
-    recorded: 'セッションを記録しました。',
-    spokeRateVariation: '毎分約 {wpm} 語の速さで、{variation}話していました。',
-    spokeRate: '毎分約 {wpm} 語の速さで話していました。',
-    spokeVariation: '{variation}話していました。',
-    variationLow: '声の調子の変化は少なめに',
-    variationMid: '声の調子に適度な変化をつけて',
-    variationHigh: '声の調子を大きく変えながら',
-  },
-  disclosure: {
-    eyebrow: '始める前に',
-    heading: 'DOST は聞くことができます',
-    copy: 'リスニングセッションを始めると、DOST はマイクから音声を取り込み、あなたの話し方の感情的な質感 — エネルギー、ペース、トーン — を理解します。',
-    sectionLabel: 'あなたの声はどう扱われるか',
-    bullet1: '音声はすべて端末内で処理され、端末の外に出ることはありません。',
-    bullet2:
-      '録音は保存されません。音声は数秒間メモリ上にあるだけで、その後破棄されます。',
-    bullet3:
-      '保存されるのは、エネルギーの度合いや話す速さといった匿名のシグナルと、感情のテーマだけです。',
-    bullet4: 'セッションの開始と終了は、毎回あなた自身が行います。DOST がバックグラウンドで聞くことはありません。',
-    notice:
-      'ご注意ください：セッション中は、端末の近くで話している人の声も拾われることがあります。周りにいる人のことで気がかりがないときだけ始めてください。',
-    continue: '理解しました — 続ける',
-    notNow: '今はやめておく',
-  },
-  hearingSettings: {
-    deleteEnrollmentTitle: '声の登録を削除',
-    deleteEnrollmentBody:
-      'DOST があなたを認識するための声紋だけが削除されます。これまでのリスニングデータはそのままです。新しいセッションを始める前に、もう一度登録が必要です。',
-    deleted: '削除しました',
-    enrollmentRemoved: '声の登録を削除しました。',
-    deleteAllTitle: '声のシグナルデータをすべて削除',
-    deleteAllBody:
-      'すべてのリスニングセッションの記録と、DOST が取得したすべてのシグナルが削除されます。振り返りやボイスメモには影響しません。',
-    notSignedIn: 'サインインしていません',
-    notSignedInBody: 'サインインしてから、もう一度お試しください。',
-    allRemoved: '声のシグナルデータをすべて削除しました。',
-    title: 'リスニング',
-    intro: 'リスニングセッションのシグナルはここにだけ保存されます — DOST のほかの機能はまだこれを読み取りません。',
-    sessions: 'セッション',
-    totalTime: '合計時間',
-    sensitivity: '話者の感度',
-    sensitivityA11y: '感度：{level}',
-    level: {
-      strict: '厳しめ',
-      balanced: 'バランス',
-      lenient: 'ゆるめ',
-    },
-    hint: {
-      strict: 'あなたの発話は少なめに残し、ほかの人の声はほぼ残しません。周りに人がいることが多い場合に。',
-      balanced:
-        '標準設定です。あなたの発話を十分に残し、ほかの人の声はほぼすべて除外します。騒がしい場所では、推測するより発話をスキップします。',
-      lenient:
-        'あなたの発話を多めに残しますが、ほかの人の声も少し多めに通します。ふだん一人でいることが多い場合に。',
-    },
-    rerecordA11y: '声を録り直す',
-    setupA11y: '声の登録を設定',
-    setup: '声の登録を設定',
-    rerecord: '声を録り直す',
-    setupHint: 'リスニングセッションを始める前に必要です。',
-    rerecordHint: 'フィルターがあなたの声を取りこぼすことが多いときや、部屋を変えたときに行ってください。',
-    deleteEnrollment: '声の登録を削除',
-    deleteAll: '声のシグナルデータをすべて削除',
-    hoursMinutes: '{h} 時間 {m} 分',
-    minutes: '{m} 分',
-    seconds: '{s} 秒',
-  },
+  // English until the listening copy settles (Phase 2, Step 7).
+  listening: en.listening,
+  // English until the listening copy settles (Phase 2, Step 7).
+  disclosure: en.disclosure,
+  // English until the listening copy settles (Phase 2, Step 7).
+  hearingSettings: en.hearingSettings,
   enrollment: {
     eyebrow: '声の登録',
     pickOneTitle: '言語を 1 つ以上選んでください',
@@ -966,7 +850,7 @@ export const ja: Messages<typeof en> = {
     androidOnly: 'リスニングセッションは現在 Android のみ対応しています。',
     micTitle: 'マイクへのアクセス',
     micBody:
-      'セッション中にあなたの話し方の質感を聞き取るため、DOST はマイクを使います。音声が端末の外に出ることはありません。',
+      'リスニングセッションを録音するため、DOST はマイクを使います。録音は端末の中にだけ残ります。',
     notificationTitle: 'リスニング中の表示',
     notificationBody:
       'セッション中は DOST が通知を表示するので、いつ聞いているのかが常にわかります。',
@@ -986,7 +870,7 @@ export const ja: Messages<typeof en> = {
       'DOST は振り返りのための相棒です。評価せずに耳を傾け、あなたが感じていることや必要としていることに名前をつける手助けをし、答えはあなた自身に委ねます。診断はせず、求められたときだけアドバイスをします。',
     privacyTitle: 'プライバシー',
     privacyBody:
-      '振り返りはあなたのアカウントの中だけに保存されます。リスニングセッションの音声は端末内で処理され、録音されることはありません。スペースの設定から、いつでもすべてをエクスポートまたは削除できます。',
+      '振り返りはあなたのアカウントの中だけに保存されます。リスニングの録音はこの端末にだけ保存され、アップロードされることはありません。スペースの設定から、いつでもすべてをエクスポートまたは削除できます。',
     careTitle: '専門的な支援の代わりではありません',
     careBody:
       'DOST はセラピーや医療ではありません。危機的な状況にある場合や、自分を傷つけることを考えている場合は、すぐに地域の緊急番号や相談窓口に連絡してください。',

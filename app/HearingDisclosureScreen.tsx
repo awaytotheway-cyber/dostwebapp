@@ -8,7 +8,9 @@ import GentlePressable from './GentlePressable';
 import type { ChatStackParamList } from './chatTypes';
 import { useI18n } from '../lib/i18n';
 
-export const HEARING_DISCLOSURE_ACK_KEY = 'dost.hearing.disclosure.ack.v1';
+// v2: listening now saves recordings on the phone, so everyone sees the new
+// disclosure once before their first session.
+export const HEARING_DISCLOSURE_ACK_KEY = 'dost.listening.disclosure.ack.v2';
 
 type Props = NativeStackScreenProps<ChatStackParamList, 'HearingDisclosure'>;
 

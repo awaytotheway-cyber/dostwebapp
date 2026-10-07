@@ -1,118 +1,96 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  Alert,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as FileSystem from 'expo-file-system/legacy';
+import { Audio } from 'expo-av';
+import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import theme, { fonts } from '../lib/theme';
 import GentlePressable from './GentlePressable';
 import type { ChatStackParamList } from './chatTypes';
 import { HEARING_DISCLOSURE_ACK_KEY } from './HearingDisclosureScreen';
-import { requestHearingPermissions } from '../lib/hearing/permissions';
-import { isEnrolled } from '../lib/hearing/enrollment';
+import { requestListeningPermissions } from '../lib/listening/permissions';
+import { cleanUpOldHearingData } from '../lib/listening/legacyCleanup';
 import {
-  ensureModelDownloaded,
-  isModelDownloaded,
-  MODEL_APPROX_MB,
-} from '../lib/hearing/transcription';
-import {
-  getPipelineState,
-  releaseHearingResources,
-  startHearingSession,
-  stopHearingSession,
-  subscribePipeline,
-  type BatteryMode,
-  type PipelineState,
-} from '../lib/hearing/pipeline';
-import { supabase } from '../lib/supabase';
-import { labelForEmotionChip } from '../lib/dost/suggestionChips';
-import { t as translate, useI18n, type TKey } from '../lib/i18n';
+  getLastModelCheck,
+  getListenStatus,
+  isListeningAvailable,
+  runModelCheck,
+  startListening,
+  stopListening,
+  type ListenStatus,
+  type ModelCheckResult,
+} from '../lib/listening/listenBridge';
+import { readSessions, type SavedClip, type SessionSummary } from '../lib/listening/voiceFiles';
+import { hasMessage, t as translate, useI18n, type TKey } from '../lib/i18n';
 
 type Props = NativeStackScreenProps<ChatStackParamList, 'ListeningSession'>;
 
-type Phase = 'idle' | 'preparing' | 'active' | 'summary';
-
-type SessionSummary = {
-  sessionId: string;
-  totalMs: number;
-  speechMs: number;
-  segmentsProcessed: number;
-  segmentsMatched: number;
-  segmentsDiscardedOtherSpeaker: number;
-  segmentsDiscardedAmbiguous: number;
-  avgPitchHz: number | null;
-  avgWpm: number | null;
-  avgPitchVariability: number | null;
-  emotions: Array<{ emotion: string; count: number }>;
-  allMock: boolean;
-};
+const POLL_MS = 1000;
+// Lets the person lock the screen first, so the check measures screen-off speed.
+const MODEL_CHECK_DELAY_MS = 10_000;
 
 export default function ListeningSessionScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
-  const [phase, setPhase] = useState<Phase>('idle');
-  const [batteryMode, setBatteryMode] = useState<BatteryMode>('balanced');
-  const [downloadPct, setDownloadPct] = useState<number>(0);
-  const [pipelineState, setPipelineState] = useState<PipelineState>(getPipelineState());
-  const [summary, setSummary] = useState<SessionSummary | null>(null);
-  const startingRef = useRef(false);
+  const { t } = useI18n();
+  const available = isListeningAvailable();
+  const [status, setStatus] = useState<ListenStatus>({ running: false });
+  const [busy, setBusy] = useState(false);
+  const [sessions, setSessions] = useState<SessionSummary[]>([]);
+  const [modelCheck, setModelCheck] = useState<ModelCheckResult | null>(null);
+  const [checking, setChecking] = useState(false);
+  const [checkError, setCheckError] = useState<string | null>(null);
+  const wasRunning = useRef(false);
 
-  // Redirect to disclosure if the user has never acknowledged it.
   useEffect(() => {
+    void cleanUpOldHearingData();
     (async () => {
       try {
-        const ack = await AsyncStorage.getItem(HEARING_DISCLOSURE_ACK_KEY);
-        if (!ack) {
+        if (!(await AsyncStorage.getItem(HEARING_DISCLOSURE_ACK_KEY))) {
           navigation.replace('HearingDisclosure', { returnTo: 'ListeningSession' });
         }
       } catch {
-        // ignore
+        // Shown again next time.
       }
     })();
   }, [navigation]);
 
-  // Observe pipeline state.
-  useEffect(() => {
-    const unsub = subscribePipeline((s) => setPipelineState(s));
-    return unsub;
-  }, []);
-
-  // If the pipeline is active on mount (returning to the screen while a
-  // session is running), reflect that in phase.
-  useEffect(() => {
-    if (pipelineState.status === 'active' && phase === 'idle') {
-      setPhase('active');
+  const reloadSessions = useCallback(async (runningId?: string | null) => {
+    try {
+      setSessions(await readSessions(runningId));
+    } catch {
+      setSessions([]);
     }
-  }, [pipelineState.status, phase]);
-
-  // Release the whisper model when leaving the feature entirely.
-  useEffect(() => {
-    return () => {
-      // On unmount, only release if no session is active.
-      if (getPipelineState().status === 'idle') {
-        void releaseHearingResources();
-      }
-    };
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      let alive = true;
+      const tick = async () => {
+        const s = await getListenStatus().catch(() => ({ running: false }) as ListenStatus);
+        if (!alive) return;
+        setStatus(s);
+        if (wasRunning.current && !s.running) void reloadSessions(null);
+        wasRunning.current = s.running;
+      };
+      void tick();
+      void reloadSessions(null);
+      void getLastModelCheck().then((r) => alive && setModelCheck(r)).catch(() => {});
+      const id = setInterval(() => void tick(), POLL_MS);
+      return () => {
+        alive = false;
+        clearInterval(id);
+      };
+    }, [reloadSessions]),
+  );
 
   const onStart = useCallback(async () => {
-    if (startingRef.current) return;
-    startingRef.current = true;
+    if (busy) return;
+    setBusy(true);
     try {
-      // Speaker enrollment gate (Phase 2): a session that isn't
-      // filtered to just this user would record anyone speaking near
-      // the phone. Block start until the user has enrolled.
-      const enrolled = await isEnrolled();
-      if (!enrolled) {
-        navigation.navigate('SpeakerEnrollment', { returnTo: 'ListeningSession' });
-        return;
-      }
-
-      const perms = await requestHearingPermissions();
+      const perms = await requestListeningPermissions();
       if (!perms.granted) {
         if (perms.reason === 'mic-denied') {
           Alert.alert(translate('listening.micNeeded'), translate('listening.micNeededBody'));
@@ -124,56 +102,42 @@ export default function ListeningSessionScreen({ navigation }: Props) {
         }
         return;
       }
-
-      const modelReady = await isModelDownloaded();
-      if (!modelReady) {
-        setPhase('preparing');
-        setDownloadPct(0);
-        try {
-          await ensureModelDownloaded((pct) => setDownloadPct(pct));
-        } catch (err) {
-          setPhase('idle');
-          Alert.alert(
-            translate('listening.downloadFailed'),
-            translate('listening.downloadFailedBody'),
-          );
-          return;
-        }
-      }
-
-      setSummary(null);
-      await startHearingSession(batteryMode);
-      setPhase('active');
+      await startListening('any_sound');
+      setStatus(await getListenStatus());
     } catch (err) {
-      setPhase('idle');
       Alert.alert(
         translate('listening.couldNotStart'),
         err instanceof Error ? err.message : translate('common.pleaseTryAgain'),
       );
     } finally {
-      startingRef.current = false;
+      setBusy(false);
     }
-  }, [batteryMode, navigation]);
+  }, [busy]);
 
   const onStop = useCallback(async () => {
-    const sessionId =
-      pipelineState.status === 'active' ? pipelineState.sessionId : null;
+    if (busy) return;
+    setBusy(true);
     try {
-      await stopHearingSession();
-    } catch {
-      // ignore — surface via state
+      await stopListening();
+    } finally {
+      setBusy(false);
     }
-    setPhase('summary');
-    if (sessionId) {
-      const s = await loadSessionSummary(sessionId);
-      setSummary(s);
-    }
-  }, [pipelineState]);
+  }, [busy]);
 
-  const onNewSession = useCallback(() => {
-    setSummary(null);
-    setPhase('idle');
-  }, []);
+  const onModelCheck = useCallback(async () => {
+    if (checking) return;
+    setChecking(true);
+    setCheckError(null);
+    try {
+      setModelCheck(await runModelCheck(MODEL_CHECK_DELAY_MS));
+    } catch (err) {
+      setCheckError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setChecking(false);
+    }
+  }, [checking]);
+
+  const last = sessions[0] ?? null;
 
   return (
     <ScrollView
@@ -183,183 +147,130 @@ export default function ListeningSessionScreen({ navigation }: Props) {
         { paddingBottom: insets.bottom + theme.spacing['2xl'] },
       ]}
     >
-      <Header onBack={() => navigation.goBack()} />
-
-      {phase === 'idle' && (
-        <IdleView
-          batteryMode={batteryMode}
-          onSelectMode={setBatteryMode}
-          onStart={onStart}
-          onLearnMore={() =>
-            navigation.navigate('HearingDisclosure', { returnTo: undefined })
-          }
-        />
-      )}
-
-      {phase === 'preparing' && (
-        <PreparingView downloadPct={downloadPct} />
-      )}
-
-      {phase === 'active' && (
-        <ActiveView state={pipelineState} onStop={onStop} />
-      )}
-
-      {phase === 'summary' && summary && (
-        <SummaryView summary={summary} onNewSession={onNewSession} />
-      )}
-    </ScrollView>
-  );
-}
-
-// ─── views ────────────────────────────────────────────────────────
-
-function Header({ onBack }: { onBack: () => void }) {
-  const { t } = useI18n();
-  return (
-    <View style={styles.header}>
-      <GentlePressable
-        accessibilityRole="button"
-        accessibilityLabel={t('common.backPlain')}
-        onPress={onBack}
-        style={({ pressed }) => [styles.backChip, pressed && styles.backChipPressed]}
-      >
-        <Text style={styles.backChipText}>{t('common.back')}</Text>
-      </GentlePressable>
-    </View>
-  );
-}
-
-function IdleView({
-  batteryMode,
-  onSelectMode,
-  onStart,
-  onLearnMore,
-}: {
-  batteryMode: BatteryMode;
-  onSelectMode: (m: BatteryMode) => void;
-  onStart: () => void;
-  onLearnMore: () => void;
-}) {
-  const { t } = useI18n();
-  return (
-    <View style={styles.centerColumn}>
-      <Text style={styles.title}>{t('listening.title')}</Text>
-      <Text style={styles.subtitle}>{t('listening.subtitle')}</Text>
-
-      <View style={styles.circleWrap}>
+      <View style={styles.header}>
         <GentlePressable
           accessibilityRole="button"
-          accessibilityLabel={t('listening.startA11y')}
-          onPress={onStart}
-          style={({ pressed }) => [styles.startCircle, pressed && styles.startCirclePressed]}
+          accessibilityLabel={t('common.backPlain')}
+          onPress={() => navigation.goBack()}
+          style={({ pressed }) => [styles.backChip, pressed && styles.pressed]}
         >
-          <Text style={styles.startLabel}>{t('listening.start')}</Text>
+          <Text style={styles.backChipText}>{t('common.back')}</Text>
         </GentlePressable>
       </View>
 
-      <View style={styles.modeRow}>
-        {(['attentive', 'balanced', 'light'] as BatteryMode[]).map((m) => (
+      <Text accessibilityRole="header" style={styles.title}>
+        {status.running ? t('listening.listeningTitle') : t('listening.title')}
+      </Text>
+      <Text style={styles.subtitle}>{t('listening.subtitle')}</Text>
+      <Text style={styles.testBanner}>{t('listening.testBanner')}</Text>
+
+      {!available ? (
+        <Text style={styles.subtitle}>{t('listening.unavailable')}</Text>
+      ) : status.running ? (
+        <ActiveView status={status} busy={busy} onStop={onStop} />
+      ) : (
+        <View style={styles.circleWrap}>
           <GentlePressable
-            key={m}
             accessibilityRole="button"
-            accessibilityLabel={t('listening.modeA11y', { mode: t(`listening.mode.${m}` as TKey) })}
-            onPress={() => onSelectMode(m)}
-            style={({ pressed }) => [
-              styles.modeChip,
-              batteryMode === m && styles.modeChipActive,
-              pressed && styles.modeChipPressed,
-            ]}
+            accessibilityLabel={t('listening.startA11y')}
+            onPress={onStart}
+            disabled={busy}
+            style={({ pressed }) => [styles.startCircle, pressed && styles.startCirclePressed]}
           >
-            <Text
-              style={[
-                styles.modeChipText,
-                batteryMode === m && styles.modeChipTextActive,
-              ]}
-            >
-              {t(`listening.mode.${m}` as TKey)}
+            <Text style={styles.startLabel}>
+              {busy ? t('listening.starting') : t('listening.start')}
             </Text>
           </GentlePressable>
-        ))}
-      </View>
-      <Text style={styles.modeHint}>{modeHint(batteryMode)}</Text>
+        </View>
+      )}
+
+      {last && !status.running ? <LastSession session={last} /> : null}
+
+      {available ? (
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>{t('listening.modelCheckTitle')}</Text>
+          <Text style={styles.cardBody}>{t('listening.modelCheckBody')}</Text>
+          {modelCheck?.ok ? <ModelCheckLines result={modelCheck} /> : null}
+          {checkError ? (
+            <Text style={styles.errorText}>
+              {t('listening.modelCheckFailed', { message: checkError })}
+            </Text>
+          ) : null}
+          <GentlePressable
+            accessibilityRole="button"
+            accessibilityLabel={t('listening.modelCheckRun')}
+            onPress={onModelCheck}
+            disabled={checking || status.running}
+            style={({ pressed }) => [
+              styles.secondaryButton,
+              (checking || status.running) && styles.disabled,
+              pressed && styles.pressed,
+            ]}
+          >
+            <Text style={styles.secondaryButtonText}>
+              {checking ? t('listening.modelCheckRunning') : t('listening.modelCheckRun')}
+            </Text>
+          </GentlePressable>
+        </View>
+      ) : null}
 
       <GentlePressable
         accessibilityRole="button"
         accessibilityLabel={t('listening.howItWorks')}
-        onPress={onLearnMore}
-        style={({ pressed }) => [styles.linkRow, pressed && { opacity: 0.6 }]}
+        onPress={() => navigation.navigate('HearingDisclosure', { returnTo: undefined })}
+        style={({ pressed }) => [styles.linkRow, pressed && styles.pressed]}
       >
         <Text style={styles.linkText}>{t('listening.howItWorksLink')}</Text>
       </GentlePressable>
-    </View>
-  );
-}
-
-function PreparingView({ downloadPct }: { downloadPct: number }) {
-  const pct = Math.max(0, Math.min(1, downloadPct));
-  const { t } = useI18n();
-  return (
-    <View style={styles.centerColumn}>
-      <Text style={styles.title}>{t('listening.preparingTitle')}</Text>
-      <Text style={styles.subtitle}>
-        {t('listening.preparingBody', { mb: MODEL_APPROX_MB })}
-      </Text>
-      <View style={styles.progressTrack}>
-        <View style={[styles.progressFill, { width: `${Math.round(pct * 100)}%` }]} />
-      </View>
-      <Text style={styles.progressLabel}>{Math.round(pct * 100)}%</Text>
-    </View>
+    </ScrollView>
   );
 }
 
 function ActiveView({
-  state,
+  status,
+  busy,
   onStop,
 }: {
-  state: PipelineState;
+  status: ListenStatus;
+  busy: boolean;
   onStop: () => void;
 }) {
   const { t } = useI18n();
-  if (state.status !== 'active') {
-    return (
-      <View style={styles.centerColumn}>
-        <Text style={styles.subtitle}>{t('listening.starting')}</Text>
-      </View>
-    );
-  }
-  const elapsedMs = Date.now() - state.startedAt;
+  const elapsed = status.startedAt ? Date.now() - status.startedAt : 0;
+  const hearing = Boolean(status.inClip);
   return (
     <View style={styles.centerColumn}>
-      <Text style={styles.title}>{t('listening.listeningTitle')}</Text>
-      <Text style={styles.subtitle}>
-        {state.calibrating ? t('listening.warmingUp') : t('listening.tapStop')}
+      <View style={styles.dotWrap}>
+        <View style={[styles.dot, hearing && styles.dotActive]} />
+      </View>
+      <Text style={styles.timerText}>{formatClock(elapsed)}</Text>
+      <Text style={styles.subtitle} accessibilityLiveRegion="polite">
+        {status.micSilenced
+          ? t('listening.micBusy')
+          : hearing
+            ? t('listening.hearingSound')
+            : t('listening.quiet')}
       </Text>
 
-      <View style={styles.dotWrap}>
-        <View
-          style={[
-            styles.speechDot,
-            state.calibrating && styles.speechDotCalibrating,
-            state.lastSpeech && !state.calibrating && styles.speechDotActive,
-          ]}
-        />
-      </View>
-
-      <Text style={styles.timerText}>{formatDuration(elapsedMs)}</Text>
-
       <View style={styles.metricRow}>
-        <MetricTile
-          label={t('listening.speechTotal')}
-          value={`${formatDurationShort(state.speechMs)} / ${formatDurationShort(state.totalMs)}`}
+        <Metric label={t('listening.saved')} value={formatDuration(status.speechMsSaved ?? 0)} />
+        <Metric
+          label={t('listening.silenceSkipped')}
+          value={formatDuration(status.silenceDroppedMs ?? 0)}
         />
-        <MetricTile label={t('listening.segments')} value={String(state.segmentsProcessed)} />
+        <Metric label={t('listening.clips')} value={String(status.segmentsSaved ?? 0)} />
       </View>
 
       <GentlePressable
         accessibilityRole="button"
         accessibilityLabel={t('listening.stopA11y')}
         onPress={onStop}
-        style={({ pressed }) => [styles.stopButton, pressed && styles.stopButtonPressed]}
+        disabled={busy || status.stopping}
+        style={({ pressed }) => [
+          styles.stopButton,
+          (busy || status.stopping) && styles.disabled,
+          pressed && styles.pressed,
+        ]}
       >
         <Text style={styles.stopButtonText}>{t('listening.stop')}</Text>
       </GentlePressable>
@@ -367,103 +278,141 @@ function ActiveView({
   );
 }
 
-function SummaryView({
-  summary,
-  onNewSession,
-}: {
-  summary: SessionSummary;
-  onNewSession: () => void;
-}) {
+function LastSession({ session }: { session: SessionSummary }) {
   const { t } = useI18n();
+  const pct =
+    session.listenedMs > 0 ? Math.round((session.speechMsSaved / session.listenedMs) * 100) : 0;
+  const reasonKey = `listening.reason.${session.reason ?? 'error'}`;
+  const reason = hasMessage(reasonKey)
+    ? t(reasonKey as TKey)
+    : t('listening.reason.error');
   return (
-    <View style={styles.summaryColumn}>
-      <Text style={styles.title}>{t('listening.doneTitle')}</Text>
-      <Text style={styles.subtitle}>{acousticSummarySentence(summary)}</Text>
+    <View style={styles.card}>
+      <Text style={styles.cardTitle}>{t('listening.lastSessionTitle')}</Text>
+      <Text style={styles.cardBody}>
+        {t('listening.summary', {
+          listened: formatDuration(session.listenedMs),
+          saved: formatDuration(session.speechMsSaved),
+          pct,
+          silence: formatDuration(session.silenceDroppedMs),
+          short: formatDuration(session.tooShortDroppedMs),
+        })}
+      </Text>
+      <Text style={styles.caption}>{t('listening.stoppedBecause', { reason })}</Text>
 
-      <View style={styles.summaryCard}>
-        <SummaryRow label={t('listening.duration')} value={formatDurationShort(summary.totalMs)} />
-        <SummaryRow
-          label={t('listening.speechTime')}
-          value={formatDurationShort(summary.speechMs)}
-        />
-        <SummaryRow
-          label={t('listening.segmentsProcessed')}
-          value={String(summary.segmentsProcessed)}
-        />
-        {summary.avgWpm !== null && (
-          <SummaryRow
-            label={t('listening.speakingRate')}
-            value={t('listening.wpm', { value: Math.round(summary.avgWpm) })}
-          />
-        )}
-        {summary.avgPitchHz !== null && summary.avgPitchHz > 0 && (
-          <SummaryRow
-            label={t('listening.averagePitch')}
-            value={t('listening.hz', { value: Math.round(summary.avgPitchHz) })}
-          />
-        )}
-        <Text style={styles.summaryDisclaimer}>{t('listening.stressDisclaimer')}</Text>
-      </View>
-
-      <View style={styles.summaryCard}>
-        <Text style={styles.summarySubheading}>{t('listening.speakerGate')}</Text>
-        <SummaryRow
-          label={t('listening.matched')}
-          value={String(summary.segmentsMatched)}
-        />
-        <SummaryRow
-          label={t('listening.skipped')}
-          value={String(
-            summary.segmentsDiscardedOtherSpeaker +
-              summary.segmentsDiscardedAmbiguous,
-          )}
-        />
-      </View>
-
-      {summary.emotions.length > 0 && (
-        <View style={styles.themeCard}>
-          <Text style={styles.themeHeading}>{t('listening.themesHeading')}</Text>
-          <View style={styles.chipsWrap}>
-            {summary.emotions.map((e) => (
-              <View key={e.emotion} style={styles.themeChip}>
-                <Text style={styles.themeChipText}>
-                  {labelForEmotionChip(e.emotion)}
-                  {e.count > 1 ? `  ×${e.count}` : ''}
-                </Text>
-              </View>
-            ))}
-          </View>
-        </View>
+      <Text style={[styles.cardTitle, styles.clipsTitle]}>{t('listening.clipsTitle')}</Text>
+      {session.clips.length === 0 ? (
+        <Text style={styles.cardBody}>{t('listening.noClips')}</Text>
+      ) : (
+        <ClipList clips={session.clips} />
       )}
-
-      {summary.allMock && (
-        <View style={styles.mockBanner}>
-          <Text style={styles.mockBannerText}>{t('listening.mockBanner')}</Text>
-        </View>
-      )}
-
-      <GentlePressable
-        accessibilityRole="button"
-        accessibilityLabel={t('listening.anotherA11y')}
-        onPress={onNewSession}
-        style={({ pressed }) => [styles.secondaryButton, pressed && { opacity: 0.7 }]}
-      >
-        <Text style={styles.secondaryButtonText}>{t('listening.another')}</Text>
-      </GentlePressable>
     </View>
   );
 }
 
-function SummaryRow({ label, value }: { label: string; value: string }) {
+function ClipList({ clips }: { clips: SavedClip[] }) {
+  const { t } = useI18n();
+  const soundRef = useRef<Audio.Sound | null>(null);
+  const [playing, setPlaying] = useState<string | null>(null);
+  const [missing, setMissing] = useState<string | null>(null);
+
+  useEffect(
+    () => () => {
+      void soundRef.current?.unloadAsync().catch(() => {});
+      soundRef.current = null;
+    },
+    [],
+  );
+
+  const toggle = async (clip: SavedClip) => {
+    const current = soundRef.current;
+    soundRef.current = null;
+    if (current) await current.unloadAsync().catch(() => {});
+    if (playing === clip.uri) {
+      setPlaying(null);
+      return;
+    }
+    const info = await FileSystem.getInfoAsync(clip.uri);
+    if (!info.exists) {
+      setMissing(clip.uri);
+      setPlaying(null);
+      return;
+    }
+    try {
+      await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, allowsRecordingIOS: false });
+      const { sound } = await Audio.Sound.createAsync({ uri: clip.uri }, { shouldPlay: true });
+      soundRef.current = sound;
+      setPlaying(clip.uri);
+      sound.setOnPlaybackStatusUpdate((s) => {
+        if (s.isLoaded && s.didJustFinish) {
+          setPlaying((p) => (p === clip.uri ? null : p));
+          void sound.unloadAsync().catch(() => {});
+          if (soundRef.current === sound) soundRef.current = null;
+        }
+      });
+    } catch {
+      setPlaying(null);
+    }
+  };
+
   return (
-    <View style={styles.summaryRow}>
-      <Text style={styles.summaryLabel}>{label}</Text>
-      <Text style={styles.summaryValue}>{value}</Text>
+    <View style={styles.clipList}>
+      {clips.map((clip) => {
+        const time = formatTimeOfDay(clip.startTs);
+        const isPlaying = playing === clip.uri;
+        return (
+          <GentlePressable
+            key={clip.uri}
+            accessibilityRole="button"
+            accessibilityLabel={isPlaying ? t('listening.pauseA11y') : t('listening.playA11y', { time })}
+            onPress={() => void toggle(clip)}
+            style={({ pressed }) => [styles.clipRow, pressed && styles.pressed]}
+          >
+            <Ionicons
+              name={isPlaying ? 'pause-circle-outline' : 'play-circle-outline'}
+              size={24}
+              color={theme.colors.gold}
+            />
+            <Text style={styles.clipText}>
+              {time} · {formatDuration(clip.durationMs)}
+            </Text>
+            {missing === clip.uri ? (
+              <Text style={styles.caption}>{t('listening.clipMissing')}</Text>
+            ) : null}
+          </GentlePressable>
+        );
+      })}
     </View>
   );
 }
 
-function MetricTile({ label, value }: { label: string; value: string }) {
+function ModelCheckLines({ result }: { result: ModelCheckResult }) {
+  const { t } = useI18n();
+  const r1 = (n?: number) => (typeof n === 'number' ? n.toFixed(1) : '–');
+  const r0 = (n?: number) => (typeof n === 'number' ? Math.round(n).toString() : '–');
+  return (
+    <View style={styles.checkLines}>
+      <Text style={styles.monoText}>{result.device} · Android {result.android}</Text>
+      <Text style={styles.monoText}>
+        {t('listening.modelCheckSpeech', { ms: r1(result.vadMsPerFrame) })}
+      </Text>
+      <Text style={styles.monoText}>
+        {t('listening.modelCheckVoice', {
+          ms2: r0(result.speakerMsPer2sWindow_2t),
+          ms1: r0(result.speakerMsPer2sWindow_1t),
+        })}
+      </Text>
+      <Text style={styles.monoText}>{t('listening.modelCheckMemory', { mb: r0(result.peakRssMb) })}</Text>
+      <Text style={styles.monoText}>
+        {t('listening.modelCheckScreen', {
+          state: result.screenOn ? t('listening.screenOn') : t('listening.screenOff'),
+        })}
+      </Text>
+    </View>
+  );
+}
+
+function Metric({ label, value }: { label: string; value: string }) {
   return (
     <View style={styles.metricTile}>
       <Text style={styles.metricLabel}>{label}</Text>
@@ -472,124 +421,34 @@ function MetricTile({ label, value }: { label: string; value: string }) {
   );
 }
 
-// ─── helpers ──────────────────────────────────────────────────────
-
-function modeHint(mode: BatteryMode): string {
-  return translate(`listening.modeHint.${mode}` as TKey);
+function formatClock(ms: number): string {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const r = s % 60;
+  const mm = String(m).padStart(2, '0');
+  const ss = String(r).padStart(2, '0');
+  return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
 }
 
 function formatDuration(ms: number): string {
-  const s = Math.max(0, Math.floor(ms / 1000));
-  const m = Math.floor(s / 60);
-  const r = s % 60;
-  return `${String(m).padStart(2, '0')}:${String(r).padStart(2, '0')}`;
+  const s = Math.max(0, Math.round(ms / 1000));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  if (h > 0) return translate('listening.hoursMinutes', { h, m });
+  if (m > 0) return translate('listening.minutes', { m, s: s % 60 });
+  return translate('listening.seconds', { s });
 }
 
-function formatDurationShort(ms: number): string {
-  const s = Math.max(0, Math.floor(ms / 1000));
-  const m = Math.floor(s / 60);
-  const r = s % 60;
-  if (m === 0) return translate('listening.secondsShort', { s: r });
-  return translate('listening.minutesShort', { m, s: r });
+function formatTimeOfDay(ts: number): string {
+  const d = new Date(ts);
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
 }
-
-function acousticSummarySentence(s: SessionSummary): string {
-  if (!s.avgWpm && !s.avgPitchVariability) return translate('listening.recorded');
-  let variation: string | null = null;
-  if (s.avgPitchVariability !== null) {
-    if (s.avgPitchVariability < 0.15) variation = translate('listening.variationLow');
-    else if (s.avgPitchVariability < 0.3) variation = translate('listening.variationMid');
-    else variation = translate('listening.variationHigh');
-  }
-  const wpm = s.avgWpm ? Math.round(s.avgWpm) : null;
-  if (wpm && variation) return translate('listening.spokeRateVariation', { wpm, variation });
-  if (wpm) return translate('listening.spokeRate', { wpm });
-  return translate('listening.spokeVariation', { variation: variation ?? '' });
-}
-
-async function loadSessionSummary(sessionId: string): Promise<SessionSummary> {
-  const { data: sess } = await supabase
-    .from('voice_sessions')
-    .select(
-      'total_duration_seconds, speech_duration_seconds, segments_processed, segments_matched, segments_discarded_other_speaker, segments_discarded_ambiguous',
-    )
-    .eq('id', sessionId)
-    .maybeSingle();
-
-  const { data: signals } = await supabase
-    .from('voice_signals')
-    .select(
-      'primary_emotion, speaking_rate_wpm, pitch_mean_hz, pitch_variability, inference_source',
-    )
-    .eq('session_id', sessionId);
-
-  const rows = signals ?? [];
-
-  const wpmVals = rows
-    .map((r) => Number(r.speaking_rate_wpm))
-    .filter((n) => Number.isFinite(n) && n > 0);
-  const pitchVals = rows
-    .map((r) => Number(r.pitch_mean_hz))
-    .filter((n) => Number.isFinite(n) && n > 0);
-  const pitchVarVals = rows
-    .map((r) => Number(r.pitch_variability))
-    .filter((n) => Number.isFinite(n) && n >= 0);
-
-  const emotionCounts = new Map<string, number>();
-  for (const r of rows) {
-    if (typeof r.primary_emotion === 'string' && r.primary_emotion) {
-      emotionCounts.set(
-        r.primary_emotion,
-        (emotionCounts.get(r.primary_emotion) ?? 0) + 1,
-      );
-    }
-  }
-  const emotions = [...emotionCounts.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 6)
-    .map(([emotion, count]) => ({ emotion, count }));
-
-  const allMock =
-    rows.length === 0 || rows.every((r) => r.inference_source === 'mock');
-
-  return {
-    sessionId,
-    totalMs: Number(sess?.total_duration_seconds ?? 0) * 1000,
-    speechMs: Number(sess?.speech_duration_seconds ?? 0) * 1000,
-    segmentsProcessed: Number(sess?.segments_processed ?? rows.length),
-    segmentsMatched: Number(sess?.segments_matched ?? 0),
-    segmentsDiscardedOtherSpeaker: Number(sess?.segments_discarded_other_speaker ?? 0),
-    segmentsDiscardedAmbiguous: Number(sess?.segments_discarded_ambiguous ?? 0),
-    avgWpm: mean(wpmVals),
-    avgPitchHz: mean(pitchVals),
-    avgPitchVariability: mean(pitchVarVals),
-    emotions,
-    allMock,
-  };
-}
-
-function mean(xs: number[]): number | null {
-  if (xs.length === 0) return null;
-  return xs.reduce((a, b) => a + b, 0) / xs.length;
-}
-
-// ─── styles ───────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.base,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    paddingHorizontal: theme.spacing['2xl'],
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: theme.spacing['2xl'],
-  },
+  container: { flex: 1, backgroundColor: theme.colors.base },
+  scrollContent: { flexGrow: 1, paddingHorizontal: theme.spacing['2xl'] },
+  header: { flexDirection: 'row', marginBottom: theme.spacing['2xl'] },
   backChip: {
     borderWidth: 1,
     borderColor: theme.colors.divider,
@@ -597,14 +456,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.xs,
   },
-  backChipPressed: { opacity: 0.6 },
   backChipText: { ...theme.type.label, color: theme.colors.sand },
-  centerColumn: {
-    alignItems: 'center',
-  },
-  summaryColumn: {
-    alignItems: 'stretch',
-  },
+  pressed: { opacity: 0.65 },
+  disabled: { opacity: 0.5 },
   title: {
     ...theme.type.heading,
     color: theme.colors.cream,
@@ -615,16 +469,20 @@ const styles = StyleSheet.create({
     ...theme.type.body,
     color: theme.colors.sand,
     textAlign: 'center',
-    marginBottom: theme.spacing['2xl'],
+    marginBottom: theme.spacing.md,
   },
-  circleWrap: {
-    marginVertical: theme.spacing['2xl'],
-    alignItems: 'center',
+  testBanner: {
+    ...theme.type.caption,
+    color: theme.colors.error,
+    textAlign: 'center',
+    marginBottom: theme.spacing.lg,
   },
+  centerColumn: { alignItems: 'center' },
+  circleWrap: { marginVertical: theme.spacing['2xl'], alignItems: 'center' },
   startCircle: {
-    width: 220,
-    height: 220,
-    borderRadius: 110,
+    width: 200,
+    height: 200,
+    borderRadius: 100,
     borderWidth: 1.5,
     borderColor: theme.colors.gold,
     backgroundColor: theme.colors.surface,
@@ -635,83 +493,26 @@ const styles = StyleSheet.create({
   startLabel: {
     ...theme.type.heading,
     fontSize: 22,
-    lineHeight: 26,
+    lineHeight: 28,
     color: theme.colors.gold,
     textAlign: 'center',
   },
-  modeRow: {
-    flexDirection: 'row',
-    gap: theme.spacing.sm,
-    marginTop: theme.spacing.md,
-  },
-  modeChip: {
-    borderWidth: 1,
-    borderColor: theme.colors.divider,
-    borderRadius: theme.radius.full,
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.sm,
-    backgroundColor: theme.colors.surface,
-  },
-  modeChipPressed: { opacity: 0.7 },
-  modeChipActive: {
-    borderColor: theme.colors.gold,
-    backgroundColor: theme.colors.goldWash,
-  },
-  modeChipText: { ...theme.type.label, color: theme.colors.sand },
-  modeChipTextActive: { color: theme.colors.gold },
-  modeHint: {
-    ...theme.type.caption,
-    color: theme.colors.clay,
-    marginTop: theme.spacing.md,
-    textAlign: 'center',
-  },
-  linkRow: { marginTop: theme.spacing['2xl'] },
-  linkText: { ...theme.type.label, color: theme.colors.gold },
-  progressTrack: {
-    width: '80%',
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: theme.colors.surface,
-    overflow: 'hidden',
-    marginTop: theme.spacing['2xl'],
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: theme.colors.gold,
-  },
-  progressLabel: {
-    ...theme.type.label,
-    color: theme.colors.sand,
-    marginTop: theme.spacing.sm,
-  },
-  dotWrap: {
-    marginVertical: theme.spacing['3xl'],
-  },
-  speechDot: {
+  dotWrap: { marginVertical: theme.spacing['2xl'] },
+  dot: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: theme.colors.goldWash,
+    backgroundColor: theme.colors.surface,
     borderWidth: 1,
     borderColor: theme.colors.divider,
   },
-  speechDotCalibrating: {
-    backgroundColor: theme.colors.divider,
-  },
-  speechDotActive: {
-    backgroundColor: theme.colors.gold,
-    borderColor: theme.colors.gold,
-  },
-  timerText: {
-    ...theme.type.display,
-    color: theme.colors.cream,
-    marginBottom: theme.spacing['2xl'],
-  },
+  dotActive: { backgroundColor: theme.colors.gold, borderColor: theme.colors.gold },
+  timerText: { ...theme.type.display, color: theme.colors.cream, marginBottom: theme.spacing.md },
   metricRow: {
     flexDirection: 'row',
-    gap: theme.spacing.md,
-    marginBottom: theme.spacing['2xl'],
+    gap: theme.spacing.sm,
     width: '100%',
+    marginVertical: theme.spacing.lg,
   },
   metricTile: {
     flex: 1,
@@ -720,13 +521,12 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius.lg,
     backgroundColor: theme.colors.surface,
     paddingVertical: theme.spacing.md,
-    paddingHorizontal: theme.spacing.md,
+    paddingHorizontal: theme.spacing.sm,
     alignItems: 'center',
   },
-  metricLabel: { ...theme.type.caption, color: theme.colors.clay },
+  metricLabel: { ...theme.type.caption, color: theme.colors.clay, textAlign: 'center' },
   metricValue: { ...theme.type.label, color: theme.colors.cream, marginTop: 4 },
   stopButton: {
-    marginTop: theme.spacing.md,
     borderWidth: 1,
     borderColor: theme.colors.borderStrong,
     borderRadius: theme.radius.cta,
@@ -734,81 +534,43 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing.md,
     backgroundColor: theme.colors.surface,
   },
-  stopButtonPressed: { backgroundColor: theme.colors.logoutWash },
   stopButtonText: { ...theme.type.label, color: theme.colors.cream, fontSize: 15 },
-  summaryCard: {
+  card: {
     borderWidth: 1,
     borderColor: theme.colors.divider,
     borderRadius: theme.radius.xl,
     backgroundColor: theme.colors.surface,
     padding: theme.spacing.xl,
-    marginBottom: theme.spacing.lg,
+    marginTop: theme.spacing.lg,
   },
-  summaryRow: {
+  cardTitle: { ...theme.type.label, color: theme.colors.cream, marginBottom: theme.spacing.sm },
+  cardBody: { ...theme.type.body, color: theme.colors.sand },
+  caption: { ...theme.type.caption, color: theme.colors.clay, marginTop: theme.spacing.xs },
+  errorText: { ...theme.type.caption, color: theme.colors.error, marginTop: theme.spacing.sm },
+  clipsTitle: { marginTop: theme.spacing.lg },
+  clipList: { gap: theme.spacing.xs },
+  clipRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: theme.spacing.sm,
-  },
-  summaryLabel: { ...theme.type.body, color: theme.colors.sand },
-  summaryValue: { ...theme.type.label, color: theme.colors.cream, fontSize: 15 },
-  summaryDisclaimer: {
-    ...theme.type.caption,
-    color: theme.colors.clay,
-    fontFamily: fonts.italic,
-    marginTop: theme.spacing.md,
-  },
-  summarySubheading: {
-    ...theme.type.label,
-    color: theme.colors.cream,
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
-    marginBottom: theme.spacing.sm,
-  },
-  themeCard: {
-    borderWidth: 1,
-    borderColor: theme.colors.divider,
-    borderRadius: theme.radius.xl,
-    backgroundColor: theme.colors.surface,
-    padding: theme.spacing.xl,
-    marginBottom: theme.spacing.lg,
-  },
-  themeHeading: { ...theme.type.label, color: theme.colors.cream, marginBottom: theme.spacing.md },
-  chipsWrap: {
-    flexDirection: 'row',
+    alignItems: 'center',
     flexWrap: 'wrap',
     gap: theme.spacing.sm,
-  },
-  themeChip: {
-    borderRadius: theme.radius.full,
-    borderWidth: 1,
-    borderColor: theme.colors.borderStrong,
-    paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.xs,
-    backgroundColor: theme.colors.goldWash,
   },
-  themeChipText: { ...theme.type.caption, color: theme.colors.cream },
-  mockBanner: {
-    borderWidth: 1,
-    borderColor: theme.colors.terracottaDash,
-    borderRadius: theme.radius.lg,
-    backgroundColor: theme.colors.terracottaWash,
-    padding: theme.spacing.md,
-    marginBottom: theme.spacing.lg,
-  },
-  mockBannerText: {
-    ...theme.type.caption,
-    color: theme.colors.cream,
-    textAlign: 'center',
-  },
+  clipText: { ...theme.type.body, color: theme.colors.cream },
+  checkLines: { marginTop: theme.spacing.md, gap: 2 },
+  monoText: { ...theme.type.caption, color: theme.colors.cream, fontFamily: fonts.regular },
   secondaryButton: {
+    marginTop: theme.spacing.md,
     minHeight: theme.spacing['4xl'],
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: theme.radius.cta,
     borderWidth: 1,
     borderColor: theme.colors.borderStrong,
-    paddingHorizontal: theme.spacing['2xl'],
+    paddingHorizontal: theme.spacing.lg,
     paddingVertical: theme.spacing.sm,
   },
-  secondaryButtonText: { ...theme.type.label, color: theme.colors.sand, fontSize: 15 },
+  secondaryButtonText: { ...theme.type.label, color: theme.colors.sand, textAlign: 'center' },
+  linkRow: { marginTop: theme.spacing['2xl'], alignItems: 'center' },
+  linkText: { ...theme.type.label, color: theme.colors.gold },
 });

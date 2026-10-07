@@ -46,7 +46,7 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "./plugins/withHearingService.js",
+      "./plugins/listening/withListening.js",
       "expo-dev-client",
       "@react-native-community/datetimepicker",
       "expo-notifications",
