@@ -3,7 +3,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import theme from '../lib/theme';
+import theme, { fonts } from '../lib/theme';
 import GentlePressable from './GentlePressable';
 import type { ChatStackParamList } from './chatTypes';
 import { useI18n } from '../lib/i18n';
@@ -180,7 +180,7 @@ const styles = StyleSheet.create({
   notice: {
     ...theme.type.body,
     color: theme.colors.clay,
-    fontStyle: 'italic',
+    fontFamily: fonts.italic,
   },
   actions: {
     marginTop: theme.spacing['2xl'],

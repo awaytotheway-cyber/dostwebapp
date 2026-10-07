@@ -18,7 +18,7 @@ import {
   type JourneyAggregate,
   type JourneyRangeKey,
 } from '../lib/journey';
-import { radius, spacing, type as typography } from '../lib/theme';
+import { fonts, radius, spacing, type as typography } from '../lib/theme';
 import type { ChatStackParamList } from './chatTypes';
 import BreathingDot from './BreathingDot';
 import GentlePressable from './GentlePressable';
@@ -391,7 +391,7 @@ const styles = StyleSheet.create({
     color: dawn.sand,
   },
   title: {
-    fontFamily: 'Fraunces_500Medium',
+    fontFamily: fonts.bold,
     fontSize: 28,
     lineHeight: 34,
     color: dawn.cream,
@@ -439,7 +439,7 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   sectionTitle: {
-    fontFamily: 'Fraunces_500Medium',
+    fontFamily: fonts.bold,
     fontSize: 20,
     lineHeight: 26,
     color: dawn.cream,
@@ -454,10 +454,9 @@ const styles = StyleSheet.create({
     minHeight: 112,
   },
   themeLine: {
-    fontFamily: 'Fraunces_500Medium',
     fontSize: 16,
     lineHeight: 24,
-    fontStyle: 'italic',
+    fontFamily: fonts.italic,
     color: dawn.cream,
   },
   needsHint: {
@@ -479,7 +478,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 26,
     color: dawn.sand,
-    fontStyle: 'italic',
+    fontFamily: fonts.italic,
   },
   retryButton: {
     alignSelf: 'flex-start',
@@ -490,7 +489,7 @@ const styles = StyleSheet.create({
     borderColor: dawn.gold,
   },
   retryLabel: {
-    fontFamily: 'Inter_500Medium',
+    fontFamily: fonts.regular,
     fontSize: 15,
     lineHeight: 22,
     color: dawn.gold,
@@ -505,7 +504,7 @@ const styles = StyleSheet.create({
   loadingText: {
     ...typography.body,
     color: dawn.sand,
-    fontStyle: 'italic',
+    fontFamily: fonts.italic,
   },
   centered: {
     flex: 1,
@@ -518,10 +517,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
   },
   empty: {
-    fontFamily: 'Fraunces_500Medium',
     fontSize: 16,
     lineHeight: 24,
-    fontStyle: 'italic',
+    fontFamily: fonts.italic,
     color: dawn.sand,
     textAlign: 'center',
   },

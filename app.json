@@ -63,6 +63,10 @@
       [
         "react-native-android-widget",
         {
+          "fonts": [
+            "./assets/fonts/iMWritingQuatNerdFontPropo-Regular.ttf",
+            "./assets/fonts/iMWritingQuatNerdFontPropo-Bold.ttf"
+          ],
           "widgets": [
             {
               "name": "DostLauncher",

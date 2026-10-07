@@ -1,5 +1,5 @@
 import { StyleSheet } from 'react-native';
-import { colors, radius, spacing, type } from '../../lib/theme';
+import { fonts, colors, radius, spacing, type } from '../../lib/theme';
 
 export const onboardingStyles = StyleSheet.create({
   // ── Core containers ─────────────────────────────────────────
@@ -41,7 +41,7 @@ export const onboardingStyles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   headingLeft: {
-    fontFamily: 'Fraunces_500Medium',
+    fontFamily: fonts.bold,
     fontSize: 34,
     lineHeight: 40,
     color: colors.inkDark,
@@ -94,7 +94,7 @@ export const onboardingStyles = StyleSheet.create({
     minHeight: 52,
     paddingHorizontal: 0,
     paddingVertical: spacing.sm,
-    fontFamily: 'Fraunces_500Medium',
+    fontFamily: fonts.bold,
     fontSize: 26,
     lineHeight: 32,
     color: colors.inkDark,
@@ -103,7 +103,7 @@ export const onboardingStyles = StyleSheet.create({
   textArea: {
     minHeight: 112,
     textAlignVertical: 'top',
-    fontFamily: 'Inter_400Regular',
+    fontFamily: fonts.regular,
     fontSize: 15,
     lineHeight: 22,
     borderWidth: 1,
@@ -132,7 +132,7 @@ export const onboardingStyles = StyleSheet.create({
     opacity: 0.4,
   },
   buttonText: {
-    fontFamily: 'Inter_500Medium',
+    fontFamily: fonts.regular,
     fontSize: 16,
     lineHeight: 22,
     color: colors.onTerracotta,

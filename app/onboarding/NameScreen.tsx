@@ -13,7 +13,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { OnboardingStackParamList } from './types';
 import { onboardingStyles as shared } from './styles';
 import OnboardingProgress from './OnboardingProgress';
-import { colors, spacing } from '../../lib/theme';
+import { fonts, colors, spacing } from '../../lib/theme';
 import GentlePressable from '../GentlePressable';
 import { useI18n } from '../../lib/i18n';
 
@@ -87,14 +87,14 @@ export default function NameScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   subCopy: {
-    fontFamily: 'Inter_400Regular',
+    fontFamily: fonts.regular,
     fontSize: 15,
     lineHeight: 22,
     color: colors.inkMuted,
     marginBottom: spacing.xl,
   },
   privacyNote: {
-    fontFamily: 'Inter_400Regular',
+    fontFamily: fonts.regular,
     fontSize: 12,
     lineHeight: 18,
     color: colors.inkLight,

@@ -19,7 +19,7 @@ import {
   requestNotificationPermission,
   scheduleMorningNoticings,
 } from '../lib/notifications';
-import { colors, radius, spacing, type } from '../lib/theme';
+import { fonts, colors, radius, spacing, type } from '../lib/theme';
 import GentlePressable from './GentlePressable';
 
 type Props = NativeStackScreenProps<ChatStackParamList, 'Reflection'>;
@@ -300,7 +300,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.terracotta,
   },
   primaryButtonText: {
-    fontFamily: 'Inter_500Medium',
+    fontFamily: fonts.regular,
     fontSize: 16,
     lineHeight: 22,
     color: colors.onTerracotta,
@@ -321,7 +321,7 @@ const styles = StyleSheet.create({
     opacity: 0.68,
   },
   heading: {
-    fontFamily: 'Fraunces_500Medium',
+    fontFamily: fonts.bold,
     fontSize: 32,
     lineHeight: 38,
     color: colors.inkDark,

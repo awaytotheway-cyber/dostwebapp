@@ -50,7 +50,7 @@ import {
   useI18n,
   type TKey,
 } from '../lib/i18n';
-import { colors, radius, spacing, type as typography } from '../lib/theme';
+import { fonts, colors, radius, spacing, type as typography } from '../lib/theme';
 import { useReducedMotion } from '../lib/useReducedMotion';
 import type { ChatStackParamList } from './chatTypes';
 import BreathingDot from './BreathingDot';
@@ -686,7 +686,7 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   backLabel: {
-    fontFamily: 'Fraunces_500Medium',
+    fontFamily: fonts.bold,
     fontSize: 22,
     lineHeight: 28,
     color: dark.title,
@@ -710,13 +710,13 @@ const styles = StyleSheet.create({
     borderColor: dark.border,
   },
   avatarLetter: {
-    fontFamily: 'Fraunces_500Medium',
+    fontFamily: fonts.bold,
     fontSize: 30,
     lineHeight: 34,
     color: colors.terracottaDot,
   },
   name: {
-    fontFamily: 'Fraunces_500Medium',
+    fontFamily: fonts.bold,
     fontSize: 24,
     lineHeight: 30,
     color: dark.title,
@@ -733,7 +733,7 @@ const styles = StyleSheet.create({
     borderColor: dark.border,
   },
   talkCardLabel: {
-    fontFamily: 'Inter_500Medium',
+    fontFamily: fonts.regular,
     fontSize: 10,
     lineHeight: 14,
     letterSpacing: 1,
@@ -744,14 +744,14 @@ const styles = StyleSheet.create({
   // Section headers
   sectionHeaderWrap: { gap: spacing.xs, marginTop: spacing.sm },
   sectionTitle: {
-    fontFamily: 'Fraunces_500Medium',
+    fontFamily: fonts.bold,
     fontSize: 20,
     lineHeight: 26,
     color: dark.title,
   },
   sectionIntro: { ...typography.body, fontSize: 13, color: dark.sand, lineHeight: 20 },
   subHeading: {
-    fontFamily: 'Fraunces_500Medium',
+    fontFamily: fonts.bold,
     fontSize: 16,
     lineHeight: 22,
     color: dark.title,
@@ -833,8 +833,8 @@ const styles = StyleSheet.create({
   },
   activeField: { borderColor: colors.terracotta },
   timeButtonLabel: { ...typography.caption, color: dark.muted, letterSpacing: 1.1, marginBottom: spacing.xs },
-  timeButtonText: { fontFamily: 'Inter_500Medium', fontSize: 22, lineHeight: 28, color: dark.title },
-  timeLabel: { fontFamily: 'Inter_500Medium', fontSize: 22, lineHeight: 28, color: dark.title, marginVertical: spacing.sm },
+  timeButtonText: { fontFamily: fonts.regular, fontSize: 22, lineHeight: 28, color: dark.title },
+  timeLabel: { fontFamily: fonts.regular, fontSize: 22, lineHeight: 28, color: dark.title, marginVertical: spacing.sm },
 
   // Memory
   memoryBox: {
@@ -858,7 +858,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     alignItems: 'center',
   },
-  ctaText: { fontFamily: 'Inter_500Medium', fontSize: 14, color: colors.onTerracotta },
+  ctaText: { fontFamily: fonts.regular, fontSize: 14, color: colors.onTerracotta },
 
   // Secondary button
   secondaryButtonBase: {
@@ -874,7 +874,7 @@ const styles = StyleSheet.create({
     backgroundColor: dark.cardRaised,
     alignItems: 'center',
   },
-  secondaryButtonText: { fontFamily: 'Inter_500Medium', fontSize: 14, color: dark.title },
+  secondaryButtonText: { fontFamily: fonts.regular, fontSize: 14, color: dark.title },
 
   // Sign out
   signOutButton: { backgroundColor: 'rgba(184, 76, 48, 0.08)', borderColor: 'rgba(184, 76, 48, 0.2)' },
@@ -894,7 +894,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(199,123,90,0.08)',
     alignItems: 'center',
   },
-  dangerText: { fontFamily: 'Inter_500Medium', fontSize: 14, color: colors.error },
+  dangerText: { fontFamily: fonts.regular, fontSize: 14, color: colors.error },
   dangerButton: { backgroundColor: colors.error },
   accountButton: {
     alignSelf: 'flex-start',
@@ -903,7 +903,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
     paddingHorizontal: spacing.sm,
   },
-  accountText: { fontFamily: 'Inter_500Medium', fontSize: 14, color: colors.error },
+  accountText: { fontFamily: fonts.regular, fontSize: 14, color: colors.error },
   buttonDisabled: { opacity: 0.4 },
 
   // Modal
@@ -921,7 +921,7 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   modalTitle: {
-    fontFamily: 'Fraunces_500Medium',
+    fontFamily: fonts.bold,
     fontSize: 22,
     lineHeight: 28,
     color: dark.title,
@@ -937,7 +937,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(199, 123, 90, 0.35)',
   },
-  diagLabel: { fontFamily: 'Inter_500Medium', fontSize: 10, lineHeight: 14, letterSpacing: 1, color: dark.muted },
-  diagText: { fontFamily: 'Inter_400Regular', fontSize: 13, lineHeight: 20, color: dark.sand },
+  diagLabel: { fontFamily: fonts.regular, fontSize: 10, lineHeight: 14, letterSpacing: 1, color: dark.muted },
+  diagText: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 20, color: dark.sand },
   diagHint: { ...typography.caption, color: dark.muted, marginTop: spacing.xs },
 });

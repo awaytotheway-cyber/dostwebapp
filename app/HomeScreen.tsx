@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Line, Path } from 'react-native-svg';
 import { useI18n, type TKey } from '../lib/i18n';
 import { loadMyProfile } from '../lib/profile';
-import { colors, radius, spacing, type as typography } from '../lib/theme';
+import { fonts, colors, radius, spacing, type as typography } from '../lib/theme';
 import type { ChatStackParamList } from './chatTypes';
 import BreathingDot from './BreathingDot';
 import GentlePressable from './GentlePressable';
@@ -271,7 +271,7 @@ const styles = StyleSheet.create({
     borderRadius: 9,
   },
   brandName: {
-    fontFamily: 'Fraunces_500Medium',
+    fontFamily: fonts.bold,
     fontSize: 17,
     lineHeight: 22,
     color: home.title,
@@ -295,13 +295,13 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   greeting: {
-    fontFamily: 'Fraunces_500Medium',
+    fontFamily: fonts.bold,
     fontSize: 32,
     lineHeight: 38,
     color: home.title,
   },
   subGreeting: {
-    fontFamily: 'Inter_400Regular',
+    fontFamily: fonts.regular,
     fontSize: 15,
     lineHeight: 22,
     color: home.description,
@@ -322,7 +322,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   mainCardTitle: {
-    fontFamily: 'Fraunces_500Medium',
+    fontFamily: fonts.bold,
     fontSize: 20,
     lineHeight: 26,
     color: home.title,
@@ -343,7 +343,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.terracottaSoft,
   },
   startButtonText: {
-    fontFamily: 'Inter_500Medium',
+    fontFamily: fonts.regular,
     fontSize: 14,
     lineHeight: 20,
     color: colors.onTerracotta,
@@ -371,7 +371,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   tileTitle: {
-    fontFamily: 'Fraunces_500Medium',
+    fontFamily: fonts.bold,
     fontSize: 15,
     lineHeight: 20,
     color: home.title,

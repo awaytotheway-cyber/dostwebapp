@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import theme from '../lib/theme';
+import theme, { fonts } from '../lib/theme';
 import GentlePressable from './GentlePressable';
 import type { ChatStackParamList } from './chatTypes';
 import { requestHearingPermissions } from '../lib/hearing/permissions';
@@ -567,7 +567,7 @@ const styles = StyleSheet.create({
   },
   promptText: {
     // Deliberately leave fontFamily unset so Devanagari falls through
-    // to a system font that supports it (Inter has Latin only).
+    // to a system font that supports it (the app font covers Latin and Cyrillic only).
     fontSize: 20,
     lineHeight: 28,
     color: theme.colors.cream,
@@ -577,7 +577,7 @@ const styles = StyleSheet.create({
     ...theme.type.caption,
     color: theme.colors.clay,
     marginBottom: theme.spacing.sm,
-    fontStyle: 'italic',
+    fontFamily: fonts.italic,
   },
   gloss: {
     ...theme.type.caption,

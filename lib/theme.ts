@@ -43,44 +43,56 @@ export const colors = {
   parchmentCard: 'rgba(255, 255, 255, 0.55)',
 } as const;
 
+/**
+ * App typefaces (assets/fonts, from Nerd Fonts). iM Writing is iA Writer
+ * Quattro; Victor Mono Light Italic is used only for the launch line.
+ * Keys match the names registered with useFonts in App.tsx.
+ */
+export const fonts = {
+  regular: 'IMWriting-Regular',
+  bold: 'IMWriting-Bold',
+  italic: 'IMWriting-Italic',
+  display: 'VictorMono-LightItalic',
+} as const;
+
 export const type = {
   display: {
-    fontFamily: 'Fraunces_500Medium',
+    fontFamily: fonts.bold,
     fontSize: 36,
     lineHeight: 40,
   },
   dostMessage: {
-    fontFamily: 'Inter_400Regular',
+    fontFamily: fonts.regular,
     fontSize: 15,
     lineHeight: 21,
   },
   heading: {
-    fontFamily: 'Fraunces_500Medium',
+    fontFamily: fonts.bold,
     fontSize: 32,
     lineHeight: 36,
   },
   reflectivePrompt: {
-    fontFamily: 'Inter_500Medium',
+    fontFamily: fonts.regular,
     fontSize: 16,
     lineHeight: 24,
   },
   body: {
-    fontFamily: 'Inter_400Regular',
+    fontFamily: fonts.regular,
     fontSize: 15,
     lineHeight: 22,
   },
   userMessage: {
-    fontFamily: 'Inter_400Regular',
+    fontFamily: fonts.regular,
     fontSize: 15,
     lineHeight: 21,
   },
   label: {
-    fontFamily: 'Inter_500Medium',
+    fontFamily: fonts.regular,
     fontSize: 13,
     lineHeight: 18,
   },
   caption: {
-    fontFamily: 'Inter_400Regular',
+    fontFamily: fonts.regular,
     fontSize: 12,
     lineHeight: 16,
   },
@@ -115,6 +127,7 @@ export const radius = {
 
 export const theme = {
   colors,
+  fonts,
   type,
   spacing,
   radius,

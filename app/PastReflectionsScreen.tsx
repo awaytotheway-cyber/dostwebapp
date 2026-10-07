@@ -11,7 +11,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getLocaleTag, t as translate, useI18n, type TKey } from '../lib/i18n';
 import { supabase } from '../lib/supabase';
-import { radius, spacing, type as typography } from '../lib/theme';
+import { fonts, radius, spacing, type as typography } from '../lib/theme';
 import type { ChatStackParamList } from './chatTypes';
 import BreathingDot from './BreathingDot';
 import GentlePressable from './GentlePressable';
@@ -477,7 +477,7 @@ const styles = StyleSheet.create({
   },
   backSpacer: { width: 56 },
   title: {
-    fontFamily: 'Fraunces_500Medium',
+    fontFamily: fonts.bold,
     fontSize: 22,
     lineHeight: 28,
     color: dawn.cream,
@@ -559,7 +559,7 @@ const styles = StyleSheet.create({
     opacity: 0.88,
   },
   cardTitle: {
-    fontFamily: 'Fraunces_500Medium',
+    fontFamily: fonts.bold,
     fontSize: 16,
     lineHeight: 22,
     color: dawn.cream,
@@ -604,7 +604,7 @@ const styles = StyleSheet.create({
   loadingText: {
     ...typography.body,
     color: dawn.sand,
-    fontStyle: 'italic',
+    fontFamily: fonts.italic,
   },
   emptyWrap: {
     flex: 1,
@@ -614,10 +614,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
   },
   empty: {
-    fontFamily: 'Fraunces_500Medium',
     fontSize: 16,
     lineHeight: 24,
-    fontStyle: 'italic',
+    fontFamily: fonts.italic,
     color: dawn.sand,
     textAlign: 'center',
   },

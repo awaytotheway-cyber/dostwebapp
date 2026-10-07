@@ -2,12 +2,6 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Fraunces_500Medium } from '@expo-google-fonts/fraunces';
-import {
-  Inter_400Regular,
-  Inter_500Medium,
-  Inter_600SemiBold,
-} from '@expo-google-fonts/inter';
 import { useFonts } from 'expo-font';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -24,7 +18,7 @@ import { ONBOARDING_COMPLETE_KEY } from './lib/onboardingStorage';
 import { initNotificationRouting } from './lib/notifications';
 import { ensureAnonymousSession } from './lib/session';
 import { supabase } from './lib/supabase';
-import theme from './lib/theme';
+import theme, { fonts } from './lib/theme';
 
 const PRIVACY_SEEN_KEY = '@dost/privacy_notice_seen';
 
@@ -45,10 +39,10 @@ type Gate =
 
 export default function App() {
   const [fontsLoaded] = useFonts({
-    Fraunces_500Medium,
-    Inter_400Regular,
-    Inter_500Medium,
-    Inter_600SemiBold,
+    [fonts.regular]: require('./assets/fonts/iMWritingQuatNerdFontPropo-Regular.ttf'),
+    [fonts.bold]: require('./assets/fonts/iMWritingQuatNerdFontPropo-Bold.ttf'),
+    [fonts.italic]: require('./assets/fonts/iMWritingQuatNerdFontPropo-Italic.ttf'),
+    [fonts.display]: require('./assets/fonts/VictorMonoNerdFontPropo-LightItalic.ttf'),
   });
   const [i18nReady, setI18nReady] = useState(false);
   const [gate, setGate] = useState<Gate>('loading');

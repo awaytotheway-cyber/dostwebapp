@@ -9,7 +9,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import theme from '../lib/theme';
+import theme, { fonts } from '../lib/theme';
 import GentlePressable from './GentlePressable';
 import type { ChatStackParamList } from './chatTypes';
 import { HEARING_DISCLOSURE_ACK_KEY } from './HearingDisclosureScreen';
@@ -754,7 +754,7 @@ const styles = StyleSheet.create({
   summaryDisclaimer: {
     ...theme.type.caption,
     color: theme.colors.clay,
-    fontStyle: 'italic',
+    fontFamily: fonts.italic,
     marginTop: theme.spacing.md,
   },
   summarySubheading: {

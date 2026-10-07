@@ -12,7 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { OnboardingStackParamList } from './types';
 import { APP_LANGUAGES, NATIVE_LANGUAGE_NAMES, useI18n } from '../../lib/i18n';
-import { colors, radius, spacing, type } from '../../lib/theme';
+import { fonts, colors, radius, spacing, type } from '../../lib/theme';
 import GentlePressable from '../GentlePressable';
 
 const logoSource = require('../../assets/dost-logo.png');
@@ -189,7 +189,7 @@ const styles = StyleSheet.create({
     borderRadius: radius['2xl'],
   },
   heading: {
-    fontFamily: 'Fraunces_500Medium',
+    fontFamily: fonts.bold,
     fontSize: 32,
     lineHeight: 38,
     color: colors.inkDark,
@@ -197,7 +197,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   dostName: {
-    fontFamily: 'Fraunces_500Medium',
+    fontFamily: fonts.bold,
     fontSize: 32,
     lineHeight: 38,
     color: colors.terracotta,
@@ -228,7 +228,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.blush,
   },
   langChipText: {
-    fontFamily: 'Inter_500Medium',
+    fontFamily: fonts.regular,
     fontSize: 14,
     lineHeight: 20,
     color: colors.inkMuted,
@@ -256,7 +256,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.terracottaSoft,
   },
   buttonText: {
-    fontFamily: 'Inter_500Medium',
+    fontFamily: fonts.regular,
     fontSize: 16,
     lineHeight: 22,
     color: colors.onTerracotta,

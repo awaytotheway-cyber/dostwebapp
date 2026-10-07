@@ -11,7 +11,7 @@ import { Audio } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { radius, spacing } from '../lib/theme';
+import { fonts, radius, spacing } from '../lib/theme';
 import { processVoiceNoteAfterTranscript } from '../lib/processVoiceNote';
 import { transcribeVoiceNote } from '../lib/transcribeVoiceNote';
 import { useReducedMotion } from '../lib/useReducedMotion';
@@ -608,7 +608,7 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   title: {
-    fontFamily: 'Fraunces_500Medium',
+    fontFamily: fonts.bold,
     fontSize: 22,
     lineHeight: 28,
     color: dawn.cream,
@@ -654,7 +654,7 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   label: {
-    fontFamily: 'Inter_400Regular',
+    fontFamily: fonts.regular,
     fontSize: 16,
     lineHeight: 24,
     textAlign: 'center',
@@ -669,14 +669,14 @@ const styles = StyleSheet.create({
     borderColor: dawn.terracotta,
   },
   retryLabel: {
-    fontFamily: 'Inter_500Medium',
+    fontFamily: fonts.regular,
     fontSize: 15,
     lineHeight: 22,
     color: dawn.terracotta,
     textAlign: 'center',
   },
   footer: {
-    fontFamily: 'Inter_400Regular',
+    fontFamily: fonts.regular,
     fontSize: 13,
     lineHeight: 20,
     color: dawn.sand,

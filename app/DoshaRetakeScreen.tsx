@@ -8,7 +8,7 @@ import { DOSHA_QUESTIONS, scoreDosha } from './onboarding/DoshaScreen';
 import { onboardingStyles as styles } from './onboarding/styles';
 import type { ChatStackParamList } from './chatTypes';
 import { useI18n } from '../lib/i18n';
-import { colors } from '../lib/theme';
+import { fonts, colors } from '../lib/theme';
 import GentlePressable from './GentlePressable';
 
 type Props = NativeStackScreenProps<ChatStackParamList, 'DoshaRetake'>;
@@ -46,7 +46,7 @@ export default function DoshaRetakeScreen({ navigation }: Props) {
     <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom + 8 }]}>
       <View style={{ paddingHorizontal: 28, paddingVertical: 8 }}>
         <Pressable onPress={() => navigation.goBack()} hitSlop={8}>
-          <Text style={{ fontSize: 16, color: colors.gold, fontWeight: '600' }}>{t('common.backPlain')}</Text>
+          <Text style={{ fontSize: 16, color: colors.gold, fontFamily: fonts.bold }}>{t('common.backPlain')}</Text>
         </Pressable>
       </View>
       <ScrollView style={styles.contentTop} contentContainerStyle={{ paddingBottom: 24 }}>

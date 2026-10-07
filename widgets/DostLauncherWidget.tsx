@@ -26,7 +26,8 @@ export function DostLauncherWidget() {
         style={{
           fontSize: 28,
           color: '#EDE4D3',
-          fontFamily: 'serif',
+          // File names bundled via the widget plugin's "fonts" list in app.json.
+          fontFamily: 'iMWritingQuatNerdFontPropo-Bold',
         }}
       />
       {/* Soft gold accent (diya-like underline) */}
@@ -45,6 +46,7 @@ export function DostLauncherWidget() {
         style={{
           fontSize: 14,
           color: '#C9B79C',
+          fontFamily: 'iMWritingQuatNerdFontPropo-Regular',
         }}
       />
     </FlexWidget>
