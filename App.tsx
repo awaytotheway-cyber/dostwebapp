@@ -38,7 +38,7 @@ type Gate =
   | 'chat';
 
 export default function App() {
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontsError] = useFonts({
     InstrumentSans_400Regular: require('./assets/fonts/InstrumentSans-Regular.ttf'),
     InstrumentSans_500Medium: require('./assets/fonts/InstrumentSans-Medium.ttf'),
     InstrumentSans_600SemiBold: require('./assets/fonts/InstrumentSans-SemiBold.ttf'),
@@ -48,7 +48,28 @@ export default function App() {
     Poppins_600SemiBold: require('./assets/fonts/Poppins-SemiBold.ttf'),
     Poppins_700Bold: require('./assets/fonts/Poppins-Bold.ttf'),
   });
+  const [fontTimeout, setFontTimeout] = useState(false);
   const [i18nReady, setI18nReady] = useState(false);
+  const [i18nTimeout, setI18nTimeout] = useState(false);
+
+  // If fonts or i18n haven't resolved in 4 s, proceed with system fallbacks
+  // rather than leave the splash hanging forever. Any genuine error is
+  // surfaced in the console for debugging.
+  useEffect(() => {
+    const ft = setTimeout(() => setFontTimeout(true), 4000);
+    const it = setTimeout(() => setI18nTimeout(true), 4000);
+    return () => {
+      clearTimeout(ft);
+      clearTimeout(it);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (fontsError) {
+      // eslint-disable-next-line no-console
+      console.warn('[DOST] font load error, falling back to system fonts:', fontsError);
+    }
+  }, [fontsError]);
   const [gate, setGate] = useState<Gate>('loading');
   const [authErrorKind, setAuthErrorKind] = useState<
     'anonymous_disabled' | 'other'
@@ -161,7 +182,9 @@ export default function App() {
     setGate('chat');
   };
 
-  if (!fontsLoaded || !i18nReady) {
+  const fontsReady = fontsLoaded || Boolean(fontsError) || fontTimeout;
+  const localeReady = i18nReady || i18nTimeout;
+  if (!fontsReady || !localeReady) {
     return <FontLoadingScreen />;
   }
 
