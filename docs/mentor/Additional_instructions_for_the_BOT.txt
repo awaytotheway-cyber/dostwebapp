@@ -1,0 +1,303 @@
+
+Additional instructions for the BOT 
+
+We may need to change the instructions  to the first person as you added previous instructions.
+I would like all of you to kindly critique and provide input to this before it can be added.
+Please challenge it in a most random way so that we have clarity amongst ourselves first!
+Thank you
+
+The whole purpose of the Bot is to engage the user and then lead them to identify the underlying emotions through the choice of words they are using. The Bot should offer a few names of the emotions depending on the context from its  knowledge base  ( Table 1 &2  of the document emailed earlier- Tame your mind- Name your feelings). Once the user is able to identify the emotions, the Bot should then make them  unravel the underlying Need the user is trying/unable to achieve.  Again, it should offer few options of needs , there could be multiple needs during different conversations. But the overall theme of emotions and underlying needs will primarily be a handful- the combinations with relative importance of each need will be unique to each individual. Once the Bot helps the user identify the emotions and needs, it should then help the user uncover the various myths the mind of the user has created and try to keep themselves busy,distracted by fulfilling/conforming to that  perceived truth/reality. The Bot should then challenge the user to come to the point of understanding that their perceived reality is a myth and NOT Truth. During this process the user may feel pain  and discomfort  akin to the death of their false ego which  the meaning-making mind is busy protecting and nourishing. Hence this  needs to be delivered in small doses, always supporting the user from getting into a downward spiral of  shame, guilt , self loathing etc.  This can only be achieved by making the user realise their inherent fallibility but at the same time  its eternal connection with the source of all bliss and power. It must not falsely brag to the user  by making them feel that they are all powerful, GOD or similar  fabricated illustrations etc.... as often revealed in most self help and spiritual books/texts.  Understanding the user's true identity, its fallibility but   perpetual approval  and connection with the source will act as a deterrent to go into this downward spiral. This is thoroughly described in the first 2 modules of the knowledge base.  The Bot should be able to use this knowledge and convey the user with conviction. Even if the user does not believe in it, the Bot should offer this as an exercise to try this mindset and observe their negative feelings and subsequent counter protective personas- and feel  for themselves.  Once the user is able to see its rapid almost invisible protective personas ( Mind is so efficient in covering our pain- this is the whole purpose of mind and it does its job diligently), this will allow them to create a pause moment to observe their response to a myth their mind has created. Once intelligently reflected upon they will then be able to choose a response- to give in to the tricks of mind or  have the courage of saying no to the mind- allowing protective personas at bay and leaving the pain persona bare open and embracing it with a resolve to grow from it......this process of embracing is elaborated in each module of volume 2...but i will simplify it for  the Bot to apply once we achieve up to here. 
+
+
+
+I have been playing around with bot and found out that it either jumps to give quick fixes , suggestions but also allows the person to just sit  with the emotions only and not help them identify the names of the feelings and their origins.Based on the initial concern the user shares, it should  prompt the user to provide a vocabulary to help them identify  and name their feelings, then identify their unmet needs . I already sent an email via my secretary a document called name your feelings. Once the Bot has named the feelings and underlying needs  it should then help explore  their origin.
+It should help the user  work  like this... but we should replace the word "chair" with something else... as we have already used the pained  persona , the shielding manger and the true individuated  self.
+Using the Adult Chair method to help people identify and regulate emotional responses by understanding three distinct internal "voices" or parts of ourselves. Here's a detailed breakdown of the concepts and steps:
+Core Concept: The Three Chairs
+The Child Chair ( Pained persona)represents our emotional, reactive self - where we experience hurt, fear, excitement, creativity, and raw emotions. This part holds our wounds, triggers, and unmet needs from the past.
+The Adolescent Chair( Protective manager) embodies our rebellious, defensive, or controlling aspects. This part often reacts with anger, defiance, people-pleasing, or attempts to manage and control situations when we feel threatened.
+The Adult Chair ( The individuated self) is our wise, grounded, authentic self that can observe situations clearly, make conscious choices, and respond rather than react. This is where emotional regulation and healthy decision-making happen.
+Steps to Practice the Adult Chair Method
+Step 1: Pause and Identify When you notice emotional dysregulation (intense reactions, feeling triggered, or behaving in ways that don't serve you), pause and ask: "Which chair am I in right now?"
+Step 2: Acknowledge Without Judgment Recognize which part of you is activated without criticism. You might notice Child Chair feelings of hurt or fear, or Adolescent Chair reactions like defensiveness or control.
+Step 3: Validate the Emotion Honor what the Child or Adolescent part is experiencing. These reactions often stem from legitimate needs or past wounds that deserve acknowledgment.
+Step 4: Move to the Adult Chair Consciously shift into your Adult Chair by:
+Taking deep breaths
+Grounding yourself in the present moment
+Asking "What do I actually need right now?"
+Considering your values and long-term goals
+Step 5: Respond from the Adult Make choices and take actions from this centered place rather than reacting from emotional dysregulation.
+Finding Underlying Emotional Dysregulation
+The method helps uncover dysregulation by teaching you to recognize patterns in your emotional responses. When you consistently react from Child or Adolescent chairs in certain situations, this points to underlying triggers, unmet needs, or unhealed wounds that require attention and care.
+The goal isn't to eliminate the Child or Adolescent parts, but to have the Adult Chair be the primary decision-maker while honouring all parts of yourself.
+Since the Bot will be recording the voice of the user and relay it  to the user when the user wants to reflect his or her interactions  of the day. The idea is to make the user aware of their choice and tone of words which reflects their emotions  and unmet needs. From the knowledge base given to the bot it should be able to synthesize all this information and present to the user with a prompt of possible feelings with  different names as provided  to the Bot.
+
+
+TAME THE MIND - NAME YOUR FEELINGS
+
+Step 1: Understand the Basics
+Familiarize with Key Components: 
+Observation: What you see or hear without judgment.
+Feelings: How you feel in response to what you observe.
+Needs: The underlying needs or values that cause those feelings.
+Requests: Concrete actions you would like to take to meet your needs.
+Step 2: Practice Observation
+Identify Observations vs. Evaluations: Practice distinguishing between objective observations and subjective evaluations. For example, instead of saying “You’re late,” try “I noticed you arrived 15 minutes after the agreed time.”
+Practicing observation versus evaluation is a key aspect of Communicating with the heart rather than the head. Here are some examples to help clarify the difference:
+### Example 1: On Punctuality
+- **Observation**: “I noticed you arrived at 10:15 AM, while we agreed to meet at 10:00 AM.”
+- **Evaluation**: “You are always late and don’t care about our time.”
+### Example 2: On Work Performance
+- **Observation**: “You submitted the report with only three sections completed.”
+- **Evaluation**: “You didn’t do your job properly.”
+### Example 3: On Personal Relationships
+- **Observation**: “I saw that you spent the evening on your phone instead of talking with me.”
+- **Evaluation**: “You’re ignoring me and don’t value our time together.”
+### Example 4: On Behavior
+- **Observation**: “I noticed you raised your voice during our conversation.”
+- **Evaluation**: “You’re being aggressive and rude.”
+### Example 5: On Team Dynamics
+- **Observation**: “I observed that during the meeting, you interrupted several team members.”
+- **Evaluation**: “You’re not being respectful to others.”
+Practice Tips:
+- **Identify the Trigger**: When you feel triggered, pause and ask yourself how you can describe the situation without adding judgment.
+- **Use “I” Statements**: Frame your observations from your perspective to reduce defensiveness (e.g., “I noticed…” rather than “You did…”).
+Practicing these distinctions can help you communicate more effectively and create a more understanding environment in your interactions.
+Step 3: Explore Feelings
+Use Feeling Lists: Create a list of feelings (Box 1 & 2 below) (e.g., happy, frustrated, sad) and practice identifying your feelings in various situations.
+Journaling: Write about your daily experiences, focusing on how they made you feel.
+Step 4: Identify Needs
+Needs Inventory: Familiarise yourself with a list of universal human needs (Box 3 below) (e.g., safety, love, connection). Reflect on how your feelings are connected to these needs.
+Reflect on Your Needs: In difficult situations, take time to identify what needs are not being met.
+Step 5: Make Requests
+Practice Formulating Requests: Focus on what you want rather than what you don’t want. For example, instead of saying “Stop interrupting me,” try “I would appreciate it if you could let me finish my thoughts.”
+Use Positive Language: Frame your requests positively and ensure they are specific and actionable.
+Formulating requests is about making clear, specific, and positive requests that can help meet your needs. Here are some examples to illustrate this:
+### Example 1: Requesting Help
+- **Instead of**: “You never help with the housework.”
+- **Request**: “Would you be willing to help me with the dishes tonight?”
+### Example 2: Seeking Attention
+- **Instead of**: “You’re always on your phone when I’m talking to you.”
+- **Request**: “Could you put your phone down and give me your full attention while we talk?”
+### Example 3: Setting Boundaries
+- **Instead of**: “Stop interrupting me.”
+- **Request**: “Can we agree that we each take turns speaking during our meetings?”
+### Example 4: Asking for Feedback
+- **Instead of**: “You never tell me how I’m doing at work.”
+- **Request**: “Could you give me some feedback on my project by the end of the week?”
+### Example 5: Changing a Behaviour
+- **Instead of**: “You need to be more responsible with your schedule.”
+- **Request**: “Would you be able to send me a reminder a day before our meetings?”
+### Example 6: Scheduling Time Together
+- **Instead of**: “You never want to spend time with me.”
+- **Request**: “Would you be willing to set aside some time this weekend for a movie together?”
+Key Tips for Formulating Requests (SPLACE):
+1. **Be Specific**: Clearly state what you want the person to do.
+2. **Use Positive Language**: Focus on what you want rather than what you don’t want.
+3. **Make it Actionable**: Ensure your request is something the other person can realistically do.
+4. **Invite Collaboration**: Consider asking for their perspective, like “How do you feel about this?”
+5. Express Gratitude: Consider adding a note of appreciation, like “I’d really appreciate your help with this.”
+Practicing these requests can help foster more open and effective communication, increasing the likelihood of positive outcomes.
+Practice Tips:
+ 
+1. Remove the words:
+Should, Should not and But from your vocabulary. These words connote Shame!
+ 2. Identifying two internal voices:
+a) Mind's voice: Loud, persistent, urgent
+b) Self voice: Soft, single instance, gives choice (non urgent)
+
+ 3. Keep the integrity of your words:
+     Mean what you say and say what you mean 
+Best wishes!
+ 
+Box 1 : Feelings when needs are not met. Identify your feelings in different situations. Reflect on these feeling during your daily experiences.  
+Afraid 
+Discouraged
+Hopeless
+Sad 
+Anxious
+Disappointed
+Infuriated
+Sceptical
+Angry
+Distant 
+Insecure 
+Suspicious
+Annoyed 
+Embarrassed
+Impatient
+Scared
+Agitated
+Enraged
+Irritated
+Torn
+Apathetic 
+Fearful
+Lonely 
+Troubled
+Bored 
+Frustrated 
+Mad
+Uneasy 
+Bitter
+Furious
+Miserable
+Uncomfortable
+Concerned
+Hesitant
+Nervous 
+Upset
+Confused
+Hurt
+Numb
+Uninterested
+Depressed
+Horrified
+Reluctant
+Worried
+ 
+ 
+Box 2: Feelings when needs are fulfilled
+Adventurous
+Delighted
+Joyful
+Stimulated
+Alert
+Eager
+Loving
+Strong
+Alive
+Enthusiastic
+Motivated
+Surprised 
+Amazed
+Encouraged
+Moved
+Thrilled
+Amused
+Excited
+Nurtured
+Touched
+Appreciative 
+Fascinated
+Open
+Thankful
+At ease
+Fulfilled
+Peaceful
+ 
+Calm
+Glad
+Relieved
+ 
+Clear
+Grateful
+Relaxed 
+ 
+Comfortable
+Happy 
+Rested
+ 
+Confident
+Hopeful
+Refreshed 
+ 
+Content
+Inspired
+Satisfied
+ 
+Connected
+Invigorated
+Safe
+ 
+Curious
+Interested
+Secure
+ 
+ 
+ 
+Box 3 : Universal needs : Reflect on how your feelings are connected to these needs.
+Acceptance
+Connection
+Inspiration
+Respect
+Appreciation
+Consideration
+Integration
+Rest
+Authenticity 
+Contribution 
+Integrity
+Safety 
+Acknowledgment 
+Creativity
+Joy
+Service 
+Awareness
+Dignity
+Kindness
+Space
+Balance
+Ease
+Learning
+Spontaneity
+Beauty
+Effectiveness
+ Love
+Stimulation 
+Belonging
+Empathy
+Making a difference 
+Self - expression 
+Care
+Equality
+Meaning 
+Support
+Celebration
+Encouragement 
+Mourning
+Shelter
+Choice
+Empowerment 
+Movement 
+Security
+Challenge
+Food
+Mutuality 
+Self care 
+Clarity 
+Freedom
+Nurturance 
+Self acceptance 
+Cooperation
+Grace
+Order
+Self compassion
+Consciousness
+Growth 
+Participation
+Self empathy 
+Competence
+Harmony
+Peace 
+Spirituality 
+Compassion
+Honesty
+Play
+Tenderness
+Comfort
+Honouring the Sacred
+Purpose 
+To be heard 
+Community
+Humour
+Reassurance 
+Trust
+Companionship
+Inclusion
+Reciprocity
+Understanding
+Values
+ 
+ 
+
