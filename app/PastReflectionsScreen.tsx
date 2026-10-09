@@ -70,7 +70,7 @@ function previewText(content: string, max = 100): string {
   const trimmed = content.trim().replace(/\s+/g, ' ');
   if (!trimmed) return '';
   if (trimmed.length <= max) return trimmed;
-  return `${trimmed.slice(0, max - 1)}…`;
+  return `${trimmed.slice(0, max - 1)}â€¦`;
 }
 
 function formatWhen(iso: string): string {
@@ -125,7 +125,7 @@ function isVoiceBackedMessage(
     if (voice.transcript !== content) continue;
     const vt = new Date(voice.created_at).getTime();
     if (Number.isNaN(t) || Number.isNaN(vt)) continue;
-    // Same transcript within a few minutes → the voice-note pipeline wrote this turn.
+    // Same transcript within a few minutes â†’ the voice-note pipeline wrote this turn.
     if (Math.abs(t - vt) <= 5 * 60 * 1000) return true;
   }
   return false;
@@ -144,7 +144,7 @@ function groupChatSessions(
 
   const flush = () => {
     if (current.length === 0) return;
-    // Voice notes also write to conversations — start the chat card at the first
+    // Voice notes also write to conversations â€” start the chat card at the first
     // non-voice user turn so the mic card owns that moment without hiding later chat.
     const opening = current.find((row) => !isVoiceBackedMessage(row, voices));
     if (!opening) {
@@ -344,7 +344,7 @@ export default function PastReflectionsScreen({ navigation }: Props) {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <PaperGrain />
-      {/* Header: ← Past chats */}
+      {/* Header: â† Past chats */}
       <View style={styles.header}>
         <GentlePressable
           onPress={() => navigation.goBack()}
@@ -477,7 +477,7 @@ const styles = StyleSheet.create({
   },
   backSpacer: { width: 56 },
   title: {
-    fontFamily: 'Fraunces_500Medium',
+    fontFamily: 'InstrumentSans_600SemiBold',
     fontSize: 22,
     lineHeight: 28,
     color: dawn.cream,
@@ -559,7 +559,7 @@ const styles = StyleSheet.create({
     opacity: 0.88,
   },
   cardTitle: {
-    fontFamily: 'Fraunces_500Medium',
+    fontFamily: 'InstrumentSans_600SemiBold',
     fontSize: 16,
     lineHeight: 22,
     color: dawn.cream,
@@ -614,7 +614,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
   },
   empty: {
-    fontFamily: 'Fraunces_500Medium',
+    fontFamily: 'InstrumentSans_600SemiBold',
     fontSize: 16,
     lineHeight: 24,
     fontStyle: 'italic',

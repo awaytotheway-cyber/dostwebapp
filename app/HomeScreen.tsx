@@ -73,7 +73,7 @@ export default function HomeScreen({ navigation }: Props) {
           },
         ]}
       >
-        {/* ── Top bar ── */}
+        {/* â”€â”€ Top bar â”€â”€ */}
         <View style={styles.topBar}>
           <View style={styles.brandRow}>
             <Image source={logoSource} style={styles.logoMark} resizeMode="contain" />
@@ -91,7 +91,7 @@ export default function HomeScreen({ navigation }: Props) {
           </GentlePressable>
         </View>
 
-        {/* ── Greeting ── */}
+        {/* â”€â”€ Greeting â”€â”€ */}
         <View style={styles.greetingBlock}>
           <Text accessibilityRole="header" style={styles.greeting}>
             {greeting}
@@ -99,7 +99,7 @@ export default function HomeScreen({ navigation }: Props) {
           <Text style={styles.subGreeting}>{t(`home.subGreeting.${timeOfDay}` as TKey)}</Text>
         </View>
 
-        {/* ── Main card: Talk to Dost ── */}
+        {/* â”€â”€ Main card: Talk to Dost â”€â”€ */}
         <GentlePressable
           accessibilityRole="button"
           accessibilityLabel={`${t('home.talkTitle')}. ${t('home.talkBody')}`}
@@ -121,7 +121,7 @@ export default function HomeScreen({ navigation }: Props) {
           </GentlePressable>
         </GentlePressable>
 
-        {/* ── Secondary tiles ── */}
+        {/* â”€â”€ Secondary tiles â”€â”€ */}
         <View style={styles.tileRow}>
           {/* Voice note */}
           <GentlePressable
@@ -183,7 +183,7 @@ export default function HomeScreen({ navigation }: Props) {
           </GentlePressable>
         </View>
 
-        {/* ── Listening session ── */}
+        {/* â”€â”€ Listening session â”€â”€ */}
         <GentlePressable
           accessibilityRole="button"
           accessibilityLabel={t('home.listeningSessionA11y')}
@@ -215,7 +215,7 @@ export default function HomeScreen({ navigation }: Props) {
           <Ionicons name="chevron-forward" size={20} color={home.muted} />
         </GentlePressable>
 
-        {/* ── Your Journey ── */}
+        {/* â”€â”€ Your Journey â”€â”€ */}
         <GentlePressable
           accessibilityRole="button"
           accessibilityLabel={t('home.yourJourney')}
@@ -271,7 +271,7 @@ const styles = StyleSheet.create({
     borderRadius: 9,
   },
   brandName: {
-    fontFamily: 'Fraunces_500Medium',
+    fontFamily: 'InstrumentSans_600SemiBold',
     fontSize: 17,
     lineHeight: 22,
     color: home.title,
@@ -295,13 +295,13 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   greeting: {
-    fontFamily: 'Fraunces_500Medium',
+    fontFamily: 'InstrumentSans_600SemiBold',
     fontSize: 32,
     lineHeight: 38,
     color: home.title,
   },
   subGreeting: {
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
     fontSize: 15,
     lineHeight: 22,
     color: home.description,
@@ -322,7 +322,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   mainCardTitle: {
-    fontFamily: 'Fraunces_500Medium',
+    fontFamily: 'InstrumentSans_600SemiBold',
     fontSize: 20,
     lineHeight: 26,
     color: home.title,
@@ -343,7 +343,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.terracottaSoft,
   },
   startButtonText: {
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
     fontSize: 14,
     lineHeight: 20,
     color: colors.onTerracotta,
@@ -371,7 +371,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   tileTitle: {
-    fontFamily: 'Fraunces_500Medium',
+    fontFamily: 'InstrumentSans_600SemiBold',
     fontSize: 15,
     lineHeight: 20,
     color: home.title,

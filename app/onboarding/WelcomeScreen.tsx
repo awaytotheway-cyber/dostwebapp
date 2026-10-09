@@ -189,7 +189,7 @@ const styles = StyleSheet.create({
     borderRadius: radius['2xl'],
   },
   heading: {
-    fontFamily: 'Fraunces_500Medium',
+    fontFamily: 'InstrumentSans_600SemiBold',
     fontSize: 32,
     lineHeight: 38,
     color: colors.inkDark,
@@ -197,7 +197,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   dostName: {
-    fontFamily: 'Fraunces_500Medium',
+    fontFamily: 'InstrumentSans_600SemiBold',
     fontSize: 32,
     lineHeight: 38,
     color: colors.terracotta,
@@ -228,7 +228,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.blush,
   },
   langChipText: {
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
     fontSize: 14,
     lineHeight: 20,
     color: colors.inkMuted,
@@ -256,7 +256,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.terracottaSoft,
   },
   buttonText: {
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
     fontSize: 16,
     lineHeight: 22,
     color: colors.onTerracotta,

@@ -527,7 +527,7 @@ const styles = StyleSheet.create({
   timestamp: {
     flex: 1,
     textAlign: 'center',
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
     fontSize: 13,
     lineHeight: 18,
     color: dawn.sand,
@@ -546,14 +546,14 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   loadingText: {
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
     fontSize: 15,
     lineHeight: 22,
     color: dawn.sand,
     fontStyle: 'italic',
   },
   errorText: {
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
     fontSize: 15,
     lineHeight: 22,
     color: dawn.gold,
@@ -599,7 +599,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
   },
   transcript: {
-    fontFamily: 'Fraunces_500Medium',
+    fontFamily: 'InstrumentSans_600SemiBold',
     fontSize: 16,
     lineHeight: 28,
     color: dawn.cream,
@@ -618,7 +618,7 @@ const styles = StyleSheet.create({
     borderColor: dawn.gold,
   },
   staticChipLabel: {
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
     fontSize: 12,
     lineHeight: 16,
     color: dawn.gold,
@@ -628,7 +628,7 @@ const styles = StyleSheet.create({
     paddingTop: spacing.sm,
   },
   reflectionLabel: {
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
     fontSize: 12,
     lineHeight: 16,
     letterSpacing: 0.6,
@@ -636,7 +636,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   reflection: {
-    fontFamily: 'Fraunces_500Medium',
+    fontFamily: 'InstrumentSans_600SemiBold',
     fontSize: 16,
     lineHeight: 28,
     color: dawn.cream,
@@ -657,7 +657,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(237, 228, 211, 0.06)',
   },
   continueLabel: {
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
     fontSize: 15,
     lineHeight: 20,
     color: dawn.cream,
@@ -668,7 +668,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
   },
   deleteLabel: {
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
     fontSize: 14,
     lineHeight: 20,
     color: dawn.terracotta,

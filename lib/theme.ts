@@ -45,42 +45,42 @@ export const colors = {
 
 export const type = {
   display: {
-    fontFamily: 'Fraunces_500Medium',
+    fontFamily: 'InstrumentSans_600SemiBold',
     fontSize: 36,
     lineHeight: 40,
   },
   dostMessage: {
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
     fontSize: 15,
     lineHeight: 21,
   },
   heading: {
-    fontFamily: 'Fraunces_500Medium',
+    fontFamily: 'InstrumentSans_600SemiBold',
     fontSize: 32,
     lineHeight: 36,
   },
   reflectivePrompt: {
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
     fontSize: 16,
     lineHeight: 24,
   },
   body: {
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
     fontSize: 15,
     lineHeight: 22,
   },
   userMessage: {
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
     fontSize: 15,
     lineHeight: 21,
   },
   label: {
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
     fontSize: 13,
     lineHeight: 18,
   },
   caption: {
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
     fontSize: 12,
     lineHeight: 16,
   },

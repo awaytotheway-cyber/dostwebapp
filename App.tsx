@@ -2,12 +2,6 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Fraunces_500Medium } from '@expo-google-fonts/fraunces';
-import {
-  Inter_400Regular,
-  Inter_500Medium,
-  Inter_600SemiBold,
-} from '@expo-google-fonts/inter';
 import { useFonts } from 'expo-font';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -45,10 +39,14 @@ type Gate =
 
 export default function App() {
   const [fontsLoaded] = useFonts({
-    Fraunces_500Medium,
-    Inter_400Regular,
-    Inter_500Medium,
-    Inter_600SemiBold,
+    InstrumentSans_400Regular: require('./assets/fonts/InstrumentSans-Regular.ttf'),
+    InstrumentSans_500Medium: require('./assets/fonts/InstrumentSans-Medium.ttf'),
+    InstrumentSans_600SemiBold: require('./assets/fonts/InstrumentSans-SemiBold.ttf'),
+    InstrumentSans_700Bold: require('./assets/fonts/InstrumentSans-Bold.ttf'),
+    Poppins_400Regular: require('./assets/fonts/Poppins-Regular.ttf'),
+    Poppins_500Medium: require('./assets/fonts/Poppins-Medium.ttf'),
+    Poppins_600SemiBold: require('./assets/fonts/Poppins-SemiBold.ttf'),
+    Poppins_700Bold: require('./assets/fonts/Poppins-Bold.ttf'),
   });
   const [i18nReady, setI18nReady] = useState(false);
   const [gate, setGate] = useState<Gate>('loading');

@@ -180,7 +180,7 @@ export default function ProfileScreen({ navigation, onStartOver }: Props) {
   const displayName = loaded ? greetingName(profile) : '';
   const memberLabel = loaded ? memberSince(profile) : '';
 
-  // ── Handlers ──────────────────────────────────────────────────────
+  // â”€â”€ Handlers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const onTimeChange = (event: DateTimePickerEvent, selected?: Date) => {
     if (Platform.OS === 'android') setShowPicker(false);
     if (event.type === 'dismissed') return;
@@ -334,7 +334,7 @@ export default function ProfileScreen({ navigation, onStartOver }: Props) {
     >
       <PaperGrain />
 
-      {/* ── Header ── */}
+      {/* â”€â”€ Header â”€â”€ */}
       <View style={styles.header}>
         <GentlePressable
           onPress={() => navigation.goBack()}
@@ -358,7 +358,7 @@ export default function ProfileScreen({ navigation, onStartOver }: Props) {
         keyboardDismissMode="on-drag"
         showsVerticalScrollIndicator={false}
       >
-        {/* ── Avatar + name ── */}
+        {/* â”€â”€ Avatar + name â”€â”€ */}
         <View style={styles.hero}>
           <View style={styles.avatar}>
             {!loaded
@@ -374,7 +374,7 @@ export default function ProfileScreen({ navigation, onStartOver }: Props) {
           )}
         </View>
 
-        {/* ── HOW DOST TALKS TO YOU ── */}
+        {/* â”€â”€ HOW DOST TALKS TO YOU â”€â”€ */}
         {loaded && (
           <View style={styles.talkCard}>
             <Text style={styles.talkCardLabel}>{t('profile.talkCardLabel')}</Text>
@@ -410,7 +410,7 @@ export default function ProfileScreen({ navigation, onStartOver }: Props) {
           ))}
         </View>
 
-        {/* ══ My profile section ══════════════════════════════ */}
+        {/* â•â• My profile section â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
         <SectionHeader title={t('settings.myProfile')} intro={t('profile.myProfileIntro')} />
         <View style={styles.sectionCard}>
           <FieldLabel>{t('settings.name')}</FieldLabel>
@@ -479,7 +479,7 @@ export default function ProfileScreen({ navigation, onStartOver }: Props) {
           <SecondaryButton onPress={() => navigation.navigate('PersonalityProfile')} disabled={busy} label={t('settings.openPersonalityProfile')} />
         </View>
 
-        {/* ══ Reminders section ═══════════════════════════════ */}
+        {/* â•â• Reminders section â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
         <SectionHeader title={t('profile.reminders')} intro={t('profile.remindersIntro')} />
         <View style={styles.sectionCard}>
           {Platform.OS === 'android' ? (
@@ -508,7 +508,7 @@ export default function ProfileScreen({ navigation, onStartOver }: Props) {
           <CTAButton onPress={() => void onSaveTime()} disabled={busy} loading={savingTime} label={t('settings.saveTime')} />
         </View>
 
-        {/* ══ What Dost remembers ═════════════════════════════ */}
+        {/* â•â• What Dost remembers â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
         <SectionHeader title={t('profile.memoryTitle')} intro={t('profile.memoryIntro')} />
         <View style={[styles.sectionCard, styles.memoryCard]}>
           <Text style={styles.memoryBox}>
@@ -517,7 +517,7 @@ export default function ProfileScreen({ navigation, onStartOver }: Props) {
           <CTAButton onPress={() => void onRefreshMemory()} disabled={busy} loading={refreshing} label={t('settings.refreshMemory')} />
         </View>
 
-        {/* ══ Privacy & account ═══════════════════════════════ */}
+        {/* â•â• Privacy & account â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
         <SectionHeader title={t('settings.privacyTitle')} intro={t('settings.privacyIntro')} />
         <View style={styles.sectionCard}>
           <SecondaryButton onPress={() => void onExport()} disabled={busy} loading={exporting} label={t('settings.exportMyData')} />
@@ -565,7 +565,7 @@ export default function ProfileScreen({ navigation, onStartOver }: Props) {
         ) : null}
       </ScrollView>
 
-      {/* ── Delete account modal ── */}
+      {/* â”€â”€ Delete account modal â”€â”€ */}
       <Modal
         visible={accountModal}
         transparent
@@ -609,7 +609,7 @@ export default function ProfileScreen({ navigation, onStartOver }: Props) {
   );
 }
 
-// ── Small sub-components ─────────────────────────────────────────────────────
+// â”€â”€ Small sub-components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function SectionHeader({ title, intro }: { title: string; intro?: string }) {
   return (
@@ -668,7 +668,7 @@ function SecondaryButton({ onPress, disabled, loading, label, style: extraStyle,
   );
 }
 
-// ── Styles ───────────────────────────────────────────────────────────────────
+// â”€â”€ Styles â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: dark.base },
@@ -686,7 +686,7 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   backLabel: {
-    fontFamily: 'Fraunces_500Medium',
+    fontFamily: 'InstrumentSans_600SemiBold',
     fontSize: 22,
     lineHeight: 28,
     color: dark.title,
@@ -710,13 +710,13 @@ const styles = StyleSheet.create({
     borderColor: dark.border,
   },
   avatarLetter: {
-    fontFamily: 'Fraunces_500Medium',
+    fontFamily: 'InstrumentSans_600SemiBold',
     fontSize: 30,
     lineHeight: 34,
     color: colors.terracottaDot,
   },
   name: {
-    fontFamily: 'Fraunces_500Medium',
+    fontFamily: 'InstrumentSans_600SemiBold',
     fontSize: 24,
     lineHeight: 30,
     color: dark.title,
@@ -733,7 +733,7 @@ const styles = StyleSheet.create({
     borderColor: dark.border,
   },
   talkCardLabel: {
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
     fontSize: 10,
     lineHeight: 14,
     letterSpacing: 1,
@@ -744,14 +744,14 @@ const styles = StyleSheet.create({
   // Section headers
   sectionHeaderWrap: { gap: spacing.xs, marginTop: spacing.sm },
   sectionTitle: {
-    fontFamily: 'Fraunces_500Medium',
+    fontFamily: 'InstrumentSans_600SemiBold',
     fontSize: 20,
     lineHeight: 26,
     color: dark.title,
   },
   sectionIntro: { ...typography.body, fontSize: 13, color: dark.sand, lineHeight: 20 },
   subHeading: {
-    fontFamily: 'Fraunces_500Medium',
+    fontFamily: 'InstrumentSans_600SemiBold',
     fontSize: 16,
     lineHeight: 22,
     color: dark.title,
@@ -833,8 +833,8 @@ const styles = StyleSheet.create({
   },
   activeField: { borderColor: colors.terracotta },
   timeButtonLabel: { ...typography.caption, color: dark.muted, letterSpacing: 1.1, marginBottom: spacing.xs },
-  timeButtonText: { fontFamily: 'Inter_500Medium', fontSize: 22, lineHeight: 28, color: dark.title },
-  timeLabel: { fontFamily: 'Inter_500Medium', fontSize: 22, lineHeight: 28, color: dark.title, marginVertical: spacing.sm },
+  timeButtonText: { fontFamily: 'Poppins_500Medium', fontSize: 22, lineHeight: 28, color: dark.title },
+  timeLabel: { fontFamily: 'Poppins_500Medium', fontSize: 22, lineHeight: 28, color: dark.title, marginVertical: spacing.sm },
 
   // Memory
   memoryBox: {
@@ -858,7 +858,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     alignItems: 'center',
   },
-  ctaText: { fontFamily: 'Inter_500Medium', fontSize: 14, color: colors.onTerracotta },
+  ctaText: { fontFamily: 'Poppins_500Medium', fontSize: 14, color: colors.onTerracotta },
 
   // Secondary button
   secondaryButtonBase: {
@@ -874,7 +874,7 @@ const styles = StyleSheet.create({
     backgroundColor: dark.cardRaised,
     alignItems: 'center',
   },
-  secondaryButtonText: { fontFamily: 'Inter_500Medium', fontSize: 14, color: dark.title },
+  secondaryButtonText: { fontFamily: 'Poppins_500Medium', fontSize: 14, color: dark.title },
 
   // Sign out
   signOutButton: { backgroundColor: 'rgba(184, 76, 48, 0.08)', borderColor: 'rgba(184, 76, 48, 0.2)' },
@@ -894,7 +894,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(199,123,90,0.08)',
     alignItems: 'center',
   },
-  dangerText: { fontFamily: 'Inter_500Medium', fontSize: 14, color: colors.error },
+  dangerText: { fontFamily: 'Poppins_500Medium', fontSize: 14, color: colors.error },
   dangerButton: { backgroundColor: colors.error },
   accountButton: {
     alignSelf: 'flex-start',
@@ -903,7 +903,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
     paddingHorizontal: spacing.sm,
   },
-  accountText: { fontFamily: 'Inter_500Medium', fontSize: 14, color: colors.error },
+  accountText: { fontFamily: 'Poppins_500Medium', fontSize: 14, color: colors.error },
   buttonDisabled: { opacity: 0.4 },
 
   // Modal
@@ -921,7 +921,7 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   modalTitle: {
-    fontFamily: 'Fraunces_500Medium',
+    fontFamily: 'InstrumentSans_600SemiBold',
     fontSize: 22,
     lineHeight: 28,
     color: dark.title,
@@ -937,7 +937,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(199, 123, 90, 0.35)',
   },
-  diagLabel: { fontFamily: 'Inter_500Medium', fontSize: 10, lineHeight: 14, letterSpacing: 1, color: dark.muted },
-  diagText: { fontFamily: 'Inter_400Regular', fontSize: 13, lineHeight: 20, color: dark.sand },
+  diagLabel: { fontFamily: 'Poppins_500Medium', fontSize: 10, lineHeight: 14, letterSpacing: 1, color: dark.muted },
+  diagText: { fontFamily: 'Poppins_400Regular', fontSize: 13, lineHeight: 20, color: dark.sand },
   diagHint: { ...typography.caption, color: dark.muted, marginTop: spacing.xs },
 });

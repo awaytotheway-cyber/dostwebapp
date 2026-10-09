@@ -87,14 +87,14 @@ export default function NameScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   subCopy: {
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
     fontSize: 15,
     lineHeight: 22,
     color: colors.inkMuted,
     marginBottom: spacing.xl,
   },
   privacyNote: {
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
     fontSize: 12,
     lineHeight: 18,
     color: colors.inkLight,

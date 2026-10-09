@@ -27,7 +27,7 @@ import { useI18n } from '../lib/i18n';
 
 type Props = NativeStackScreenProps<ChatStackParamList, 'YourJourney'>;
 
-/** Dark home-family surface — matches Home / Past Reflections Dawn Earth. */
+/** Dark home-family surface â€” matches Home / Past Reflections Dawn Earth. */
 const dawn = {
   base: '#1A1614',
   card: '#241E1B',
@@ -391,7 +391,7 @@ const styles = StyleSheet.create({
     color: dawn.sand,
   },
   title: {
-    fontFamily: 'Fraunces_500Medium',
+    fontFamily: 'InstrumentSans_600SemiBold',
     fontSize: 28,
     lineHeight: 34,
     color: dawn.cream,
@@ -439,7 +439,7 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   sectionTitle: {
-    fontFamily: 'Fraunces_500Medium',
+    fontFamily: 'InstrumentSans_600SemiBold',
     fontSize: 20,
     lineHeight: 26,
     color: dawn.cream,
@@ -454,7 +454,7 @@ const styles = StyleSheet.create({
     minHeight: 112,
   },
   themeLine: {
-    fontFamily: 'Fraunces_500Medium',
+    fontFamily: 'InstrumentSans_600SemiBold',
     fontSize: 16,
     lineHeight: 24,
     fontStyle: 'italic',
@@ -490,7 +490,7 @@ const styles = StyleSheet.create({
     borderColor: dawn.gold,
   },
   retryLabel: {
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
     fontSize: 15,
     lineHeight: 22,
     color: dawn.gold,
@@ -518,7 +518,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
   },
   empty: {
-    fontFamily: 'Fraunces_500Medium',
+    fontFamily: 'InstrumentSans_600SemiBold',
     fontSize: 16,
     lineHeight: 24,
     fontStyle: 'italic',

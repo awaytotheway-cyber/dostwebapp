@@ -212,7 +212,7 @@ export default function VoiceNoteRecordScreen({ navigation }: Props) {
     if (recordingRef.current) return;
     if (phase === 'processing') return;
 
-    // New take — drop any prior transcript / error.
+    // New take â€” drop any prior transcript / error.
     pipelineGenRef.current += 1;
     setStatusMessage(null);
     setTranscript(null);
@@ -608,7 +608,7 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   title: {
-    fontFamily: 'Fraunces_500Medium',
+    fontFamily: 'InstrumentSans_600SemiBold',
     fontSize: 22,
     lineHeight: 28,
     color: dawn.cream,
@@ -654,7 +654,7 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   label: {
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
     fontSize: 16,
     lineHeight: 24,
     textAlign: 'center',
@@ -669,14 +669,14 @@ const styles = StyleSheet.create({
     borderColor: dawn.terracotta,
   },
   retryLabel: {
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
     fontSize: 15,
     lineHeight: 22,
     color: dawn.terracotta,
     textAlign: 'center',
   },
   footer: {
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
     fontSize: 13,
     lineHeight: 20,
     color: dawn.sand,

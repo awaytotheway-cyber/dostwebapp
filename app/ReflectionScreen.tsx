@@ -300,7 +300,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.terracotta,
   },
   primaryButtonText: {
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
     fontSize: 16,
     lineHeight: 22,
     color: colors.onTerracotta,
@@ -321,7 +321,7 @@ const styles = StyleSheet.create({
     opacity: 0.68,
   },
   heading: {
-    fontFamily: 'Fraunces_500Medium',
+    fontFamily: 'InstrumentSans_600SemiBold',
     fontSize: 32,
     lineHeight: 38,
     color: colors.inkDark,

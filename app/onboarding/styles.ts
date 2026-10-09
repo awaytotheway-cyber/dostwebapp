@@ -2,7 +2,7 @@ import { StyleSheet } from 'react-native';
 import { colors, radius, spacing, type } from '../../lib/theme';
 
 export const onboardingStyles = StyleSheet.create({
-  // ── Core containers ─────────────────────────────────────────
+  // â”€â”€ Core containers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   container: {
     flex: 1,
     backgroundColor: colors.parchment,
@@ -33,7 +33,7 @@ export const onboardingStyles = StyleSheet.create({
     paddingVertical: spacing['3xl'],
   },
 
-  // ── Typography ───────────────────────────────────────────────
+  // â”€â”€ Typography â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   heading: {
     ...type.display,
     color: colors.inkDark,
@@ -41,7 +41,7 @@ export const onboardingStyles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   headingLeft: {
-    fontFamily: 'Fraunces_500Medium',
+    fontFamily: 'InstrumentSans_600SemiBold',
     fontSize: 34,
     lineHeight: 40,
     color: colors.inkDark,
@@ -86,7 +86,7 @@ export const onboardingStyles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
 
-  // ── Input — underline style (light mode) ────────────────────
+  // â”€â”€ Input â€” underline style (light mode) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   input: {
     borderWidth: 0,
     borderBottomWidth: 1.5,
@@ -94,7 +94,7 @@ export const onboardingStyles = StyleSheet.create({
     minHeight: 52,
     paddingHorizontal: 0,
     paddingVertical: spacing.sm,
-    fontFamily: 'Fraunces_500Medium',
+    fontFamily: 'InstrumentSans_600SemiBold',
     fontSize: 26,
     lineHeight: 32,
     color: colors.inkDark,
@@ -103,7 +103,7 @@ export const onboardingStyles = StyleSheet.create({
   textArea: {
     minHeight: 112,
     textAlignVertical: 'top',
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Poppins_400Regular',
     fontSize: 15,
     lineHeight: 22,
     borderWidth: 1,
@@ -114,7 +114,7 @@ export const onboardingStyles = StyleSheet.create({
     backgroundColor: colors.parchmentCard,
   },
 
-  // ── CTA Button — terracotta ──────────────────────────────────
+  // â”€â”€ CTA Button â€” terracotta â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   button: {
     alignSelf: 'stretch',
     justifyContent: 'center',
@@ -132,14 +132,14 @@ export const onboardingStyles = StyleSheet.create({
     opacity: 0.4,
   },
   buttonText: {
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Poppins_500Medium',
     fontSize: 16,
     lineHeight: 22,
     color: colors.onTerracotta,
     letterSpacing: 0.2,
   },
 
-  // ── Footer ───────────────────────────────────────────────────
+  // â”€â”€ Footer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   footer: {
     paddingHorizontal: spacing['2xl'],
     paddingTop: spacing.md,
@@ -148,7 +148,7 @@ export const onboardingStyles = StyleSheet.create({
     alignSelf: 'center',
   },
 
-  // ── Option cards ─────────────────────────────────────────────
+  // â”€â”€ Option cards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   option: {
     borderWidth: 1,
     borderColor: colors.parchmentBorder,
@@ -314,7 +314,7 @@ export const onboardingStyles = StyleSheet.create({
     color: colors.terracotta,
     textAlign: 'center',
   },
-  // ── Dash-style progress indicators ──────────────────────────
+  // â”€â”€ Dash-style progress indicators â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   progressDot: {
     width: 28,
     height: 3,
