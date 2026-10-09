@@ -915,6 +915,12 @@ export const ja: Messages<typeof en> = {
     doneTitle: 'DOST があなたの声を覚えました',
     doneBody:
       'これからは、リスニングセッションであなたの声と一致する区間だけを処理します。それ以外 — 知らない人の声や周りの話し声 — は、文字起こしされる前に除外されます。',
+    retryHint:
+      'Your recordings are still here on this device. You can try saving again, or start over if you’d like to re-read the lines.',
+    retrySave: 'Try saving again',
+    retrySaveA11y: 'Try saving your voice enrollment again',
+    startOver: 'Start over',
+    startOverA11y: 'Discard these recordings and start enrollment over',
   },
   errors: {
     gentle: 'こちらで問題が起きました。少ししてからもう一度お試しください。',
@@ -956,6 +962,9 @@ export const ja: Messages<typeof en> = {
     enrollFirst: 'リスニングセッションを始める前に、声の登録が必要です。',
     enrollmentAndroidOnly: '声の登録は現在 Android のみ対応しています。',
     signInToEnroll: '声を登録するにはサインインが必要です。',
+    enrollmentSaveFailed: 'We couldn’t save your voice right now. Please try again.',
+    notEnoughClearSpeech:
+      'There wasn’t enough clear speech in those recordings. Please try again somewhere quieter.',
     tooLittleSpeech: plural({
       other:
         'あなたの声は約 {count} 秒しか聞き取れませんでした。文章全体を声に出して読み、端末を少し近づけてください。',

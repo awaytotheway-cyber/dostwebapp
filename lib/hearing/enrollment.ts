@@ -1,6 +1,7 @@
 import { NativeModules, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { t as translate, tn } from '../i18n';
+import { recordApiError } from '../diagnostics';
 import { supabase } from '../supabase';
 import {
   analyzeVoiceprint,
@@ -370,8 +371,16 @@ export type EnrollmentClipPrint = {
 /**
  * Analyse one enrollment clip: a whole-clip voiceprint plus voiceprints
  * of overlapping 3 s windows, used to calibrate thresholds at save time.
+ *
+ * Yields to the event loop between the whole-clip pass and each window
+ * pass, so the "Processing..." UI stays responsive on slower devices
+ * where the FFT loop would otherwise block the JS thread for seconds.
  */
-export function voiceprintFromClip(clip: CapturedClip): EnrollmentClipPrint {
+export async function voiceprintFromClip(
+  clip: CapturedClip,
+): Promise<EnrollmentClipPrint> {
+  const yieldToUi = () => new Promise<void>((r) => setTimeout(r, 0));
+
   const whole = analyzeVoiceprint(clip.pcm, clip.sampleRate);
   if (whole.speechSeconds < MIN_CLIP_SPEECH_SECONDS) {
     throw new Error(tn('errors.tooLittleSpeech', Math.round(whole.speechSeconds)));
@@ -380,6 +389,7 @@ export function voiceprintFromClip(clip: CapturedClip): EnrollmentClipPrint {
   const hop = Math.round(WINDOW_HOP_SECONDS * clip.sampleRate);
   const windows: Voiceprint[] = [];
   for (let start = 0; start + win <= clip.pcm.length; start += hop) {
+    await yieldToUi();
     const w = analyzeVoiceprint(clip.pcm.subarray(start, start + win), clip.sampleRate);
     if (w.speechSeconds >= MIN_SPEECH_SECONDS) windows.push(w.voiceprint);
   }
@@ -403,15 +413,26 @@ export async function saveEnrollment(clips: EnrollmentClipPrint[]): Promise<void
     return clip.windows.map((w) => voiceprintSimilarity(w, others));
   });
   if (selfScores.length < 5) {
-    throw new Error(
-      'There was not enough clear speech to learn your voice. Please try again somewhere quieter.',
-    );
+    const err = new Error(translate('errors.notEnoughClearSpeech'));
+    await recordApiError({
+      source: 'voice-pipeline',
+      code: 'enrollment_insufficient_speech',
+      step: 'calibrate',
+      detail: `windows=${selfScores.length}, clips=${clips.length}`,
+    });
+    throw err;
   }
   const snrs = clips.map((c) => c.snrDb).sort((a, b) => a - b);
   const calibration = calibrateFromSelfScores(selfScores, snrs[Math.floor(snrs.length / 2)]);
 
   const { data: userData, error: userErr } = await supabase.auth.getUser();
   if (userErr || !userData?.user) {
+    await recordApiError({
+      source: 'voice-pipeline',
+      code: 'enrollment_auth_missing',
+      step: 'getUser',
+      serverError: userErr?.message,
+    });
     throw new Error(translate('errors.signInToEnroll'));
   }
   const userId = userData.user.id;
@@ -426,7 +447,18 @@ export async function saveEnrollment(clips: EnrollmentClipPrint[]): Promise<void
     enrolled_at: now,
     updated_at: now,
   });
-  if (error) throw error;
+  if (error) {
+    await recordApiError({
+      source: 'voice-pipeline',
+      code: 'enrollment_upsert_failed',
+      step: 'upsert speaker_enrollment',
+      serverError: error.message,
+      detail: (error as { code?: string; details?: string }).code
+        ? `pg=${(error as { code?: string }).code} details=${(error as { details?: string }).details ?? ''}`
+        : undefined,
+    });
+    throw new Error(error.message || translate('errors.enrollmentSaveFailed'));
+  }
 
   await AsyncStorage.setItem(calibrationKey(userId), JSON.stringify(calibration));
 

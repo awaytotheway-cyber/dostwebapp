@@ -913,6 +913,12 @@ export const en = {
     doneTitle: 'DOST now knows your voice',
     doneBody:
       'From here on, listening sessions will process only the segments that match you. Anything else — a stranger, background chatter — gets dropped before it’s ever transcribed.',
+    retryHint:
+      'Your recordings are still here on this device. You can try saving again, or start over if you’d like to re-read the lines.',
+    retrySave: 'Try saving again',
+    retrySaveA11y: 'Try saving your voice enrollment again',
+    startOver: 'Start over',
+    startOverA11y: 'Discard these recordings and start enrollment over',
   },
   errors: {
     gentle: 'Something’s off on my end. Try again in a moment.',
@@ -954,6 +960,9 @@ export const en = {
     enrollFirst: 'You need to enroll your voice before starting a listening session.',
     enrollmentAndroidOnly: 'Voice enrollment is Android-only for now.',
     signInToEnroll: 'Sign in required to enroll your voice.',
+    enrollmentSaveFailed: 'We couldn’t save your voice right now. Please try again.',
+    notEnoughClearSpeech:
+      'There wasn’t enough clear speech in those recordings. Please try again somewhere quieter.',
     tooLittleSpeech: plural({
       one: 'We only heard about {count} second of your voice. Please read the whole passage aloud, holding the phone a little closer.',
       other:

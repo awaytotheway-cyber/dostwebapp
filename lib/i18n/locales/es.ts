@@ -916,6 +916,12 @@ export const es: Messages<typeof en> = {
     doneTitle: 'DOST ya conoce tu voz',
     doneBody:
       'A partir de ahora, las sesiones de escucha solo procesarán los fragmentos que coincidan contigo. Todo lo demás (una persona desconocida, una charla de fondo) se descarta antes de transcribirse.',
+    retryHint:
+      'Your recordings are still here on this device. You can try saving again, or start over if you’d like to re-read the lines.',
+    retrySave: 'Try saving again',
+    retrySaveA11y: 'Try saving your voice enrollment again',
+    startOver: 'Start over',
+    startOverA11y: 'Discard these recordings and start enrollment over',
   },
   errors: {
     gentle: 'Algo falla por mi parte. Inténtalo de nuevo en un momento.',
@@ -957,6 +963,9 @@ export const es: Messages<typeof en> = {
     enrollFirst: 'Tienes que registrar tu voz antes de iniciar una sesión de escucha.',
     enrollmentAndroidOnly: 'Por ahora, el registro de voz solo está disponible en Android.',
     signInToEnroll: 'Inicia sesión para registrar tu voz.',
+    enrollmentSaveFailed: 'We couldn’t save your voice right now. Please try again.',
+    notEnoughClearSpeech:
+      'There wasn’t enough clear speech in those recordings. Please try again somewhere quieter.',
     tooLittleSpeech: plural({
       one: 'Solo hemos oído tu voz durante {count} segundo, más o menos. Lee el texto entero en voz alta, con el teléfono un poco más cerca.',
       other:

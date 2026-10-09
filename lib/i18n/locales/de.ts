@@ -915,6 +915,12 @@ export const de: Messages<typeof en> = {
     doneTitle: 'DOST kennt jetzt deine Stimme',
     doneBody:
       'Ab jetzt verarbeiten Zuhör-Sitzungen nur die Abschnitte, die zu dir passen. Alles andere – eine fremde Person, Hintergrundgespräche – wird verworfen, bevor es je transkribiert wird.',
+    retryHint:
+      'Your recordings are still here on this device. You can try saving again, or start over if you’d like to re-read the lines.',
+    retrySave: 'Try saving again',
+    retrySaveA11y: 'Try saving your voice enrollment again',
+    startOver: 'Start over',
+    startOverA11y: 'Discard these recordings and start enrollment over',
   },
   errors: {
     gentle: 'Bei mir hakt gerade etwas. Versuch es gleich noch einmal.',
@@ -956,6 +962,9 @@ export const de: Messages<typeof en> = {
     enrollFirst: 'Bevor du eine Zuhör-Sitzung startest, musst du deine Stimme registrieren.',
     enrollmentAndroidOnly: 'Die Stimmregistrierung gibt es vorerst nur auf Android.',
     signInToEnroll: 'Für die Stimmregistrierung musst du angemeldet sein.',
+    enrollmentSaveFailed: 'We couldn’t save your voice right now. Please try again.',
+    notEnoughClearSpeech:
+      'There wasn’t enough clear speech in those recordings. Please try again somewhere quieter.',
     tooLittleSpeech: plural({
       one: 'Wir haben nur etwa {count} Sekunde deiner Stimme gehört. Bitte lies den ganzen Text laut vor und halte das Handy etwas näher.',
       other:

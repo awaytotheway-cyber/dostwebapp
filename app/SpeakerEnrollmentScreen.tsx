@@ -38,6 +38,7 @@ type Phase =
   | { kind: 'recording'; index: number; startedAt: number }
   | { kind: 'processing'; index: number }
   | { kind: 'saving' }
+  | { kind: 'saveFailed'; message: string }
   | { kind: 'done' };
 
 export default function SpeakerEnrollmentScreen({ navigation, route }: Props) {
@@ -105,6 +106,23 @@ export default function SpeakerEnrollmentScreen({ navigation, route }: Props) {
     setPhase({ kind: 'prompt', index: 0 });
   }, []);
 
+  const commitEnrollment = useCallback(async () => {
+    setPhase({ kind: 'saving' });
+    try {
+      await saveEnrollment(voiceprints.current);
+      // Zero the local vector list — helps GC free anything holding
+      // enrollment-derived numbers.
+      voiceprints.current = [];
+      setPhase({ kind: 'done' });
+    } catch (err) {
+      // Keep voiceprints.current intact so the user can retry save
+      // without re-recording all five clips.
+      const message =
+        err instanceof Error ? err.message : translate('common.pleaseTryAgain');
+      setPhase({ kind: 'saveFailed', message });
+    }
+  }, []);
+
   const onRecord = useCallback(
     async (index: number) => {
       const startedAt = Date.now();
@@ -113,9 +131,10 @@ export default function SpeakerEnrollmentScreen({ navigation, route }: Props) {
         const clip = await captureEnrollmentClip(clipMs);
         setPhase({ kind: 'processing', index });
 
-        // Extract on next tick so the UI can paint 'Processing…'.
+        // Yield so the UI can paint 'Processing…' before the heavy
+        // FFT pass. voiceprintFromClip itself yields between windows.
         await new Promise<void>((r) => setTimeout(r, 30));
-        const vp = voiceprintFromClip(clip);
+        const vp = await voiceprintFromClip(clip);
         voiceprints.current = [...voiceprints.current, vp];
 
         // Zero the clip's PCM as belt-and-braces — the closure should
@@ -136,25 +155,16 @@ export default function SpeakerEnrollmentScreen({ navigation, route }: Props) {
         );
       }
     },
-    [clipMs, totalClips],
+    [clipMs, totalClips, commitEnrollment],
   );
 
-  const commitEnrollment = useCallback(async () => {
-    setPhase({ kind: 'saving' });
-    try {
-      await saveEnrollment(voiceprints.current);
-      // Zero the local vector list — helps GC free anything holding
-      // enrollment-derived numbers.
-      voiceprints.current = [];
-      setPhase({ kind: 'done' });
-    } catch (err) {
-      setPhase({ kind: 'intro' });
-      voiceprints.current = [];
-      Alert.alert(
-        translate('enrollment.couldNotSave'),
-        err instanceof Error ? err.message : translate('common.pleaseTryAgain'),
-      );
-    }
+  const onRetrySave = useCallback(() => {
+    void commitEnrollment();
+  }, [commitEnrollment]);
+
+  const onRestartEnrollment = useCallback(() => {
+    voiceprints.current = [];
+    setPhase({ kind: 'intro' });
   }, []);
 
   const onDone = useCallback(() => {
@@ -226,6 +236,14 @@ export default function SpeakerEnrollmentScreen({ navigation, route }: Props) {
       )}
 
       {phase.kind === 'saving' && <SavingView />}
+
+      {phase.kind === 'saveFailed' && (
+        <SaveFailedView
+          message={phase.message}
+          onRetry={onRetrySave}
+          onStartOver={onRestartEnrollment}
+        />
+      )}
 
       {phase.kind === 'done' && <DoneView onDone={onDone} />}
 
@@ -450,6 +468,41 @@ function SavingView() {
   );
 }
 
+function SaveFailedView({
+  message,
+  onRetry,
+  onStartOver,
+}: {
+  message: string;
+  onRetry: () => void;
+  onStartOver: () => void;
+}) {
+  const { t } = useI18n();
+  return (
+    <View style={styles.column}>
+      <Text style={styles.title}>{t('enrollment.couldNotSave')}</Text>
+      <Text style={styles.subtitle}>{message}</Text>
+      <Text style={styles.helper}>{t('enrollment.retryHint')}</Text>
+      <GentlePressable
+        accessibilityRole="button"
+        accessibilityLabel={t('enrollment.retrySaveA11y')}
+        onPress={onRetry}
+        style={({ pressed }) => [styles.primaryButton, pressed && styles.primaryButtonPressed]}
+      >
+        <Text style={styles.primaryButtonText}>{t('enrollment.retrySave')}</Text>
+      </GentlePressable>
+      <GentlePressable
+        accessibilityRole="button"
+        accessibilityLabel={t('enrollment.startOverA11y')}
+        onPress={onStartOver}
+        style={({ pressed }) => [styles.secondaryButton, pressed && { opacity: 0.6 }]}
+      >
+        <Text style={styles.secondaryButtonText}>{t('enrollment.startOver')}</Text>
+      </GentlePressable>
+    </View>
+  );
+}
+
 function DoneView({ onDone }: { onDone: () => void }) {
   const { t } = useI18n();
   return (
@@ -601,6 +654,22 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     ...theme.type.label,
     color: theme.colors.onPrimary,
+    fontSize: theme.type.body.fontSize,
+  },
+  secondaryButton: {
+    minHeight: theme.spacing['5xl'],
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: theme.radius.cta,
+    borderWidth: 1,
+    borderColor: theme.colors.divider,
+    paddingHorizontal: theme.spacing['2xl'],
+    paddingVertical: theme.spacing.md,
+    marginTop: theme.spacing.md,
+  },
+  secondaryButtonText: {
+    ...theme.type.label,
+    color: theme.colors.sand,
     fontSize: theme.type.body.fontSize,
   },
   dotWrap: {

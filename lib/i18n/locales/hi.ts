@@ -916,6 +916,12 @@ export const hi: Messages<typeof en> = {
     doneTitle: 'DOST अब आपकी आवाज़ पहचानता है',
     doneBody:
       'अब से, सुनने के सत्र सिर्फ़ उन्हीं हिस्सों को प्रोसेस करेंगे जो आपसे मेल खाते हैं। बाकी सब — कोई अजनबी, पीछे की बातचीत — लिखे जाने से पहले ही हटा दिया जाता है।',
+    retryHint:
+      'Your recordings are still here on this device. You can try saving again, or start over if you’d like to re-read the lines.',
+    retrySave: 'Try saving again',
+    retrySaveA11y: 'Try saving your voice enrollment again',
+    startOver: 'Start over',
+    startOverA11y: 'Discard these recordings and start enrollment over',
   },
   errors: {
     gentle: 'मेरी तरफ़ कुछ गड़बड़ है। थोड़ी देर में फिर कोशिश करें।',
@@ -957,6 +963,9 @@ export const hi: Messages<typeof en> = {
     enrollFirst: 'सुनने का सत्र शुरू करने से पहले आपको अपनी आवाज़ का पंजीकरण करना होगा।',
     enrollmentAndroidOnly: 'आवाज़ पंजीकरण अभी सिर्फ़ Android पर उपलब्ध है।',
     signInToEnroll: 'आवाज़ पंजीकरण के लिए साइन इन ज़रूरी है।',
+    enrollmentSaveFailed: 'We couldn’t save your voice right now. Please try again.',
+    notEnoughClearSpeech:
+      'There wasn’t enough clear speech in those recordings. Please try again somewhere quieter.',
     tooLittleSpeech: plural({
       one: 'आपकी आवाज़ सिर्फ़ लगभग {count} सेकंड सुनाई दी। कृपया पूरा अंश ज़ोर से पढ़ें, और फ़ोन थोड़ा पास रखें।',
       other:

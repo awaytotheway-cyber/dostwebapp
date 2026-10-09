@@ -926,6 +926,12 @@ export const ru: Messages<typeof en> = {
     doneTitle: 'Теперь DOST знает ваш голос',
     doneBody:
       'Отныне сеансы слушания будут обрабатывать только фрагменты, совпадающие с вами. Всё остальное — незнакомый голос, фоновые разговоры — отбрасывается ещё до расшифровки.',
+    retryHint:
+      'Your recordings are still here on this device. You can try saving again, or start over if you’d like to re-read the lines.',
+    retrySave: 'Try saving again',
+    retrySaveA11y: 'Try saving your voice enrollment again',
+    startOver: 'Start over',
+    startOverA11y: 'Discard these recordings and start enrollment over',
   },
   errors: {
     gentle: 'У меня что-то сбилось. Попробуйте чуть позже.',
@@ -967,6 +973,9 @@ export const ru: Messages<typeof en> = {
     enrollFirst: 'Перед сеансом слушания нужно записать образец голоса.',
     enrollmentAndroidOnly: 'Запись образца голоса пока доступна только на Android.',
     signInToEnroll: 'Чтобы записать образец голоса, нужно войти.',
+    enrollmentSaveFailed: 'We couldn’t save your voice right now. Please try again.',
+    notEnoughClearSpeech:
+      'There wasn’t enough clear speech in those recordings. Please try again somewhere quieter.',
     tooLittleSpeech: plural({
       one: 'Мы услышали ваш голос всего около {count} секунды. Пожалуйста, прочитайте весь текст вслух, держа телефон чуть ближе.',
       few: 'Мы услышали ваш голос всего около {count} секунд. Пожалуйста, прочитайте весь текст вслух, держа телефон чуть ближе.',

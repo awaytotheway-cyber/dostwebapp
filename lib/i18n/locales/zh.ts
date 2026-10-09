@@ -915,6 +915,12 @@ export const zh: Messages<typeof en> = {
     doneTitle: 'DOST 已认识你的声音',
     doneBody:
       '从现在起，倾听时段只会处理与你匹配的片段。其他一切——陌生人、背景里的闲聊——都会在转写之前被丢弃。',
+    retryHint:
+      'Your recordings are still here on this device. You can try saving again, or start over if you’d like to re-read the lines.',
+    retrySave: 'Try saving again',
+    retrySaveA11y: 'Try saving your voice enrollment again',
+    startOver: 'Start over',
+    startOverA11y: 'Discard these recordings and start enrollment over',
   },
   errors: {
     gentle: '我这边出了点问题。请稍后再试。',
@@ -956,6 +962,9 @@ export const zh: Messages<typeof en> = {
     enrollFirst: '开始倾听前，你需要先注册你的声音。',
     enrollmentAndroidOnly: '声音注册目前仅支持 Android。',
     signInToEnroll: '需要登录才能注册声音。',
+    enrollmentSaveFailed: 'We couldn’t save your voice right now. Please try again.',
+    notEnoughClearSpeech:
+      'There wasn’t enough clear speech in those recordings. Please try again somewhere quieter.',
     tooLittleSpeech: plural({
       other:
         '我们只听到了你大约 {count} 秒的声音。请大声朗读整段文字，并把手机拿近一点。',
