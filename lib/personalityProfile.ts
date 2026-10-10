@@ -5,15 +5,24 @@ export const ENNEAGRAM_MODULE = 'enneagram';
 export const NUMEROLOGY_MODULE = 'numerology';
 export const TCM_MODULE = 'tcm';
 export const MBTI_MODULE = 'mbti';
+export const VARNA_MODULE = 'varna';
 
 export const PERSONALITY_MODULE_ORDER = [
   ENNEAGRAM_MODULE,
   NUMEROLOGY_MODULE,
   TCM_MODULE,
   MBTI_MODULE,
+  VARNA_MODULE,
 ] as const;
 
 export type PersonalityModule = (typeof PERSONALITY_MODULE_ORDER)[number];
+
+export const VARNA_TYPES = ['brahmana', 'kshatriya', 'vaishya', 'shudra'] as const;
+export type Varna = (typeof VARNA_TYPES)[number];
+
+export function isVarna(value: unknown): value is Varna {
+  return typeof value === 'string' && (VARNA_TYPES as readonly string[]).includes(value);
+}
 
 export const MBTI_TYPES = [
   'INTJ',
@@ -313,6 +322,59 @@ export async function skipMbtiModule(): Promise<PersonalityProfileWrite> {
   return { ok: true };
 }
 
+export async function saveVarna(varna: Varna): Promise<PersonalityProfileWrite> {
+  const userId = await currentUserId();
+  if (!userId) {
+    return { ok: false, message: translate('errors.verifySession') };
+  }
+
+  const existing = await loadModuleArrays(userId);
+  const completed_modules = uniqueModules([...existing.completed_modules, VARNA_MODULE]);
+  const skipped_modules = existing.skipped_modules.filter((module) => module !== VARNA_MODULE);
+
+  const { error } = await supabase.from('personality_profile').upsert(
+    {
+      user_id: userId,
+      varna,
+      completed_modules,
+      skipped_modules,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: 'user_id' },
+  );
+
+  if (error) {
+    return { ok: false, message: saveFailedMessage() };
+  }
+  return { ok: true };
+}
+
+export async function skipVarnaModule(): Promise<PersonalityProfileWrite> {
+  const userId = await currentUserId();
+  if (!userId) {
+    return { ok: false, message: translate('errors.verifySession') };
+  }
+
+  const existing = await loadModuleArrays(userId);
+  const skipped_modules = uniqueModules([...existing.skipped_modules, VARNA_MODULE]);
+  const completed_modules = existing.completed_modules.filter((module) => module !== VARNA_MODULE);
+
+  const { error } = await supabase.from('personality_profile').upsert(
+    {
+      user_id: userId,
+      skipped_modules,
+      completed_modules,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: 'user_id' },
+  );
+
+  if (error) {
+    return { ok: false, message: saveFailedMessage() };
+  }
+  return { ok: true };
+}
+
 export type PersonalityProfileRow = {
   user_id: string;
   dosha_body: string | null;
@@ -324,6 +386,7 @@ export type PersonalityProfileRow = {
   tcm_emotional_state: string | null;
   tcm_climate_preference: string | null;
   mbti_type: string | null;
+  varna: Varna | null;
   completed_modules: string[];
   skipped_modules: string[];
 };
@@ -374,6 +437,7 @@ function mapPersonalityProfile(data: Record<string, unknown>): PersonalityProfil
     tcm_emotional_state: asNullableString(data.tcm_emotional_state),
     tcm_climate_preference: asNullableString(data.tcm_climate_preference),
     mbti_type: asNullableString(data.mbti_type),
+    varna: isVarna(data.varna) ? data.varna : null,
     completed_modules: asStringArray(data.completed_modules),
     skipped_modules: asStringArray(data.skipped_modules),
   };

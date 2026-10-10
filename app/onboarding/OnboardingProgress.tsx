@@ -10,6 +10,7 @@ import {
   MBTI_MODULE,
   NUMEROLOGY_MODULE,
   TCM_MODULE,
+  VARNA_MODULE,
   skipRemainingPersonalityModules,
   type PersonalityModule,
 } from '../../lib/personalityProfile';
@@ -27,22 +28,27 @@ const STEPS = [
   'Numerology',
   'TCM',
   'MBTI',
-  'Rhythm',
-  'Hobbies',
-  'SocialEnergy',
+  'Varna',
   'Confirm',
 ] as const;
 
-/** Name through MBTI — the stretch with a defined end before rhythm. */
-const COUNTED_THROUGH_MBTI = 9;
+/** Name through Varna — the full counted stretch. */
+const COUNTED_STEPS = 10;
 
-const PERSONALITY_STEP_ROUTES = ['Enneagram', 'Numerology', 'TCM', 'MBTI'] as const;
+const PERSONALITY_STEP_ROUTES = [
+  'Enneagram',
+  'Numerology',
+  'TCM',
+  'MBTI',
+  'Varna',
+] as const;
 
 const MODULE_BY_ROUTE: Record<(typeof PERSONALITY_STEP_ROUTES)[number], PersonalityModule> = {
   Enneagram: ENNEAGRAM_MODULE,
   Numerology: NUMEROLOGY_MODULE,
   TCM: TCM_MODULE,
   MBTI: MBTI_MODULE,
+  Varna: VARNA_MODULE,
 };
 
 function isPersonalityRoute(
@@ -79,7 +85,7 @@ export default function OnboardingProgress() {
   }
 
   const onPersonalityStep = isPersonalityRoute(route.name);
-  const stepLabel = t('onboarding.stepOf', { current: current + 1, total: COUNTED_THROUGH_MBTI });
+  const stepLabel = t('onboarding.stepOf', { current: current + 1, total: COUNTED_STEPS });
   const showCountedLabel = onPersonalityStep;
 
   const skipAllRemaining = async () => {
@@ -92,8 +98,8 @@ export default function OnboardingProgress() {
       }
     } finally {
       setSkippingAll(false);
-      const params = route.params as OnboardingStackParamList['Rhythm'] | undefined;
-      navigation.navigate('Rhythm', params as OnboardingStackParamList['Rhythm']);
+      const params = route.params as OnboardingStackParamList['Confirm'] | undefined;
+      navigation.navigate('Confirm', params as OnboardingStackParamList['Confirm']);
     }
   };
 

@@ -11,9 +11,7 @@ import EnneagramScreen from './EnneagramScreen';
 import NumerologyScreen from './NumerologyScreen';
 import TCMScreen from './TCMScreen';
 import MBTIScreen from './MBTIScreen';
-import RhythmScreen from './RhythmScreen';
-import HobbiesScreen from './HobbiesScreen';
-import SocialEnergyScreen from './SocialEnergyScreen';
+import VarnaScreen from './VarnaScreen';
 import ConfirmScreen from './ConfirmScreen';
 import type { OnboardingStackParamList } from './types';
 import { colors } from '../../lib/theme';
@@ -47,9 +45,7 @@ export default function OnboardingNavigator({ onFinished }: Props) {
         <Stack.Screen name="Numerology" component={NumerologyScreen} />
         <Stack.Screen name="TCM" component={TCMScreen} />
         <Stack.Screen name="MBTI" component={MBTIScreen} />
-        <Stack.Screen name="Rhythm" component={RhythmScreen} />
-        <Stack.Screen name="Hobbies" component={HobbiesScreen} />
-        <Stack.Screen name="SocialEnergy" component={SocialEnergyScreen} />
+        <Stack.Screen name="Varna" component={VarnaScreen} />
         <Stack.Screen name="Confirm">
           {(props) => <ConfirmScreen {...props} onFinished={onFinished} />}
         </Stack.Screen>

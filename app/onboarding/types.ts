@@ -1,13 +1,11 @@
-import type {
-  DailyRhythm,
-  Dosha,
-  Hobby,
-  SocialStyle,
-} from '../../lib/profile';
+import type { Dosha } from '../../lib/profile';
 
-export type { DailyRhythm, Hobby, SocialStyle } from '../../lib/profile';
+export type { Dosha } from '../../lib/profile';
 
 export type DoshaPick = 'vata' | 'pitta' | 'kapha';
+
+/** Varna disposition — Brahmana, Kshatriya, Vaishya, Shudra mentality. */
+export type Varna = 'brahmana' | 'kshatriya' | 'vaishya' | 'shudra';
 
 type PersonalDetails = {
   name: string;
@@ -47,12 +45,6 @@ export type OnboardingStackParamList = {
   Numerology: PersonalDetails;
   TCM: PersonalDetails;
   MBTI: PersonalDetails;
-  Rhythm: PersonalDetails;
-  Hobbies: PersonalDetails & { dailyRhythm: DailyRhythm };
-  SocialEnergy: PersonalDetails & { dailyRhythm: DailyRhythm; hobbies: Hobby[] };
-  Confirm: PersonalDetails & {
-    dailyRhythm: DailyRhythm;
-    hobbies: Hobby[];
-    socialStyle: SocialStyle;
-  };
+  Varna: PersonalDetails;
+  Confirm: PersonalDetails;
 };

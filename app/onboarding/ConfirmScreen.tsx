@@ -29,9 +29,6 @@ export default function ConfirmScreen({ route, onFinished }: Props) {
     birthCountry,
     dosha,
     doshaScores,
-    dailyRhythm,
-    hobbies,
-    socialStyle,
   } = route.params;
 
   const onStart = async () => {
@@ -49,9 +46,6 @@ export default function ConfirmScreen({ route, onFinished }: Props) {
         birthCountry,
         dosha,
         doshaScores,
-        dailyRhythm,
-        hobbies,
-        socialStyle,
       });
       if (!result.ok) {
         Alert.alert(t('common.couldNotSave'), result.message);

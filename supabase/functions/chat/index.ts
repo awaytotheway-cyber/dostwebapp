@@ -1264,7 +1264,7 @@ async function loadPersonalityProfile(
     const { data, error } = await userClient
       .from("personality_profile")
       .select(
-        "dosha_body, dosha_mind, enneagram_type, life_path_number, tcm_element, mbti_type",
+        "dosha_body, dosha_mind, enneagram_type, life_path_number, tcm_element, mbti_type, varna",
       )
       .eq("user_id", userId)
       .maybeSingle();
@@ -1300,6 +1300,7 @@ async function loadPersonalityProfile(
           : null,
       tcm_element: typeof data.tcm_element === "string" ? data.tcm_element : null,
       mbti_type: typeof data.mbti_type === "string" ? data.mbti_type : null,
+      varna: typeof data.varna === "string" ? data.varna : null,
     };
   } catch {
     return null;

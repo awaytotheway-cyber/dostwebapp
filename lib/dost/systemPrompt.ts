@@ -59,6 +59,7 @@ export type PersonalityPromptProfile = {
   life_path_number?: number | null;
   tcm_element?: string | null;
   mbti_type?: string | null;
+  varna?: string | null;
 };
 
 function cleanPromptField(value: unknown, max = 40): string {
@@ -68,6 +69,7 @@ function cleanPromptField(value: unknown, max = 40): string {
 
 const TCM_ELEMENTS = new Set(['Wood', 'Fire', 'Earth', 'Metal', 'Water']);
 const LIFE_PATH_NUMBERS = new Set([1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 22]);
+const VARNA_TYPES = new Set(['brahmana', 'kshatriya', 'vaishya', 'shudra']);
 
 /** Private system-prompt block. Empty if the person skipped every module. */
 export function buildPersonalityContext(
@@ -109,6 +111,11 @@ export function buildPersonalityContext(
   const mbtiType = cleanPromptField(profile.mbti_type, 16);
   if (mbtiType) {
     parts.push(`MBTI: ${mbtiType}.`);
+  }
+
+  const varna = cleanPromptField(profile.varna, 16).toLowerCase();
+  if (varna && VARNA_TYPES.has(varna)) {
+    parts.push(`Varna disposition: ${varna}.`);
   }
 
   if (parts.length === 0) return '';

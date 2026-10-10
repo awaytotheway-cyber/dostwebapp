@@ -596,7 +596,49 @@ export const de: Messages<typeof en> = {
     nonstandard: 'Das sieht nicht nach einem Standardtyp aus – du kannst ihn trotzdem speichern oder überspringen.',
     saveType: 'Typ speichern',
   },
-  personality: {
+    varna: {
+    optional: 'Optional',
+    heading: 'What natural disposition feels most like you?',
+    lead:
+      'A short reflection drawn from the Vedic idea of varna — four natural tendencies people live from. Not a caste, not a label. Pick what honestly fits.',
+    leaning: 'Your answers lean toward: {varna}.',
+    labels: {
+      brahmana: 'Teacher-reflector',
+      kshatriya: 'Leader-protector',
+      vaishya: 'Builder-provider',
+      shudra: 'Server-helper',
+    },
+    questions: {
+      q1: {
+        prompt: 'When something’s not right in a group, your first move tends to be…',
+        o1: 'Pause and reflect on what principle is at stake.',
+        o2: 'Step in and set things straight.',
+        o3: 'Figure out what resource or arrangement will fix it.',
+        o4: 'Help whoever is struggling in a hands-on way.',
+      },
+      q2: {
+        prompt: 'What feels most like your natural comfort at work?',
+        o1: 'Studying, teaching, or deep thinking.',
+        o2: 'Taking responsibility and making decisions.',
+        o3: 'Building, trading, growing something.',
+        o4: 'Supporting a team and getting the work done well.',
+      },
+      q3: {
+        prompt: 'Which quietly matters most to you?',
+        o1: 'Truth and inner clarity.',
+        o2: 'Honour, courage, and protecting what matters.',
+        o3: 'Stability, prosperity, and generosity.',
+        o4: 'Loyalty, service, and belonging.',
+      },
+      q4: {
+        prompt: 'When you’re tired, you most naturally reach for…',
+        o1: 'Silence, scripture, or a long conversation about meaning.',
+        o2: 'Movement, challenge, or taking charge of something.',
+        o3: 'Planning, organising, taking care of practical things.',
+        o4: 'Being around people you love, doing simple things together.',
+      },
+    },
+  },personality: {
     birthDateNeeded: 'Geburtsdatum fehlt',
     birthDateNeededBody:
       'Die Lebenszahl wird aus deinem Geburtsdatum berechnet. Trag es in den Einstellungen ein und komm dann hierher zurück.',

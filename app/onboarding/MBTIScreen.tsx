@@ -35,7 +35,7 @@ export default function MBTIScreen({ navigation, route }: Props) {
   const showNonstandardNote = trimmed.length > 0 && !isStandardMbtiType(trimmed);
 
   const { standalone, exitStep } = usePersonalityStepExit(() => {
-    navigation.navigate('Rhythm', { ...route.params });
+    navigation.navigate('Varna', { ...route.params });
   });
   const canSave = trimmed.length > 0;
 
