@@ -6,6 +6,7 @@ import {
   type PersonalityPromptProfile,
 } from "../_shared/systemPrompt.ts";
 import { DOST_SAMPLE_CONVERSATIONS } from "../_shared/sampleConversations.ts";
+import { buildMentorBoxesSection } from "../_shared/mentorBoxes.ts";
 import { resolveTurnStage } from "../_shared/conversationStage.ts";
 import {
   parseReplyLanguage,
@@ -1421,6 +1422,7 @@ function buildSystemPrompt(
 
   const sections = [
     DOST_CORE_PROMPT.trim(),
+    buildMentorBoxesSection().trim(),
     DOST_SAMPLE_CONVERSATIONS.trim(),
     personalityContext.trim(),
     `CURRENT STAGE: ${stage}`,
