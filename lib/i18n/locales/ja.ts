@@ -60,6 +60,7 @@ export const ja: Messages<typeof en> = {
     pastChatsCount: plural({ other: '{count} 件保存済み' }),
     listeningSession: 'リスニングセッション',
     listeningSessionA11y: 'リスニングセッション — DOST にあなたの話し方を聞いてもらう',
+    threeVoices: 'A pause with your voices',
     yourJourney: 'あなたの歩み',
   },
   settings: {
@@ -1027,5 +1028,55 @@ export const ja: Messages<typeof en> = {
   language: {
     title: '言語',
     hint: 'DOST の画面と返信はこの言語になります。',
+  },
+  threeVoices: {
+    title: 'A pause with your voices',
+    step1Number: 'Step 1 of 5',
+    step1Heading: 'Pause and notice',
+    step1Body:
+      'When you notice an intense reaction, feeling triggered, or behaving in a way that doesn’t serve you — pause. Notice which part of you is speaking right now.',
+    step1Prompt: 'Which voice is loudest in you right now?',
+    step2Number: 'Step 2 of 5',
+    step2Heading: 'Acknowledge, without judgment',
+    step2Body:
+      'Recognise which part is activated, without criticising it. The Pained Persona may be carrying hurt or fear. The Shielding Manager may be reacting with defensiveness, control, or people-pleasing.',
+    step3Number: 'Step 3 of 5',
+    step3Heading: 'Validate the feeling',
+    step3Body:
+      'Honour what the Pained Persona or Shielding Manager is experiencing. These reactions often come from a legitimate need or an older wound that deserves acknowledgment.',
+    step4Number: 'Step 4 of 5',
+    step4Heading: 'Shift to the True Individuated Self',
+    step4Body:
+      'Consciously move into your True Individuated Self — the grounded, authentic part of you. A few slow breaths. Feel your feet. Your values and long-term wellbeing are here.',
+    step4Prompt: 'What do I actually need right now?',
+    step5Number: 'Step 5 of 5',
+    step5Heading: 'Respond from the True Individuated Self',
+    step5Body:
+      'From this centred place, choose a response rather than reacting from the dysregulation. The goal is not to erase the Pained Persona or the Shielding Manager — only to let the True Individuated Self lead.',
+    pickVoiceHint: 'Pick the one that feels truest right now.',
+    noticedBanner: 'You noticed: {voice}.',
+    voices: {
+      pained: {
+        name: 'Pained Persona',
+        gloss:
+          'The emotional, reactive part — where hurt, fear, and unmet needs live.',
+      },
+      shielding: {
+        name: 'Shielding Manager',
+        gloss:
+          'The defensive, controlling, or people-pleasing part that tries to keep you safe.',
+      },
+      individuated: {
+        name: 'True Individuated Self',
+        gloss:
+          'The wise, grounded self that can observe clearly and respond rather than react.',
+      },
+    },
+    finish: 'Finish',
+    restart: 'Walk through it again',
+    doneEyebrow: 'Done',
+    doneHeading: 'Nothing more to do — just notice what shifted.',
+    doneBody:
+      'This isn’t about silencing any part of you. It’s letting the True Individuated Self take the lead, while the other parts are still held.',
   },
 };

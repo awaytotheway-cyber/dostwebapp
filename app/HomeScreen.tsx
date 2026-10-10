@@ -215,6 +215,39 @@ export default function HomeScreen({ navigation }: Props) {
           <Ionicons name="chevron-forward" size={20} color={home.muted} />
         </GentlePressable>
 
+        {/* Three Voices Pause */}
+        <GentlePressable
+          accessibilityRole="button"
+          accessibilityLabel={t('home.threeVoices')}
+          onPress={() => navigation.navigate('ThreeVoices')}
+          style={({ pressed }) => [styles.journeyRow, pressed && styles.cardPressed]}
+        >
+          <View style={styles.journeyLeft}>
+            <Svg width={22} height={22} viewBox="0 0 28 28" accessible={false} focusable={false}>
+              <Path
+                d="M14 5v18"
+                stroke={home.muted}
+                strokeWidth={1.5}
+                strokeLinecap="round"
+              />
+              <Path
+                d="M7 9v10"
+                stroke={home.muted}
+                strokeWidth={1.5}
+                strokeLinecap="round"
+              />
+              <Path
+                d="M21 9v10"
+                stroke={home.muted}
+                strokeWidth={1.5}
+                strokeLinecap="round"
+              />
+            </Svg>
+            <Text style={styles.journeyLabel}>{t('home.threeVoices')}</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={home.muted} />
+        </GentlePressable>
+
         {/* â”€â”€ Your Journey â”€â”€ */}
         <GentlePressable
           accessibilityRole="button"
