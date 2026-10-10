@@ -99,7 +99,7 @@ export default function VarnaScreen({ navigation, route }: Props) {
   const [saving, setSaving] = useState(false);
 
   const { standalone, exitStep } = usePersonalityStepExit(() => {
-    navigation.navigate('Confirm', { ...route.params });
+    navigation.navigate('AdminExtra', { ...route.params });
   });
 
   const dominant = useMemo(() => dominantVarna(answers), [answers]);

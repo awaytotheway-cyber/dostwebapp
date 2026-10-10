@@ -29,6 +29,7 @@ const STEPS = [
   'TCM',
   'MBTI',
   'Varna',
+  'AdminExtra',
   'Confirm',
 ] as const;
 
@@ -99,7 +100,7 @@ export default function OnboardingProgress() {
     } finally {
       setSkippingAll(false);
       const params = route.params as OnboardingStackParamList['Confirm'] | undefined;
-      navigation.navigate('Confirm', params as OnboardingStackParamList['Confirm']);
+      navigation.navigate('AdminExtra', params as OnboardingStackParamList['AdminExtra']);
     }
   };
 

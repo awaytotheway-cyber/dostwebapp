@@ -12,6 +12,7 @@ import NumerologyScreen from './NumerologyScreen';
 import TCMScreen from './TCMScreen';
 import MBTIScreen from './MBTIScreen';
 import VarnaScreen from './VarnaScreen';
+import AdminOnboardingScreen from './AdminOnboardingScreen';
 import ConfirmScreen from './ConfirmScreen';
 import type { OnboardingStackParamList } from './types';
 import { colors } from '../../lib/theme';
@@ -46,6 +47,7 @@ export default function OnboardingNavigator({ onFinished }: Props) {
         <Stack.Screen name="TCM" component={TCMScreen} />
         <Stack.Screen name="MBTI" component={MBTIScreen} />
         <Stack.Screen name="Varna" component={VarnaScreen} />
+        <Stack.Screen name="AdminExtra" component={AdminOnboardingScreen} />
         <Stack.Screen name="Confirm">
           {(props) => <ConfirmScreen {...props} onFinished={onFinished} />}
         </Stack.Screen>

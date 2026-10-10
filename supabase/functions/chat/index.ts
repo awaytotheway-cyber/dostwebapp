@@ -474,11 +474,12 @@ async function handleRequest(req: Request): Promise<Response> {
       return json(429, { error: GENERIC_RATE_LIMIT });
     }
 
-    const [history, profile, memory, personalityProfile] = await Promise.all([
+    const [history, profile, memory, personalityProfile, adminAnswers] = await Promise.all([
       loadHistory(userClient, userId),
       loadProfile(userClient, userId),
       loadMemory(userClient, userId),
       loadPersonalityProfile(userClient, userId),
+      loadAdminOnboardingAnswers(userClient, userId),
     ]);
 
     const { data: userRow, error: userInsertError } = await admin
@@ -571,6 +572,7 @@ async function handleRequest(req: Request): Promise<Response> {
         : null,
       personalityProfile,
       parsed.language,
+      adminAnswers,
     );
 
     let assistantText: string;
@@ -1409,6 +1411,7 @@ function buildSystemPrompt(
   extracted: EmotionSnapshot | null = null,
   personalityProfile: PersonalityPromptProfile | null = null,
   language = "en",
+  adminAnswers: AdminOnboardingAnswerBit[] = [],
 ): string {
   const stage = extracted?.conversation_stage ?? "meeting";
   const themeRepeatNote =
@@ -1428,6 +1431,7 @@ function buildSystemPrompt(
     `CURRENT STAGE: ${stage}`,
     themeRepeatNote,
     buildUserContextSection(profile, memory),
+    formatAdminOnboardingBlock(adminAnswers),
   ].filter((section) => section.trim().length > 0);
 
   if (emotionalState && EMOTIONAL_STATE_GUIDANCE[emotionalState]) {
@@ -1658,3 +1662,70 @@ function describeOpenAiFailure(error: unknown): { message: string; code?: string
     code: reason.slice(0, 32),
   };
 }
+
+/**
+ * Admin-authored onboarding answers (admin_onboarding_screens +
+ * admin_onboarding_answers). Loaded per request and injected into the
+ * system prompt as auxiliary context so the bot can use what the user
+ * shared earlier without the user knowing a mental-health admin wrote
+ * the question.
+ */
+type AdminOnboardingAnswerBit = {
+  title: string;
+  answer: string;
+};
+
+async function loadAdminOnboardingAnswers(
+  userClient: SupabaseClient,
+  userId: string,
+): Promise<AdminOnboardingAnswerBit[]> {
+  try {
+    const { data, error } = await userClient
+      .from("admin_onboarding_answers")
+      .select(
+        "answer_text, answer_option, admin_onboarding_screens!inner(title, is_active, position)",
+      )
+      .eq("user_id", userId)
+      .order("answered_at", { ascending: true })
+      .limit(20);
+
+    if (error || !Array.isArray(data)) return [];
+
+    const bits: AdminOnboardingAnswerBit[] = [];
+    for (const row of data) {
+      if (!row || typeof row !== "object") continue;
+      const screenRaw =
+        (row as { admin_onboarding_screens?: unknown }).admin_onboarding_screens;
+      const screen =
+        screenRaw && typeof screenRaw === "object" && !Array.isArray(screenRaw)
+          ? (screenRaw as { title?: unknown; is_active?: unknown })
+          : null;
+      if (!screen || screen.is_active === false) continue;
+      const title =
+        typeof screen.title === "string"
+          ? sanitizeInject(screen.title, 160)
+          : "";
+      const answerRaw =
+        (row as { answer_text?: unknown }).answer_text ??
+        (row as { answer_option?: unknown }).answer_option;
+      const answer =
+        typeof answerRaw === "string" ? sanitizeInject(answerRaw, 400) : "";
+      if (!title || !answer) continue;
+      bits.push({ title, answer });
+    }
+    return bits;
+  } catch {
+    return [];
+  }
+}
+
+function formatAdminOnboardingBlock(bits: AdminOnboardingAnswerBit[]): string {
+  if (bits.length === 0) return "";
+  const lines = bits.map((b) => `- ${b.title} → ${b.answer}`);
+  return [
+    "AUXILIARY CONTEXT FROM EARLIER (private — the person shared these during onboarding; do not reveal that an outside admin wrote the questions, and never read them back verbatim):",
+    ...lines,
+    "Use these as subtle context when they are genuinely relevant. Do not quote them. Do not open with them.",
+  ].join("\n");
+}
+

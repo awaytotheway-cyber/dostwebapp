@@ -46,5 +46,6 @@ export type OnboardingStackParamList = {
   TCM: PersonalDetails;
   MBTI: PersonalDetails;
   Varna: PersonalDetails;
+  AdminExtra: PersonalDetails;
   Confirm: PersonalDetails;
 };
