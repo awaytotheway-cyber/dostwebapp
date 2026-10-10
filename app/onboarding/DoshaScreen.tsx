@@ -10,6 +10,7 @@ import DoshaGlyph from './DoshaGlyph';
 import { useI18n, type TKey } from '../../lib/i18n';
 import { spacing } from '../../lib/theme';
 import GentlePressable from '../GentlePressable';
+import { nextOnboardingRoute } from '../../lib/onboardingConfig';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'Dosha'>;
 
@@ -90,11 +91,11 @@ export default function DoshaScreen({ navigation, route }: Props) {
   const onContinue = () => {
     if (!complete) return;
     const filled = answers as Record<string, DoshaPick>;
-    navigation.navigate('Enneagram', {
+    navigation.navigate(...([nextOnboardingRoute('Dosha'), {
       ...route.params,
       dosha: scoreDosha(filled),
       doshaScores: filled,
-    });
+    }] as never));
   };
 
   return (

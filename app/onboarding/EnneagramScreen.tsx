@@ -14,6 +14,7 @@ import {
   type EnneagramSource,
 } from '../../lib/personalityProfile';
 import { usePersonalityStepExit } from './usePersonalityStepExit';
+import { nextOnboardingRoute } from '../../lib/onboardingConfig';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'Enneagram'>;
 
@@ -140,7 +141,7 @@ export default function EnneagramScreen({ navigation, route }: Props) {
   const isFirstQuestion = mode === 'quiz' && questionIndex === 0;
 
   const { standalone, exitStep } = usePersonalityStepExit(() => {
-    navigation.navigate('Numerology', { ...route.params });
+    navigation.navigate(...([nextOnboardingRoute('Enneagram'), { ...route.params }] as never));
   });
 
   const showResult = (type: number, source: EnneagramSource) => {

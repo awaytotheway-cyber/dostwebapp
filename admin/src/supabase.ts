@@ -35,3 +35,22 @@ export type OnboardingAnswer = {
   answer_option: string | null;
   answered_at: string;
 };
+
+/** A built-in onboarding screen the admin can reorder or switch off. */
+export type BuiltInScreen = {
+  screen_key: string;
+  label: string;
+  position: number;
+  is_active: boolean;
+  is_removable: boolean;
+};
+
+/** One editable string on a built-in screen. */
+export type OnboardingText = {
+  i18n_key: string;
+  screen_key: string;
+  field_label: string;
+  default_text: string;
+  override_text: string | null;
+  sort_order: number;
+};

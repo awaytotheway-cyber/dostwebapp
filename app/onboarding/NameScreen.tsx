@@ -16,6 +16,7 @@ import OnboardingProgress from './OnboardingProgress';
 import { colors, spacing } from '../../lib/theme';
 import GentlePressable from '../GentlePressable';
 import { useI18n } from '../../lib/i18n';
+import { nextOnboardingRoute } from '../../lib/onboardingConfig';
 
 const MAX_NAME = 40;
 
@@ -68,7 +69,7 @@ export default function NameScreen({ navigation }: Props) {
         </ScrollView>
         <View style={shared.footer}>
           <GentlePressable
-            onPress={() => navigation.navigate('Intention', { name: name.trim() })}
+            onPress={() => navigation.navigate(...([nextOnboardingRoute('Name'), { name: name.trim() }] as never))}
             disabled={!canContinue}
             style={({ pressed }) => [
               shared.button,

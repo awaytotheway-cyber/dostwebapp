@@ -22,6 +22,7 @@ import {
 } from '../../lib/personalityProfile';
 import { usePersonalityStepExit } from './usePersonalityStepExit';
 import { useI18n } from '../../lib/i18n';
+import { nextOnboardingRoute } from '../../lib/onboardingConfig';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'MBTI'>;
 
@@ -35,7 +36,7 @@ export default function MBTIScreen({ navigation, route }: Props) {
   const showNonstandardNote = trimmed.length > 0 && !isStandardMbtiType(trimmed);
 
   const { standalone, exitStep } = usePersonalityStepExit(() => {
-    navigation.navigate('Varna', { ...route.params });
+    navigation.navigate(...([nextOnboardingRoute('MBTI'), { ...route.params }] as never));
   });
   const canSave = trimmed.length > 0;
 

@@ -15,6 +15,7 @@ import OnboardingProgress from './OnboardingProgress';
 import { colors, spacing } from '../../lib/theme';
 import GentlePressable from '../GentlePressable';
 import { useI18n } from '../../lib/i18n';
+import { nextOnboardingRoute } from '../../lib/onboardingConfig';
 
 const MAX_INTENTION = 200;
 
@@ -66,10 +67,10 @@ export default function IntentionScreen({ navigation, route }: Props) {
         <View style={styles.footer}>
           <GentlePressable
             onPress={() =>
-              navigation.navigate('Birth', {
-                name: route.params.name,
+              navigation.navigate(...([nextOnboardingRoute('Intention'), {
+                ...route.params,
                 intention: intention.trim(),
-              })
+              }] as never))
             }
             style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
           >

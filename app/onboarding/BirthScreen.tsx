@@ -11,6 +11,7 @@ import OnboardingProgress from './OnboardingProgress';
 import { colors, spacing } from '../../lib/theme';
 import GentlePressable from '../GentlePressable';
 import { useI18n } from '../../lib/i18n';
+import { nextOnboardingRoute } from '../../lib/onboardingConfig';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'Birth'>;
 
@@ -73,12 +74,11 @@ export default function BirthScreen({ navigation, route }: Props) {
   };
 
   const onContinue = () => {
-    navigation.navigate('BirthPlace', {
-      name: route.params.name,
-      intention: route.params.intention,
+    navigation.navigate(...([nextOnboardingRoute('Birth'), {
+      ...route.params,
       dob: toDateOnly(date),
       dobTime: unknownTime ? null : toTimeOnly(time),
-    });
+    }] as never));
   };
 
   return (

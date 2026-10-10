@@ -39,7 +39,26 @@ const STORAGE_KEY = 'dost.app.language.v1';
 let current: AppLanguage = 'en';
 const listeners = new Set<(lang: AppLanguage) => void>();
 
+/**
+ * Admin-authored text overrides, keyed by the same dotted i18n path.
+ * Set once from onboarding_text at app start. An override wins over the
+ * catalog for every language — the admin edits one string and it shows
+ * everywhere, which is the simple behaviour we want for now.
+ */
+let overrides: Record<string, string> = {};
+
+export function setTextOverrides(next: Record<string, string>): void {
+  overrides = next;
+  for (const listener of listeners) listener(current);
+}
+
+export function getTextOverride(key: string): string | undefined {
+  return overrides[key];
+}
+
 function translate(lang: AppLanguage, key: string, params?: Params): string {
+  const override = overrides[key];
+  if (typeof override === 'string') return interpolate(override, params);
   const msg = lookup(MESSAGES[lang], key);
   const text = typeof msg === 'string' ? msg : lookup(en, key);
   return interpolate(typeof text === 'string' ? text : key, params);

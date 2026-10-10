@@ -18,34 +18,26 @@ export default function ConfirmScreen({ route, onFinished }: Props) {
   const insets = useSafeAreaInsets();
   const { t } = useI18n();
   const [saving, setSaving] = useState(false);
-  const {
-    name,
-    intention,
-    dob,
-    dobTime,
-    birthCity,
-    birthDistrict,
-    birthState,
-    birthCountry,
-    dosha,
-    doshaScores,
-  } = route.params;
+  const { name } = route.params;
 
   const onStart = async () => {
     if (saving) return;
     setSaving(true);
     try {
+      // Any step can be switched off by an admin, so fill the gaps here
+      // rather than assuming every screen ran.
+      const p = route.params;
       const result = await saveMyProfile({
         name,
-        intention,
-        dob,
-        dobTime,
-        birthCity,
-        birthDistrict,
-        birthState,
-        birthCountry,
-        dosha,
-        doshaScores,
+        intention: p.intention ?? '',
+        dob: p.dob ?? null,
+        dobTime: p.dobTime ?? null,
+        birthCity: p.birthCity ?? '',
+        birthDistrict: p.birthDistrict ?? '',
+        birthState: p.birthState ?? '',
+        birthCountry: p.birthCountry ?? '',
+        dosha: p.dosha ?? null,
+        doshaScores: p.doshaScores ?? {},
       });
       if (!result.ok) {
         Alert.alert(t('common.couldNotSave'), result.message);

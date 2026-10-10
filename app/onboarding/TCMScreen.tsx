@@ -14,6 +14,7 @@ import {
 } from '../../lib/personalityProfile';
 import { usePersonalityStepExit } from './usePersonalityStepExit';
 import { t as translate, useI18n, type TKey } from '../../lib/i18n';
+import { nextOnboardingRoute } from '../../lib/onboardingConfig';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'TCM'>;
 
@@ -65,7 +66,7 @@ export default function TCMScreen({ navigation, route }: Props) {
       : null;
 
   const { standalone, exitStep } = usePersonalityStepExit(() => {
-    navigation.navigate('MBTI', { ...route.params });
+    navigation.navigate(...([nextOnboardingRoute('TCM'), { ...route.params }] as never));
   });
 
   const onSkip = async () => {

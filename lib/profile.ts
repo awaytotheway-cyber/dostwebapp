@@ -33,13 +33,15 @@ export type ProfileWrite = { ok: true } | { ok: false; message: string };
 export type ProfileInput = {
   name: string;
   intention: string;
-  dob: string;
+  /** Null when the admin has switched the Birth step off. */
+  dob: string | null;
   dobTime: string | null;
   birthCity: string;
   birthDistrict: string;
   birthState: string;
   birthCountry: string;
-  dosha: Dosha;
+  /** Null when the admin has switched the Dosha step off. */
+  dosha: Dosha | null;
   doshaScores: Record<string, 'vata' | 'pitta' | 'kapha'>;
 };
 

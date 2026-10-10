@@ -18,6 +18,7 @@ import {
 } from '../../lib/personalityProfile';
 import { usePersonalityStepExit } from './usePersonalityStepExit';
 import { useI18n } from '../../lib/i18n';
+import { nextOnboardingRoute } from '../../lib/onboardingConfig';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'Numerology'>;
 
@@ -34,7 +35,7 @@ export default function NumerologyScreen({ navigation, route }: Props) {
   }, [route.params]);
 
   const { standalone, exitStep } = usePersonalityStepExit(() => {
-    navigation.navigate('TCM', { ...route.params });
+    navigation.navigate(...([nextOnboardingRoute('Numerology'), { ...route.params }] as never));
   });
 
   const onSkip = async () => {

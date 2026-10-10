@@ -15,6 +15,7 @@ import OnboardingNavigator from './app/onboarding/OnboardingNavigator';
 import { I18nProvider, initI18n, t } from './lib/i18n';
 import { loadMyProfile } from './lib/profile';
 import { ONBOARDING_COMPLETE_KEY } from './lib/onboardingStorage';
+import { loadOnboardingConfig } from './lib/onboardingConfig';
 import { initNotificationRouting } from './lib/notifications';
 import { ensureAnonymousSession } from './lib/session';
 import { supabase } from './lib/supabase';
@@ -118,7 +119,11 @@ export default function App() {
 
   useEffect(() => {
     initNotificationRouting();
-    void initI18n().then(() => setI18nReady(true));
+    void initI18n()
+      // Admin screen order + text overrides. Never blocks startup: the
+      // loader swallows its own errors and keeps the shipped defaults.
+      .then(() => loadOnboardingConfig())
+      .then(() => setI18nReady(true));
   }, []);
 
   useEffect(() => {

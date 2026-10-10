@@ -14,6 +14,7 @@ import type { OnboardingStackParamList } from './types';
 import { APP_LANGUAGES, NATIVE_LANGUAGE_NAMES, useI18n } from '../../lib/i18n';
 import { colors, radius, spacing, type } from '../../lib/theme';
 import GentlePressable from '../GentlePressable';
+import { firstOnboardingRoute } from '../../lib/onboardingConfig';
 
 const logoSource = require('../../assets/dost-logo.png');
 
@@ -141,7 +142,7 @@ export default function WelcomeScreen({ navigation }: Props) {
         </View>
         <GentlePressable
           accessibilityRole="button"
-          onPress={() => navigation.navigate('Name')}
+          onPress={() => navigation.navigate(firstOnboardingRoute() as never)}
           style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
         >
           <Text style={styles.buttonText}>{t('welcome.begin')}</Text>

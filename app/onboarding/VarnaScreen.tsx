@@ -15,6 +15,7 @@ import {
 } from '../../lib/personalityProfile';
 import { usePersonalityStepExit } from './usePersonalityStepExit';
 import { useI18n, type TKey } from '../../lib/i18n';
+import { nextOnboardingRoute } from '../../lib/onboardingConfig';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'Varna'>;
 
@@ -99,7 +100,7 @@ export default function VarnaScreen({ navigation, route }: Props) {
   const [saving, setSaving] = useState(false);
 
   const { standalone, exitStep } = usePersonalityStepExit(() => {
-    navigation.navigate('AdminExtra', { ...route.params });
+    navigation.navigate(...([nextOnboardingRoute('Varna'), { ...route.params }] as never));
   });
 
   const dominant = useMemo(() => dominantVarna(answers), [answers]);

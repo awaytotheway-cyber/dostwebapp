@@ -17,6 +17,7 @@ import OnboardingCountryPicker from './OnboardingCountryPicker';
 import { colors, spacing } from '../../lib/theme';
 import GentlePressable from '../GentlePressable';
 import { useI18n } from '../../lib/i18n';
+import { nextOnboardingRoute } from '../../lib/onboardingConfig';
 
 const FIELD_MAX = 80;
 
@@ -28,16 +29,13 @@ export default function BirthPlaceScreen({ navigation, route }: Props) {
   const [place, setPlace] = useState(emptyBirthPlace);
 
   const onContinue = () => {
-    navigation.navigate('Dosha', {
-      name: route.params.name,
-      intention: route.params.intention,
-      dob: route.params.dob,
-      dobTime: route.params.dobTime,
+    navigation.navigate(...([nextOnboardingRoute('BirthPlace'), {
+      ...route.params,
       birthCity: place.birthCity.trim(),
       birthDistrict: place.birthDistrict.trim(),
       birthState: place.birthState.trim(),
       birthCountry: place.birthCountry.trim() || DEFAULT_BIRTH_COUNTRY,
-    });
+    }] as never));
   };
 
   return (
