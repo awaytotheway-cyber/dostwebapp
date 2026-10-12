@@ -1,7 +1,14 @@
 // The `whisper.rn` package's `exports` map defines only subpath exports,
 // so `moduleResolution: bundler` can't resolve the bare root import.
 // Import through the explicit `./index` subpath instead.
-import { initWhisper, type WhisperContext } from 'whisper.rn/index';
+//
+// Type-only: whisper.rn calls TurboModuleRegistry.get('RNWhisper') at the
+// top level of its module. On web TurboModuleRegistry is undefined, so a
+// static import crashes the whole bundle before React mounts. The runtime
+// value is pulled in lazily by loadInitWhisper() below, which keeps the
+// module in the bundle but never evaluates it on web.
+import type { WhisperContext } from 'whisper.rn/index';
+import { Platform } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 
 /**
@@ -36,6 +43,21 @@ export const MODEL_APPROX_MB = 31;
 
 let whisperContext: WhisperContext | null = null;
 let inFlightInit: Promise<WhisperContext> | null = null;
+
+type InitWhisper = (opts: { filePath: string }) => Promise<WhisperContext>;
+
+/**
+ * Resolve whisper.rn's initWhisper at call time rather than import time.
+ * Evaluating the module registers a TurboModule, which only exists on a
+ * native build — doing it eagerly takes the web bundle down with it.
+ */
+function loadInitWhisper(): InitWhisper {
+  if (Platform.OS === 'web') {
+    throw new Error('On-device transcription is not available on the web build.');
+  }
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  return (require('whisper.rn/index') as { initWhisper: InitWhisper }).initWhisper;
+}
 
 export type DownloadProgress = (fractionComplete: number) => void;
 
@@ -88,7 +110,7 @@ export async function initTranscription(
 
   inFlightInit = (async () => {
     const modelPath = await ensureModelDownloaded(onDownloadProgress);
-    const ctx = await initWhisper({ filePath: modelPath });
+    const ctx = await loadInitWhisper()({ filePath: modelPath });
     whisperContext = ctx;
     return ctx;
   })();
