@@ -73,13 +73,24 @@ function mapProfile(data: Record<string, unknown>): ProfileRow | null {
   };
 }
 
+const PROFILE_LOAD_TIMEOUT_MS = 8000;
+
 export async function loadMyProfile(): Promise<ProfileLoad> {
-  const first = await supabase.from('profiles').select(PROFILE_SELECT).maybeSingle();
+  const request = supabase.from('profiles').select(PROFILE_SELECT).maybeSingle();
+  const timeout = new Promise<null>((resolve) =>
+    setTimeout(() => resolve(null), PROFILE_LOAD_TIMEOUT_MS),
+  );
+  const first = await Promise.race([request, timeout]);
+  if (!first) return { ok: false };
+
   const result = first.error
-    ? await supabase.from('profiles').select(PROFILE_SELECT_LEGACY).maybeSingle()
+    ? await Promise.race([
+        supabase.from('profiles').select(PROFILE_SELECT_LEGACY).maybeSingle(),
+        timeout,
+      ])
     : first;
 
-  if (result.error) return { ok: false };
+  if (!result || result.error) return { ok: false };
   if (!result.data || typeof result.data !== 'object') return { ok: true, profile: null };
 
   const profile = mapProfile(result.data as Record<string, unknown>);
