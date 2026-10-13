@@ -1459,6 +1459,7 @@ function buildSystemPrompt(
       : "";
 
   const kbContext = kbBlock.trim();
+  // Stub: synthetic_dialogues_rag has 0 rows (ingestion never completed). Wire up once populated.
   const dialogueExamples = "";
   const personalityContext = buildPersonalityContext(personalityProfile);
 
