@@ -272,6 +272,9 @@ export default function ProfileScreen({ navigation, onStartOver }: Props) {
             try {
               const result = await deleteMyConversations();
               if (!result.ok) { Alert.alert(t('settings.couldNotDelete'), result.message); return; }
+              const { data } = await supabase.auth.getUser();
+              const userId = data?.user?.id;
+              if (userId) await purgeUserDatabase(userId);
               setMemorySummary(null);
               Alert.alert(t('settings.conversationsDeleted'), t('settings.profileStillHere'));
               navigation.navigate('Chat', { conversationsCleared: true });

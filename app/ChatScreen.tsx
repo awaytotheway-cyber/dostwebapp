@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Alert,
   Animated,
   AppState,
   type AppStateStatus,
@@ -26,6 +27,7 @@ import {
 } from '../lib/dost/suggestionChips';
 import {
   clearAllLocalData,
+  deleteMessageById,
   getDb,
   getMessagesBefore,
   getRecentMessages,
@@ -35,6 +37,7 @@ import {
   type LocalDb,
   type LocalMessage,
 } from '../lib/localDb';
+import { deleteMessage } from '../lib/privacy';
 import {
   getChatSessionStart,
   openChatFromMessage,
@@ -199,6 +202,7 @@ type MessageRowProps = {
   claimEntrance: (id: string) => boolean;
   reduceMotion: boolean;
   retryMessage: (id: string) => Promise<void>;
+  onDeleteMessage: (id: string) => void;
   chipsActive: boolean;
   onEmotionChipSelect: (token: string) => void;
   onNeedChipSelect: (token: string) => void;
@@ -209,6 +213,7 @@ function MessageRow({
   claimEntrance,
   reduceMotion,
   retryMessage,
+  onDeleteMessage,
   chipsActive,
   onEmotionChipSelect,
   onNeedChipSelect,
@@ -256,7 +261,7 @@ function MessageRow({
         onPress={() => {
           if (failed) void retryMessage(item._id);
         }}
-        disabled={!failed}
+        onLongPress={() => onDeleteMessage(item._id)}
       >
         {!mine ? (
           <View style={styles.senderRow}>
@@ -1063,6 +1068,27 @@ export default function ChatScreen({ navigation, route }: Props) {
     [isOnline, messages, sendWithText],
   );
 
+  const handleDeleteMessage = useCallback(
+    (id: string) => {
+      Alert.alert(t('chat.deleteMessageTitle'), t('chat.deleteMessageBody'), [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('chat.deleteMessageConfirm'),
+          style: 'destructive',
+          onPress: () => {
+            void (async () => {
+              const db = dbRef.current;
+              if (db) await deleteMessageById(db, id);
+              setMessages((prev) => prev.filter((m) => m._id !== id));
+              void deleteMessage(id);
+            })();
+          },
+        },
+      ]);
+    },
+    [t],
+  );
+
   const onLoadEarlier = useCallback(async () => {
     if (loadingOlderRef.current) return;
     const db = dbRef.current;
@@ -1318,6 +1344,7 @@ export default function ChatScreen({ navigation, route }: Props) {
                 claimEntrance={claimEntrance}
                 reduceMotion={reduceMotion}
                 retryMessage={retryMessage}
+                onDeleteMessage={handleDeleteMessage}
                 chipsActive={
                   item._id === activeChipsMessageId &&
                   !item.chips?.dismissed &&
