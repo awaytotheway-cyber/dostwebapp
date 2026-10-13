@@ -44,3 +44,6 @@ yarn-error.*
 
 # scratch
 .tmp_*
+
+# Supabase CLI temp
+supabase/.temp/
