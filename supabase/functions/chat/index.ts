@@ -70,6 +70,16 @@ function logFnError(fn: string, step: string, error: unknown): void {
   console.error(fn, step, errorName(error), pgCode(error) || "-");
 }
 
+function logKbMatch(tier: KbMatchTier, matches: ModuleMatch[]): void {
+  try {
+    const titles = matches.slice(0, 5).map((m) => m.title);
+    const scores = matches.slice(0, 5).map((m) =>
+      Math.round(m.similarity * 1000) / 1000,
+    );
+    console.log("chat", "kb_match", tier, JSON.stringify(titles), JSON.stringify(scores));
+  } catch { /* logging must never throw */ }
+}
+
 function jsonSafe(value: unknown): unknown {
   if (value === null) return null;
   if (typeof value === "string" || typeof value === "boolean") return value;
@@ -209,6 +219,8 @@ const HISTORY_LIMIT = 20;
 const EMBEDDING_DIMS = 1536;
 const MATCH_THRESHOLD = 0.7;
 const MATCH_COUNT = 3;
+const FALLBACK_MATCH_THRESHOLD = 0.55;
+const FALLBACK_MATCH_COUNT = 5;
 const KB_TITLE_MAX = 200;
 const KB_CONTENT_MAX = 4000;
 const OPENAI_COMPLETIONS_URL = "https://api.openai.com/v1/chat/completions";
@@ -1077,10 +1089,11 @@ async function retrieveKbBlock(
     const embedding = await embedUserMessage(message);
     if (!embedding) return "";
 
-    const matches = await matchModules(admin, embedding);
-    if (matches.length === 0) return "";
+    const result = await matchModules(admin, embedding);
+    logKbMatch(result.tier, result.matches);
+    if (result.matches.length === 0) return "";
 
-    return formatKbBlock(matches, emotions);
+    return formatKbBlock(result.matches, emotions);
   } catch {
     return "";
   }
@@ -1120,16 +1133,17 @@ async function embedUserMessage(message: string): Promise<number[] | null> {
   return embedding;
 }
 
-type ModuleMatch = { title: string; content: string };
+type ModuleMatch = { title: string; content: string; similarity: number };
+type KbMatchTier = "primary" | "fallback" | "none";
+type KbResult = { matches: ModuleMatch[]; tier: KbMatchTier };
 
-async function matchModules(
+async function matchModulesRpc(
   admin: SupabaseClient,
   embedding: number[],
+  threshold: number,
+  count: number,
 ): Promise<ModuleMatch[]> {
-  const params = {
-    match_threshold: MATCH_THRESHOLD,
-    match_count: MATCH_COUNT,
-  };
+  const params = { match_threshold: threshold, match_count: count };
 
   const first = await admin.rpc("match_modules", {
     ...params,
@@ -1149,6 +1163,27 @@ async function matchModules(
   return parseMatches(second.data);
 }
 
+async function matchModules(
+  admin: SupabaseClient,
+  embedding: number[],
+): Promise<KbResult> {
+  const primary = await matchModulesRpc(
+    admin, embedding, MATCH_THRESHOLD, MATCH_COUNT,
+  );
+  if (primary.length > 0) {
+    return { matches: primary, tier: "primary" };
+  }
+
+  const fallback = await matchModulesRpc(
+    admin, embedding, FALLBACK_MATCH_THRESHOLD, FALLBACK_MATCH_COUNT,
+  );
+  if (fallback.length > 0) {
+    return { matches: fallback, tier: "fallback" };
+  }
+
+  return { matches: [], tier: "none" };
+}
+
 function parseMatches(data: unknown[]): ModuleMatch[] {
   const matches: ModuleMatch[] = [];
   for (const row of data) {
@@ -1156,7 +1191,11 @@ function parseMatches(data: unknown[]): ModuleMatch[] {
     const title = typeof row.title === "string" ? row.title.trim() : "";
     const content = typeof row.content === "string" ? row.content.trim() : "";
     if (!title && !content) continue;
-    matches.push({ title, content });
+    const similarity =
+      typeof (row as Record<string, unknown>).similarity === "number"
+        ? (row as Record<string, unknown>).similarity as number
+        : 0;
+    matches.push({ title, content, similarity });
   }
   return matches;
 }
