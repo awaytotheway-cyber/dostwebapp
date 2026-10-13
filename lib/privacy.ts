@@ -126,6 +126,25 @@ export async function deleteMyConversations(): Promise<PrivacyResult> {
   }
 }
 
+export async function deleteMessage(messageId: string): Promise<PrivacyResult> {
+  try {
+    const { error, response } = await supabase.functions.invoke('delete-message', {
+      body: { message_id: messageId },
+    });
+
+    if (error) {
+      return {
+        ok: false,
+        message: messageForStatus(statusFromInvoke(error, response), isNetworkError(error), 'delete'),
+      };
+    }
+
+    return { ok: true };
+  } catch {
+    return { ok: false, message: gentleError() };
+  }
+}
+
 export async function deleteMyAccount(): Promise<PrivacyResult> {
   try {
     const { error, response } = await supabase.functions.invoke('delete-account', {
