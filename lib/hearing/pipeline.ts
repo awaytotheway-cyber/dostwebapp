@@ -20,6 +20,7 @@ import {
 } from './hearingBridge';
 import { redactPII } from './redaction';
 import { getSensitivity } from './sensitivity';
+import { writeSessionSummary } from './sessionSummary';
 import { analyzeVoiceprint, type Voiceprint } from './speakerFingerprint';
 import {
   verifySpeaker,
@@ -329,6 +330,19 @@ export async function stopHearingSession(): Promise<void> {
       segments_discarded_ambiguous: active.segmentsDiscardedAmbiguous,
     })
     .eq('id', active.sessionId);
+
+  // Phase 3: roll this session's signals up into one summary row for
+  // the chat context and the nightly loop. Fail-open — a missing
+  // aggregate must never block the session from ending cleanly.
+  await writeSessionSummary({
+    userId: active.userId,
+    sessionId: active.sessionId,
+    startedAt: active.startedAt,
+    endedAt,
+    totalMs,
+    speechMs,
+    segmentsMatched: active.segmentsMatched,
+  });
 
   active.unsubscribe();
   ctx = null;

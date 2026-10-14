@@ -474,13 +474,15 @@ async function handleRequest(req: Request): Promise<Response> {
       return json(429, { error: GENERIC_RATE_LIMIT });
     }
 
-    const [history, profile, memory, personalityProfile, adminAnswers] = await Promise.all([
-      loadHistory(userClient, userId),
-      loadProfile(userClient, userId),
-      loadMemory(userClient, userId),
-      loadPersonalityProfile(userClient, userId),
-      loadAdminOnboardingAnswers(userClient, userId),
-    ]);
+    const [history, profile, memory, personalityProfile, adminAnswers, voice] =
+      await Promise.all([
+        loadHistory(userClient, userId),
+        loadProfile(userClient, userId),
+        loadMemory(userClient, userId),
+        loadPersonalityProfile(userClient, userId),
+        loadAdminOnboardingAnswers(userClient, userId),
+        loadVoiceContext(userClient, userId),
+      ]);
 
     const { data: userRow, error: userInsertError } = await admin
       .from("conversations")
@@ -573,6 +575,7 @@ async function handleRequest(req: Request): Promise<Response> {
       personalityProfile,
       parsed.language,
       adminAnswers,
+      voice,
     );
 
     let assistantText: string;
@@ -1368,6 +1371,197 @@ async function loadMemory(
   }
 }
 
+// ── Voice listening context (Hearing Phase 3) ──────────────────────
+//
+// Reads recent listening_summaries rows — per-session aggregates of
+// how the person has been speaking. Labels and numbers only; audio
+// and transcript text never reach this table, so they can never
+// reach the prompt.
+//
+// THE MOCK QUARANTINE. Two kinds of data live in a summary row:
+//
+//   REAL  emotion/need distributions (semantic, from the transcript)
+//         and measured acoustic features (speaking rate, vocal
+//         stress) — direct signal processing.
+//   MOCK  avg_arousal / avg_valence — acoustic emotion inference,
+//         faked since Phase 1.
+//
+// inference_source marks the provenance of arousal/valence only.
+// Rows are NOT dropped when it reads 'mock' — that would throw away
+// real voice data for the sake of a field we weren't going to use.
+// Instead the arousal/valence fields are ignored unless the row is
+// explicitly non-mock. Until Phase 4 validates a real model, that
+// means they are never read at all.
+//
+// Fail-open: any error yields an empty block and the turn proceeds
+// on text alone.
+
+const VOICE_CONTEXT_DAYS = 14;
+const VOICE_CONTEXT_MAX_SESSIONS = 10;
+
+type VoiceBits = {
+  sessions: number;
+  speechMinutes: number;
+  topEmotions: string[];
+  topNeeds: string[];
+  avgWpm: number | null;
+  avgStress: number | null;
+  arousal: number | null;
+};
+
+const EMPTY_VOICE: VoiceBits = {
+  sessions: 0,
+  speechMinutes: 0,
+  topEmotions: [],
+  topNeeds: [],
+  avgWpm: null,
+  avgStress: null,
+  arousal: null,
+};
+
+async function loadVoiceContext(
+  userClient: SupabaseClient,
+  userId: string,
+): Promise<VoiceBits> {
+  try {
+    const since = new Date(
+      Date.now() - VOICE_CONTEXT_DAYS * 24 * 60 * 60 * 1000,
+    ).toISOString();
+
+    const { data, error } = await userClient
+      .from("listening_summaries")
+      .select(
+        "speech_duration_seconds, emotion_counts, need_counts, avg_speaking_rate_wpm, avg_vocal_stress_index, avg_arousal, inference_source",
+      )
+      .eq("user_id", userId)
+      .gt("session_started_at", since)
+      .order("session_started_at", { ascending: false })
+      .limit(VOICE_CONTEXT_MAX_SESSIONS);
+
+    if (error || !Array.isArray(data) || data.length === 0) return EMPTY_VOICE;
+
+    let speechSeconds = 0;
+    const emotions: Record<string, number> = {};
+    const needs: Record<string, number> = {};
+    const wpmValues: number[] = [];
+    const stressValues: number[] = [];
+    const arousalValues: number[] = [];
+
+    for (const row of data) {
+      speechSeconds += finiteOrZero(row.speech_duration_seconds);
+      mergeCounts(emotions, row.emotion_counts);
+      mergeCounts(needs, row.need_counts);
+
+      const wpm = Number(row.avg_speaking_rate_wpm);
+      if (Number.isFinite(wpm) && wpm > 0) wpmValues.push(wpm);
+
+      const stress = Number(row.avg_vocal_stress_index);
+      if (Number.isFinite(stress) && stress >= 0) stressValues.push(stress);
+
+      // Arousal is read ONLY from rows with real inference.
+      if (row.inference_source === "acoustic_v1" || row.inference_source === "fused_v1") {
+        const arousal = Number(row.avg_arousal);
+        if (Number.isFinite(arousal)) arousalValues.push(arousal);
+      }
+    }
+
+    return {
+      sessions: data.length,
+      speechMinutes: Math.round(speechSeconds / 60),
+      topEmotions: topTokens(emotions, 5),
+      topNeeds: topTokens(needs, 3),
+      avgWpm: average(wpmValues),
+      avgStress: average(stressValues),
+      arousal: average(arousalValues),
+    };
+  } catch {
+    return EMPTY_VOICE;
+  }
+}
+
+function finiteOrZero(value: unknown): number {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function mergeCounts(target: Record<string, number>, source: unknown): void {
+  if (!source || typeof source !== "object" || Array.isArray(source)) return;
+  for (const [token, count] of Object.entries(source as Record<string, unknown>)) {
+    const n = Number(count);
+    if (!Number.isFinite(n) || n <= 0) continue;
+    const clean = sanitizeInject(token, 40);
+    if (!clean) continue;
+    target[clean] = (target[clean] ?? 0) + n;
+  }
+}
+
+function topTokens(counts: Record<string, number>, limit: number): string[] {
+  return Object.entries(counts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([token]) => token);
+}
+
+function average(values: number[]): number | null {
+  if (values.length === 0) return null;
+  return values.reduce((a, b) => a + b, 0) / values.length;
+}
+
+/**
+ * Render the voice block for the system prompt.
+ *
+ * Tone rules matter as much as the data here. This is a private lens
+ * on how the person has been sounding, not an observation to recite.
+ * DOST must never say "you sounded stressed" — partly because it is
+ * creepy, and partly because the underlying read is coarse and, for
+ * arousal, not yet real at all.
+ */
+function buildVoiceContextSection(voice: VoiceBits): string {
+  if (voice.sessions === 0) return "";
+
+  const lines = [
+    "VOICE LISTENING CONTEXT (private — from recent listening sessions this person started themselves)",
+    `Sessions in the last ${VOICE_CONTEXT_DAYS} days: ${voice.sessions} (~${voice.speechMinutes} min of speech)`,
+  ];
+
+  if (voice.topEmotions.length > 0) {
+    lines.push(`Patterns heard most often: ${voice.topEmotions.join(", ")}`);
+  }
+  if (voice.topNeeds.length > 0) {
+    lines.push(`Needs underneath them: ${voice.topNeeds.join(", ")}`);
+  }
+  if (voice.avgWpm !== null) {
+    lines.push(`Typical speaking pace: ${Math.round(voice.avgWpm)} wpm`);
+  }
+  if (voice.avgStress !== null) {
+    const label = voice.avgStress > 0.6
+      ? "elevated"
+      : voice.avgStress > 0.3
+      ? "moderate"
+      : "low";
+    lines.push(`Measured vocal strain: ${label}`);
+  }
+  if (voice.arousal !== null) {
+    const label = voice.arousal > 0.6
+      ? "more activated than flat"
+      : voice.arousal < 0.35
+      ? "more flat than activated"
+      : "middling";
+    lines.push(`Overall vocal activation: ${label}`);
+  }
+
+  lines.push(
+    "How to use this:",
+    "- This is a tonal lens on recent weeks, NOT about the message in front of you.",
+    "- NEVER recite it, quote numbers, or say you listened to or analysed their voice.",
+    "- NEVER claim to know how they sound right now (\"you sound tired\") — you cannot hear this message.",
+    "- Let it gently bias pacing and warmth only: recurring strain earns a slower, softer turn.",
+    "- The emotion patterns here are possibilities from past sessions, not facts about today.",
+  );
+
+  return lines.join("\n");
+}
+
 type PromptContext = {
   name: string;
   intention: string;
@@ -1412,6 +1606,7 @@ function buildSystemPrompt(
   personalityProfile: PersonalityPromptProfile | null = null,
   language = "en",
   adminAnswers: AdminOnboardingAnswerBit[] = [],
+  voice: VoiceBits = EMPTY_VOICE,
 ): string {
   const stage = extracted?.conversation_stage ?? "meeting";
   const themeRepeatNote =
@@ -1431,6 +1626,7 @@ function buildSystemPrompt(
     `CURRENT STAGE: ${stage}`,
     themeRepeatNote,
     buildUserContextSection(profile, memory),
+    buildVoiceContextSection(voice),
     formatAdminOnboardingBlock(adminAnswers),
   ].filter((section) => section.trim().length > 0);
 

@@ -28,3 +28,26 @@ verify_jwt = true
 [functions.extract-emotions]
 enabled = true
 verify_jwt = true
+
+[functions.hearing-extract-emotions]
+enabled = true
+verify_jwt = true
+
+[functions.generate-journey-insight]
+enabled = true
+verify_jwt = true
+
+[functions.transcribe-voice-note]
+enabled = true
+verify_jwt = true
+
+[functions.delete-message]
+enabled = true
+verify_jwt = true
+
+# Invoked by pg_cron with no JWT — it authenticates by checking the
+# service role key in the Authorization header itself. Leaving
+# verify_jwt on here would break the nightly run.
+[functions.nightly-consolidation]
+enabled = true
+verify_jwt = false
