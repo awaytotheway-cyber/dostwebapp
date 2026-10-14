@@ -27,6 +27,9 @@ import {
   type SpeakerCalibration,
   type VerificationResult,
 } from './speakerVerification';
+import { detectDrift, type DriftReport } from './driftDetection';
+import { storeDriftNudge } from './nudge';
+import { generateListeningSummary } from './sessionSummary';
 import { disposeTranscription, transcribeSegment } from './transcription';
 
 /**
@@ -58,7 +61,7 @@ import { disposeTranscription, transcribeSegment } from './transcription';
 export type BatteryMode = 'attentive' | 'balanced' | 'light';
 
 export type PipelineState =
-  | { status: 'idle' }
+  | { status: 'idle'; lastDriftReport?: DriftReport | null }
   | {
       status: 'active';
       sessionId: string;
@@ -330,9 +333,23 @@ export async function stopHearingSession(): Promise<void> {
     })
     .eq('id', active.sessionId);
 
+  // Phase 3: generate the per-session listening summary (fail-open).
+  await generateListeningSummary(active.sessionId, active.userId);
+
+  // Phase 3: check for drift after summary is written (fail-open).
+  let driftReport: DriftReport | null = null;
+  try {
+    driftReport = await detectDrift(active.userId);
+    if (driftReport) {
+      await storeDriftNudge(driftReport);
+    }
+  } catch {
+    // fail-open
+  }
+
   active.unsubscribe();
   ctx = null;
-  setState({ status: 'idle' });
+  setState({ status: 'idle', lastDriftReport: driftReport });
 }
 
 async function abortSession(reason: string): Promise<void> {

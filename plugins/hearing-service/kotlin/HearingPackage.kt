@@ -8,7 +8,10 @@ import com.facebook.react.uimanager.ViewManager
 class HearingPackage : ReactPackage {
   override fun createNativeModules(
     reactContext: ReactApplicationContext
-  ): List<NativeModule> = listOf(HearingModule(reactContext))
+  ): List<NativeModule> = listOf(
+    HearingModule(reactContext),
+    ScheduleModule(reactContext),
+  )
 
   override fun createViewManagers(
     reactContext: ReactApplicationContext

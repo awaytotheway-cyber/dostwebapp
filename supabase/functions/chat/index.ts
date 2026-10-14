@@ -574,6 +574,7 @@ async function handleRequest(req: Request): Promise<Response> {
       buildKbQuery(parsed.message, emotionSnapshot),
       emotionSnapshot,
     );
+    const voiceContext = await fetchVoiceContext(admin, userId);
     const systemPrompt = buildSystemPrompt(
       profile,
       kbBlock,
@@ -585,6 +586,8 @@ async function handleRequest(req: Request): Promise<Response> {
       personalityProfile,
       parsed.language,
       adminAnswers,
+      voiceContext,
+      parsed.driftNudge,
     );
 
     let assistantText: string;
@@ -631,6 +634,7 @@ function parseBody(
     emotionalState: string | null;
     selectedEmotion: string | null;
     selectedNeed: string | null;
+    driftNudge: string | null;
     language: string;
   }
   | { ok: false } {
@@ -665,12 +669,19 @@ function parseBody(
     if (token) selectedNeed = token;
   }
 
+  let driftNudge: string | null = null;
+  const driftNudgeRaw = record.drift_nudge;
+  if (typeof driftNudgeRaw === "string" && driftNudgeRaw.trim().length > 0 && driftNudgeRaw.length <= 1000) {
+    driftNudge = driftNudgeRaw.trim();
+  }
+
   return {
     ok: true,
     message: trimmed,
     emotionalState,
     selectedEmotion,
     selectedNeed,
+    driftNudge,
     language: parseReplyLanguage(record.language),
   };
 }
@@ -1451,6 +1462,8 @@ function buildSystemPrompt(
   personalityProfile: PersonalityPromptProfile | null = null,
   language = "en",
   adminAnswers: AdminOnboardingAnswerBit[] = [],
+  voiceContext = "",
+  driftNudge: string | null = null,
 ): string {
   const stage = extracted?.conversation_stage ?? "meeting";
   const themeRepeatNote =
@@ -1509,6 +1522,14 @@ function buildSystemPrompt(
     sections.push(
       `Example dialogues showing this emotional pattern handled well:\n${dialogueExamples.trim()}`,
     );
+  }
+
+  if (voiceContext.trim()) {
+    sections.push(voiceContext.trim());
+  }
+
+  if (driftNudge) {
+    sections.push(driftNudge);
   }
 
   // Last, so it outweighs the English examples above.
@@ -1767,5 +1788,107 @@ function formatAdminOnboardingBlock(bits: AdminOnboardingAnswerBit[]): string {
     ...lines,
     "Use these as subtle context when they are genuinely relevant. Do not quote them. Do not open with them.",
   ].join("\n");
+}
+
+// ── Voice context (Phase 3) ─────────────────────────────────────────
+// Fail-open: if the query fails or the table doesn't exist, return ""
+// and chat works exactly as before. Never log user content.
+
+type ListeningSummaryRow = {
+  session_started_at: string;
+  session_duration_seconds: number;
+  speech_duration_seconds: number;
+  total_segments: number;
+  emotion_counts: Record<string, number>;
+  dominant_emotion: string | null;
+  need_counts: Record<string, number>;
+  dominant_need: string | null;
+  avg_speaking_rate_wpm: number | null;
+  avg_vocal_stress_index: number | null;
+  avg_arousal: number | null;
+  avg_valence: number | null;
+};
+
+async function fetchVoiceContext(
+  admin: SupabaseClient,
+  userId: string,
+): Promise<string> {
+  try {
+    const { data, error } = await admin
+      .from("listening_summaries")
+      .select(
+        "session_started_at, session_duration_seconds, speech_duration_seconds, total_segments, emotion_counts, dominant_emotion, need_counts, dominant_need, avg_speaking_rate_wpm, avg_vocal_stress_index, avg_arousal, avg_valence",
+      )
+      .eq("user_id", userId)
+      .order("session_started_at", { ascending: false })
+      .limit(3);
+
+    if (error || !data || data.length === 0) return "";
+
+    const summaries = data as ListeningSummaryRow[];
+    const lines: string[] = [
+      "VOICE LISTENING CONTEXT (from the person's recent listening sessions — emotion/need labels and acoustic averages only, never transcript text):",
+      "Use this to sense how they've been feeling recently. Reference it only when naturally relevant — never announce that you have voice data.",
+    ];
+
+    for (const s of summaries) {
+      const when = formatRelativeTime(s.session_started_at);
+      const dur = Math.round(s.session_duration_seconds / 60);
+      const parts: string[] = [`${when}, ${dur}min session`];
+
+      if (s.dominant_emotion) {
+        parts.push(`dominant emotion: ${s.dominant_emotion}`);
+      }
+      if (s.dominant_need) {
+        parts.push(`underlying need: ${s.dominant_need}`);
+      }
+
+      const emotions = s.emotion_counts ?? {};
+      const emotionList = Object.entries(emotions)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 4)
+        .map(([e, c]) => `${e}(${c})`)
+        .join(", ");
+      if (emotionList) {
+        parts.push(`emotions: ${emotionList}`);
+      }
+
+      if (s.avg_vocal_stress_index !== null) {
+        const stress = Number(s.avg_vocal_stress_index);
+        if (stress > 0.6) parts.push("vocal stress: elevated");
+        else if (stress > 0.3) parts.push("vocal stress: moderate");
+        else parts.push("vocal stress: low");
+      }
+
+      if (s.avg_speaking_rate_wpm !== null) {
+        parts.push(`speaking rate: ${Math.round(Number(s.avg_speaking_rate_wpm))} wpm`);
+      }
+
+      lines.push(`- ${parts.join("; ")}`);
+    }
+
+    lines.push(
+      "Integrate this gently into your understanding. Do not read these stats back to the person.",
+    );
+
+    return lines.join("\n");
+  } catch {
+    return "";
+  }
+}
+
+function formatRelativeTime(isoTimestamp: string): string {
+  try {
+    const then = new Date(isoTimestamp).getTime();
+    const now = Date.now();
+    const hoursAgo = Math.round((now - then) / (1000 * 60 * 60));
+    if (hoursAgo < 1) return "just now";
+    if (hoursAgo < 24) return `${hoursAgo}h ago`;
+    const daysAgo = Math.round(hoursAgo / 24);
+    if (daysAgo === 1) return "yesterday";
+    return `${daysAgo} days ago`;
+  } catch {
+    return "recently";
+  }
 }
 

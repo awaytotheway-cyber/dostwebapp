@@ -1,6 +1,7 @@
 import { FunctionsFetchError, FunctionsHttpError } from '@supabase/supabase-js';
 import { recordApiError } from './diagnostics';
 import type { ConversationStage } from './emotionalStates';
+import { consumeDriftNudge } from './hearing/nudge';
 import { ensureAnonymousSession } from './session';
 import { getAppLanguage, t as translate } from './i18n';
 import { supabase } from './supabase';
@@ -215,8 +216,14 @@ export async function sendChatMessage(
     emotional_state?: string;
     selected_emotion?: string;
     selected_need?: string;
+    drift_nudge?: string;
     language: string;
   } = { message: text, language: getAppLanguage() };
+
+  const nudge = await consumeDriftNudge();
+  if (nudge) {
+    body.drift_nudge = nudge;
+  }
   const emotion =
     typeof options?.emotionalState === 'string'
       ? options.emotionalState.trim()

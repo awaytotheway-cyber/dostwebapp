@@ -26,11 +26,16 @@ const path = require('path');
 const PACKAGE = 'com.dost.app';
 const SERVICE_CLASS = 'com.dost.app.hearing.HearingService';
 const PACKAGE_CLASS = 'com.dost.app.hearing.HearingPackage';
+const SCHEDULE_RECEIVER_CLASS = 'com.dost.app.hearing.ScheduleReceiver';
+const BOOT_RECEIVER_CLASS = 'com.dost.app.hearing.BootReceiver';
 const KOTLIN_FILES = [
   'HearingService.kt',
   'HearingModule.kt',
   'HearingPackage.kt',
   'EnrollmentRecorder.kt',
+  'ScheduleReceiver.kt',
+  'BootReceiver.kt',
+  'ScheduleModule.kt',
 ];
 
 function withHearingKotlinSources(config) {
@@ -83,6 +88,36 @@ function withHearingServiceManifest(config) {
         'android:stopWithTask': 'false',
       },
     });
+
+    // Schedule alarm receiver
+    application.receiver = application.receiver || [];
+    if (!application.receiver.find((r) => r.$ && r.$['android:name'] === SCHEDULE_RECEIVER_CLASS)) {
+      application.receiver.push({
+        $: {
+          'android:name': SCHEDULE_RECEIVER_CLASS,
+          'android:exported': 'false',
+        },
+      });
+    }
+
+    // Boot receiver — re-registers alarms only, never starts mic
+    if (!application.receiver.find((r) => r.$ && r.$['android:name'] === BOOT_RECEIVER_CLASS)) {
+      application.receiver.push({
+        $: {
+          'android:name': BOOT_RECEIVER_CLASS,
+          'android:exported': 'false',
+        },
+        'intent-filter': [
+          {
+            action: [
+              { $: { 'android:name': 'android.intent.action.BOOT_COMPLETED' } },
+              { $: { 'android:name': 'android.intent.action.QUICKBOOT_POWERON' } },
+            ],
+          },
+        ],
+      });
+    }
+
     return cfg;
   });
 }

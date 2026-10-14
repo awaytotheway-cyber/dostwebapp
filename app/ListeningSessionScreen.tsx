@@ -29,6 +29,7 @@ import {
   type BatteryMode,
   type PipelineState,
 } from '../lib/hearing/pipeline';
+import type { DriftReport } from '../lib/hearing/driftDetection';
 import { supabase } from '../lib/supabase';
 import { labelForEmotionChip } from '../lib/dost/suggestionChips';
 import { t as translate, useI18n, type TKey } from '../lib/i18n';
@@ -59,6 +60,7 @@ export default function ListeningSessionScreen({ navigation }: Props) {
   const [downloadPct, setDownloadPct] = useState<number>(0);
   const [pipelineState, setPipelineState] = useState<PipelineState>(getPipelineState());
   const [summary, setSummary] = useState<SessionSummary | null>(null);
+  const [driftReport, setDriftReport] = useState<DriftReport | null>(null);
   const startingRef = useRef(false);
 
   // Redirect to disclosure if the user has never acknowledged it.
@@ -163,6 +165,10 @@ export default function ListeningSessionScreen({ navigation }: Props) {
     } catch {
       // ignore — surface via state
     }
+    const currentState = getPipelineState();
+    if (currentState.status === 'idle' && currentState.lastDriftReport) {
+      setDriftReport(currentState.lastDriftReport);
+    }
     setPhase('summary');
     if (sessionId) {
       const s = await loadSessionSummary(sessionId);
@@ -172,6 +178,7 @@ export default function ListeningSessionScreen({ navigation }: Props) {
 
   const onNewSession = useCallback(() => {
     setSummary(null);
+    setDriftReport(null);
     setPhase('idle');
   }, []);
 
@@ -205,7 +212,12 @@ export default function ListeningSessionScreen({ navigation }: Props) {
       )}
 
       {phase === 'summary' && summary && (
-        <SummaryView summary={summary} onNewSession={onNewSession} />
+        <SummaryView
+          summary={summary}
+          driftReport={driftReport}
+          onNewSession={onNewSession}
+          onReEnroll={() => navigation.navigate('SpeakerEnrollment', { returnTo: 'ListeningSession' })}
+        />
       )}
     </ScrollView>
   );
@@ -369,10 +381,14 @@ function ActiveView({
 
 function SummaryView({
   summary,
+  driftReport,
   onNewSession,
+  onReEnroll,
 }: {
   summary: SessionSummary;
+  driftReport: DriftReport | null;
   onNewSession: () => void;
+  onReEnroll: () => void;
 }) {
   const { t } = useI18n();
   return (
@@ -439,6 +455,47 @@ function SummaryView({
       {summary.allMock && (
         <View style={styles.mockBanner}>
           <Text style={styles.mockBannerText}>{t('listening.mockBanner')}</Text>
+        </View>
+      )}
+
+      {driftReport?.hasDrift && (
+        <View style={styles.driftCard}>
+          <Text style={styles.driftHeading}>{t('listening.driftDetected')}</Text>
+          {driftReport.dominantEmotionShift && (
+            <Text style={styles.driftText}>
+              {t('listening.driftEmotionShift', {
+                from: driftReport.dominantEmotionShift.from,
+                to: driftReport.dominantEmotionShift.to,
+              })}
+            </Text>
+          )}
+          {driftReport.dominantNeedShift && (
+            <Text style={styles.driftText}>
+              {t('listening.driftNeedShift', {
+                from: driftReport.dominantNeedShift.from,
+                to: driftReport.dominantNeedShift.to,
+              })}
+            </Text>
+          )}
+          {driftReport.dimensions.map((d) => (
+            <Text key={d.dimension} style={styles.driftText}>
+              {d.label}: {d.direction === 'up' ? '↑' : '↓'}
+            </Text>
+          ))}
+        </View>
+      )}
+
+      {driftReport?.shouldPromptReEnrollment && (
+        <View style={styles.reEnrollCard}>
+          <Text style={styles.reEnrollHeading}>{t('listening.reEnrollmentNeeded')}</Text>
+          <Text style={styles.reEnrollBody}>{t('listening.reEnrollmentBody')}</Text>
+          <GentlePressable
+            accessibilityRole="button"
+            onPress={onReEnroll}
+            style={({ pressed }) => [styles.reEnrollButton, pressed && { opacity: 0.7 }]}
+          >
+            <Text style={styles.reEnrollButtonText}>{t('listening.reEnrollNow')}</Text>
+          </GentlePressable>
         </View>
       )}
 
@@ -799,6 +856,55 @@ const styles = StyleSheet.create({
     ...theme.type.caption,
     color: theme.colors.cream,
     textAlign: 'center',
+  },
+  driftCard: {
+    borderWidth: 1,
+    borderColor: theme.colors.gold,
+    borderRadius: theme.radius.xl,
+    backgroundColor: theme.colors.goldWash,
+    padding: theme.spacing.xl,
+    marginBottom: theme.spacing.lg,
+  },
+  driftHeading: {
+    ...theme.type.label,
+    color: theme.colors.gold,
+    marginBottom: theme.spacing.sm,
+  },
+  driftText: {
+    ...theme.type.body,
+    color: theme.colors.cream,
+    marginBottom: theme.spacing.xs,
+  },
+  reEnrollCard: {
+    borderWidth: 1,
+    borderColor: theme.colors.terracottaDash,
+    borderRadius: theme.radius.xl,
+    backgroundColor: theme.colors.terracottaWash,
+    padding: theme.spacing.xl,
+    marginBottom: theme.spacing.lg,
+  },
+  reEnrollHeading: {
+    ...theme.type.label,
+    color: theme.colors.cream,
+    marginBottom: theme.spacing.sm,
+  },
+  reEnrollBody: {
+    ...theme.type.body,
+    color: theme.colors.sand,
+    marginBottom: theme.spacing.md,
+  },
+  reEnrollButton: {
+    borderWidth: 1,
+    borderColor: theme.colors.cream,
+    borderRadius: theme.radius.cta,
+    paddingHorizontal: theme.spacing.xl,
+    paddingVertical: theme.spacing.sm,
+    alignSelf: 'flex-start',
+  },
+  reEnrollButtonText: {
+    ...theme.type.label,
+    color: theme.colors.cream,
+    fontSize: 14,
   },
   secondaryButton: {
     minHeight: theme.spacing['4xl'],
