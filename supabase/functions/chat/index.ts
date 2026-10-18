@@ -9,6 +9,12 @@ import { DOST_SAMPLE_CONVERSATIONS } from "../_shared/sampleConversations.ts";
 import { buildMentorBoxesSection } from "../_shared/mentorBoxes.ts";
 import { resolveTurnStage } from "../_shared/conversationStage.ts";
 import {
+  namedFeeling,
+  planTurn,
+  refineStageFromText,
+  sliceCurrentConversation,
+} from "../_shared/conversationFlow.ts";
+import {
   parseReplyLanguage,
   replyLanguageInstruction,
 } from "../_shared/replyLanguage.ts";
@@ -224,7 +230,9 @@ const FALLBACK_MATCH_COUNT = 5;
 const KB_TITLE_MAX = 200;
 const KB_CONTENT_MAX = 4000;
 const OPENAI_COMPLETIONS_URL = "https://api.openai.com/v1/chat/completions";
-const OPENAI_CHAT_MODEL = "gpt-4o-mini";
+// Override with the OPENAI_CHAT_MODEL secret (e.g. gpt-4.1 or gpt-4o):
+// larger models follow the per-turn guidance noticeably better.
+const OPENAI_CHAT_MODEL = (Deno.env.get("OPENAI_CHAT_MODEL") ?? "").trim() || "gpt-4o-mini";
 const OPENAI_EMBEDDINGS_URL = "https://api.openai.com/v1/embeddings";
 const OPENAI_EMBED_MODEL = "text-embedding-3-small";
 
@@ -486,7 +494,7 @@ async function handleRequest(req: Request): Promise<Response> {
       return json(429, { error: GENERIC_RATE_LIMIT });
     }
 
-    const [history, profile, memory, personalityProfile, adminAnswers] = await Promise.all([
+    const [historyRows, profile, memory, personalityProfile, adminAnswers] = await Promise.all([
       loadHistory(userClient, userId),
       loadProfile(userClient, userId),
       loadMemory(userClient, userId),
@@ -534,16 +542,36 @@ async function handleRequest(req: Request): Promise<Response> {
       });
     }
 
+    const history: HistoryTurn[] = historyRows.map(({ role, content }) => ({ role, content }));
+    const conversation = sliceCurrentConversation(historyRows, Date.now()).map(
+      ({ role, content }) => ({ role, content }),
+    );
+    const userTexts = [
+      ...conversation.filter((t) => t.role === "user").map((t) => t.content),
+      parsed.message,
+    ];
+    const conversationStage = refineStageFromText(
+      resolveTurnStage(
+        emotionSnapshot?.conversation_stage ?? "meeting",
+        {
+          selectedEmotion: parsed.selectedEmotion,
+          selectedNeed: parsed.selectedNeed,
+        },
+      ),
+      userTexts,
+    );
+    // A feeling typed in their own words counts like a tapped chip, so the
+    // need chips appear without asking them to name it twice.
+    const typedFeeling = userTexts.map(namedFeeling).find((f) => f) ?? null;
     const selectedEmotion =
       parsed.selectedEmotion ??
-      (await loadRecentSelectedEmotion(admin, userId, userMessageId));
-    const conversationStage = resolveTurnStage(
-      emotionSnapshot?.conversation_stage ?? "meeting",
-      {
-        selectedEmotion: parsed.selectedEmotion,
-        selectedNeed: parsed.selectedNeed,
-      },
-    );
+      (await loadRecentSelectedEmotion(admin, userId, userMessageId)) ??
+      typedFeeling;
+    const turnPlan = planTurn({
+      stage: conversationStage,
+      latestUserText: parsed.message,
+      conversation,
+    });
     const { suggested_emotions: suggestedEmotions, suggested_needs: suggestedNeeds } =
       generateSuggestionChips({
         conversation_stage: conversationStage,
@@ -585,6 +613,7 @@ async function handleRequest(req: Request): Promise<Response> {
       personalityProfile,
       parsed.language,
       adminAnswers,
+      turnPlan.guidance,
     );
 
     let assistantText: string;
@@ -1240,10 +1269,12 @@ function isEmbedding(value: unknown): value is number[] {
 
 type HistoryTurn = { role: "user" | "assistant"; content: string };
 
+type HistoryRow = HistoryTurn & { created_at: string | null };
+
 async function loadHistory(
   userClient: SupabaseClient,
   userId: string,
-): Promise<HistoryTurn[]> {
+): Promise<HistoryRow[]> {
   const { data, error } = await userClient
     .from("conversations")
     .select("role, content, created_at")
@@ -1253,13 +1284,14 @@ async function loadHistory(
 
   if (error || !Array.isArray(data)) return [];
 
-  const turns: HistoryTurn[] = [];
+  const turns: HistoryRow[] = [];
   for (const row of data) {
     if (!row || typeof row !== "object") continue;
     const role = row.role === "user" || row.role === "assistant" ? row.role : null;
     const content = typeof row.content === "string" ? row.content : "";
     if (!role || !content) continue;
-    turns.push({ role, content });
+    const created_at = typeof row.created_at === "string" ? row.created_at : null;
+    turns.push({ role, content, created_at });
   }
   return turns.reverse();
 }
@@ -1451,6 +1483,7 @@ function buildSystemPrompt(
   personalityProfile: PersonalityPromptProfile | null = null,
   language = "en",
   adminAnswers: AdminOnboardingAnswerBit[] = [],
+  turnGuidance = "",
 ): string {
   const stage = extracted?.conversation_stage ?? "meeting";
   const themeRepeatNote =
@@ -1469,6 +1502,7 @@ function buildSystemPrompt(
     DOST_SAMPLE_CONVERSATIONS.trim(),
     personalityContext.trim(),
     `CURRENT STAGE: ${stage}`,
+    turnGuidance,
     themeRepeatNote,
     buildUserContextSection(profile, memory),
     formatAdminOnboardingBlock(adminAnswers),
@@ -1593,7 +1627,11 @@ async function callOpenAI(
       model: OPENAI_CHAT_MODEL,
       messages,
       max_tokens: 200,
-      temperature: 0.8,
+      temperature: 0.85,
+      // Discourage the stock phrases and repeated question shapes that
+      // made replies feel monotonous.
+      presence_penalty: 0.4,
+      frequency_penalty: 0.3,
     }),
   });
 
