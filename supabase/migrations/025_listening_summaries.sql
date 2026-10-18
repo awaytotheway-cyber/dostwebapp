@@ -43,18 +43,23 @@ create table if not exists listening_summaries (
   user_id uuid not null references auth.users(id) on delete cascade,
   session_id uuid not null references voice_sessions(id) on delete cascade,
 
+  -- Not-null-ness here mirrors the live table exactly: a summary is
+  -- written only for a session that has ended, so its times, durations
+  -- and counts are always known. The writer always supplies them.
   session_started_at timestamptz not null,
-  session_ended_at timestamptz,
-  session_duration_seconds numeric,
-  speech_duration_seconds numeric,
+  session_ended_at timestamptz not null,
+  session_duration_seconds numeric not null,
+  speech_duration_seconds numeric not null default 0,
 
-  total_segments int default 0,
-  matched_segments int default 0,
+  total_segments int not null default 0,
+  matched_segments int not null default 0,
 
   -- SEMANTIC (real — from transcript via hearing-extract-emotions)
-  emotion_counts jsonb,
+  -- The counts are never null — an empty object means "nothing heard"
+  -- — but the dominant token is null when the counts are empty.
+  emotion_counts jsonb not null default '{}'::jsonb,
   dominant_emotion text,
-  need_counts jsonb,
+  need_counts jsonb not null default '{}'::jsonb,
   dominant_need text,
 
   -- MEASURED ACOUSTIC FEATURES (real — signal processing, not emotion)
