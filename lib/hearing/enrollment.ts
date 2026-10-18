@@ -12,9 +12,23 @@ import {
 } from './speakerFingerprint';
 import {
   calibrateFromSelfScores,
+  calibrateNeuralFromSelfScores,
   MIN_SPEECH_SECONDS,
+  type NeuralCalibration,
   type SpeakerCalibration,
 } from './speakerVerification';
+import {
+  averageEmbeddings,
+  cosineSimilarity,
+  embedSpeech,
+  EMBEDDING_LENGTH,
+  ensureSpeakerModel,
+  isNeuralSpeakerSupported,
+  isSpeakerModelReady,
+  SPEAKER_MODEL_VERSION,
+  speechStats,
+  type Embedding,
+} from './speakerEmbedding';
 import { VOICEPRINT_MODEL_VERSION } from './voiceprintModel';
 
 /**
@@ -34,9 +48,17 @@ import { VOICEPRINT_MODEL_VERSION } from './voiceprintModel';
  * - deleteEnrollment()        clears the row so no session can start
  *                            until re-enrollment.
  *
- * The enrollment audio (PCM clips) never touches disk. Only the
- * resulting 26-dim voiceprint vector is persisted, plus a few threshold
- * numbers kept on this device (they depend on its microphone).
+ * Two engines:
+ *   'neural' — 256-dim speaker embedding (speakerEmbedding.ts). The
+ *              reference and thresholds are kept only on this device;
+ *              the Supabase row records that enrollment happened and
+ *              which model it used, with no voiceprint.
+ *   'mfcc'   — the older 26-dim voiceprint, used only when this app
+ *              binary or network can't run the neural model.
+ * On a device that supports the neural engine, an older MFCC enrollment
+ * counts as missing, so the user re-enrolls once and gets the better gate.
+ *
+ * The enrollment audio (PCM clips) never touches disk.
  */
 
 const ENROLLMENT_ACK_KEY = 'dost.hearing.enrollment.complete.v1';
@@ -44,10 +66,12 @@ const ENROLLMENT_LANGS_KEY = 'dost.hearing.enrollment.languages.v1';
 
 // Method identifier used by upserts. Matches the check constraint on
 // speaker_enrollment.enrollment_method.
-const ENROLLMENT_METHOD: 'mfcc_fingerprint' | 'embedding_model' = 'mfcc_fingerprint';
+type EnrollmentMethod = 'mfcc_fingerprint' | 'embedding_model';
 // Enrollments saved under any other version are treated as missing, so
 // the user is sent back through enrollment after a model change.
 const MODEL_VERSION = VOICEPRINT_MODEL_VERSION;
+
+export type EnrollmentEngine = 'neural' | 'mfcc';
 
 // Each 12 s clip must contain at least this much voiced audio.
 const MIN_CLIP_SPEECH_SECONDS = 3;
@@ -58,6 +82,31 @@ const WINDOW_HOP_SECONDS = 1.5;
 
 function calibrationKey(userId: string): string {
   return `${CALIBRATION_KEY_PREFIX}${MODEL_VERSION}.${userId}`;
+}
+
+const NEURAL_PROFILE_KEY_PREFIX = 'dost.hearing.neuralProfile.';
+
+function neuralProfileKey(userId: string): string {
+  return `${NEURAL_PROFILE_KEY_PREFIX}${SPEAKER_MODEL_VERSION}.${userId}`;
+}
+
+/**
+ * Pick the engine for a fresh enrollment, downloading the neural model
+ * first if needed. Falls back to 'mfcc' rather than failing.
+ */
+export async function prepareEnrollmentEngine(
+  onProgress?: (fraction: number) => void,
+): Promise<EnrollmentEngine> {
+  if (!isNeuralSpeakerSupported()) return 'mfcc';
+  const ready = await ensureSpeakerModel(onProgress);
+  if (!ready) {
+    await recordApiError({
+      source: 'voice-pipeline',
+      code: 'speaker_model_unavailable',
+      step: 'download',
+    });
+  }
+  return ready ? 'neural' : 'mfcc';
 }
 
 export type EnrollmentLanguage = 'en' | 'hi' | 'mr';
@@ -362,11 +411,9 @@ export async function cancelEnrollmentCapture(): Promise<void> {
 
 // ─── voiceprint + persistence ─────────────────────────────────────
 
-export type EnrollmentClipPrint = {
-  voiceprint: Voiceprint;
-  windows: Voiceprint[];
-  snrDb: number;
-};
+export type EnrollmentClipPrint =
+  | { engine: 'mfcc'; voiceprint: Voiceprint; windows: Voiceprint[]; snrDb: number }
+  | { engine: 'neural'; embedding: Embedding; windows: Embedding[]; snrDb: number };
 
 /**
  * Analyse one enrollment clip: a whole-clip voiceprint plus voiceprints
@@ -378,8 +425,29 @@ export type EnrollmentClipPrint = {
  */
 export async function voiceprintFromClip(
   clip: CapturedClip,
+  engine: EnrollmentEngine = 'mfcc',
 ): Promise<EnrollmentClipPrint> {
   const yieldToUi = () => new Promise<void>((r) => setTimeout(r, 0));
+
+  if (engine === 'neural') {
+    const stats = speechStats(clip.pcm, clip.sampleRate);
+    if (stats.speechSeconds < MIN_CLIP_SPEECH_SECONDS) {
+      throw new Error(tn('errors.tooLittleSpeech', Math.round(stats.speechSeconds)));
+    }
+    const embedding = await embedSpeech(clip.pcm, clip.sampleRate);
+    if (!embedding) throw new Error(translate('errors.notEnoughClearSpeech'));
+    const win = Math.round(WINDOW_SECONDS * clip.sampleRate);
+    const hop = Math.round(WINDOW_HOP_SECONDS * clip.sampleRate);
+    const windows: Embedding[] = [];
+    for (let start = 0; start + win <= clip.pcm.length; start += hop) {
+      await yieldToUi();
+      const slice = clip.pcm.subarray(start, start + win);
+      if (speechStats(slice, clip.sampleRate).speechSeconds < MIN_SPEECH_SECONDS) continue;
+      const w = await embedSpeech(slice, clip.sampleRate);
+      if (w) windows.push(w);
+    }
+    return { engine: 'neural', embedding, windows, snrDb: stats.snrDb };
+  }
 
   const whole = analyzeVoiceprint(clip.pcm, clip.sampleRate);
   if (whole.speechSeconds < MIN_CLIP_SPEECH_SECONDS) {
@@ -393,37 +461,67 @@ export async function voiceprintFromClip(
     const w = analyzeVoiceprint(clip.pcm.subarray(start, start + win), clip.sampleRate);
     if (w.speechSeconds >= MIN_SPEECH_SECONDS) windows.push(w.voiceprint);
   }
-  return { voiceprint: whole.voiceprint, windows, snrDb: whole.snrDb };
+  return { engine: 'mfcc', voiceprint: whole.voiceprint, windows, snrDb: whole.snrDb };
 }
 
 export async function saveEnrollment(clips: EnrollmentClipPrint[]): Promise<void> {
   if (clips.length < 2) {
     throw new Error('No enrollment clips captured');
   }
-  const reference = averageVoiceprints(clips.map((c) => c.voiceprint));
-  if (reference.length !== VOICEPRINT_LENGTH) {
-    throw new Error('Voiceprint dimension mismatch');
+  const engine = clips[0].engine;
+  if (clips.some((c) => c.engine !== engine)) {
+    throw new Error('Enrollment clips were analysed by different engines');
   }
 
-  // How closely each 3 s window matches the user's other clips.
-  const selfScores = clips.flatMap((clip, i) => {
-    const others = averageVoiceprints(
-      clips.filter((_, j) => j !== i).map((c) => c.voiceprint),
-    );
-    return clip.windows.map((w) => voiceprintSimilarity(w, others));
-  });
+  let selfScores: number[];
+  let saveLocally: (userId: string) => Promise<void>;
+  let row: { voiceprint: Voiceprint | null; method: EnrollmentMethod; version: string };
+  const snrs = clips.map((c) => c.snrDb).sort((a, b) => a - b);
+  const medianSnr = snrs[Math.floor(snrs.length / 2)];
+
+  if (engine === 'neural') {
+    const prints = clips as Extract<EnrollmentClipPrint, { engine: 'neural' }>[];
+    const reference = averageEmbeddings(prints.map((c) => c.embedding));
+    // How closely each 3 s window matches the user's other clips.
+    selfScores = prints.flatMap((clip, i) => {
+      const others = averageEmbeddings(
+        prints.filter((_, j) => j !== i).map((c) => c.embedding),
+      );
+      return clip.windows.map((w) => cosineSimilarity(w, others));
+    });
+    const calibration = calibrateNeuralFromSelfScores(selfScores, medianSnr);
+    const profile: StoredNeuralProfile = { reference, calibration };
+    saveLocally = (userId) =>
+      AsyncStorage.setItem(neuralProfileKey(userId), JSON.stringify(profile));
+    row = { voiceprint: null, method: 'embedding_model', version: SPEAKER_MODEL_VERSION };
+  } else {
+    const prints = clips as Extract<EnrollmentClipPrint, { engine: 'mfcc' }>[];
+    const reference = averageVoiceprints(prints.map((c) => c.voiceprint));
+    if (reference.length !== VOICEPRINT_LENGTH) {
+      throw new Error('Voiceprint dimension mismatch');
+    }
+    selfScores = prints.flatMap((clip, i) => {
+      const others = averageVoiceprints(
+        prints.filter((_, j) => j !== i).map((c) => c.voiceprint),
+      );
+      return clip.windows.map((w) => voiceprintSimilarity(w, others));
+    });
+    const calibration = calibrateFromSelfScores(selfScores, medianSnr);
+    saveLocally = (userId) =>
+      AsyncStorage.setItem(calibrationKey(userId), JSON.stringify(calibration));
+    row = { voiceprint: reference, method: 'mfcc_fingerprint', version: MODEL_VERSION };
+  }
+
   if (selfScores.length < 5) {
     const err = new Error(translate('errors.notEnoughClearSpeech'));
     await recordApiError({
       source: 'voice-pipeline',
       code: 'enrollment_insufficient_speech',
       step: 'calibrate',
-      detail: `windows=${selfScores.length}, clips=${clips.length}`,
+      detail: `engine=${engine}, windows=${selfScores.length}, clips=${clips.length}`,
     });
     throw err;
   }
-  const snrs = clips.map((c) => c.snrDb).sort((a, b) => a - b);
-  const calibration = calibrateFromSelfScores(selfScores, snrs[Math.floor(snrs.length / 2)]);
 
   const { data: userData, error: userErr } = await supabase.auth.getUser();
   if (userErr || !userData?.user) {
@@ -440,9 +538,9 @@ export async function saveEnrollment(clips: EnrollmentClipPrint[]): Promise<void
   const now = new Date().toISOString();
   const { error } = await supabase.from('speaker_enrollment').upsert({
     user_id: userId,
-    voiceprint: reference,
-    enrollment_method: ENROLLMENT_METHOD,
-    model_version: MODEL_VERSION,
+    voiceprint: row.voiceprint,
+    enrollment_method: row.method,
+    model_version: row.version,
     clips_used: clips.length,
     enrolled_at: now,
     updated_at: now,
@@ -460,7 +558,7 @@ export async function saveEnrollment(clips: EnrollmentClipPrint[]): Promise<void
     throw new Error(error.message || translate('errors.enrollmentSaveFailed'));
   }
 
-  await AsyncStorage.setItem(calibrationKey(userId), JSON.stringify(calibration));
+  await saveLocally(userId);
 
   try {
     await AsyncStorage.setItem(ENROLLMENT_ACK_KEY, now);
@@ -469,10 +567,11 @@ export async function saveEnrollment(clips: EnrollmentClipPrint[]): Promise<void
   }
 }
 
-export type SpeakerProfile = {
-  reference: Voiceprint;
-  calibration: SpeakerCalibration;
-};
+export type SpeakerProfile =
+  | { engine: 'neural'; reference: Embedding; calibration: NeuralCalibration }
+  | { engine: 'mfcc'; reference: Voiceprint; calibration: SpeakerCalibration };
+
+type StoredNeuralProfile = { reference: Embedding; calibration: NeuralCalibration };
 
 /**
  * Fetch the enrolled reference voiceprint and this phone's thresholds.
@@ -486,17 +585,26 @@ export async function loadSpeakerProfile(): Promise<SpeakerProfile | null> {
   const userId = userData?.user?.id;
   if (!userId) return null;
 
-  const calibration = await loadCalibration(userId);
-  if (!calibration) return null;
-
   const { data, error } = await supabase
     .from('speaker_enrollment')
     .select('voiceprint, clips_used, model_version')
     .eq('user_id', userId)
     .maybeSingle();
-  if (error || !data || data.model_version !== MODEL_VERSION) return null;
+  if (error || !data) return null;
+
+  if (data.model_version === SPEAKER_MODEL_VERSION) {
+    if (!isNeuralSpeakerSupported()) return null;
+    const neural = await loadNeuralProfile(userId);
+    // The model file can be cleared with the app's storage; fetch it
+    // again rather than silently dropping every segment.
+    if (!neural || !(await ensureSpeakerModel())) return null;
+    return { engine: 'neural', ...neural };
+  }
+  if (data.model_version !== MODEL_VERSION || (await neuralSupersedesMfcc())) return null;
+  const calibration = await loadCalibration(userId);
+  if (!calibration) return null;
   const reference = parseVoiceprint(data.voiceprint);
-  return reference ? { reference, calibration } : null;
+  return reference ? { engine: 'mfcc', reference, calibration } : null;
 }
 
 /**
@@ -508,15 +616,33 @@ export async function isEnrolled(): Promise<boolean> {
   const { data: userData } = await supabase.auth.getUser();
   const userId = userData?.user?.id;
   if (!userId) return false;
-  if (!(await loadCalibration(userId))) return false;
   const { data } = await supabase
     .from('speaker_enrollment')
     .select('user_id, clips_used, model_version')
     .eq('user_id', userId)
     .maybeSingle();
-  return Boolean(
-    data && (data.clips_used ?? 0) > 0 && data.model_version === MODEL_VERSION,
+  if (!data || (data.clips_used ?? 0) <= 0) return false;
+  if (data.model_version === SPEAKER_MODEL_VERSION) {
+    return isNeuralSpeakerSupported() && (await loadNeuralProfile(userId)) !== null;
+  }
+  return (
+    data.model_version === MODEL_VERSION &&
+    !(await neuralSupersedesMfcc()) &&
+    (await loadCalibration(userId)) !== null
   );
+}
+
+/**
+ * An MFCC enrollment stays valid until the neural model is actually on
+ * this device — so a failed download never locks the user out. Where
+ * the model is missing but could run, fetch it in the background; the
+ * next check then asks for a one-time re-enrollment on the better gate.
+ */
+async function neuralSupersedesMfcc(): Promise<boolean> {
+  if (!isNeuralSpeakerSupported()) return false;
+  if (await isSpeakerModelReady()) return true;
+  void ensureSpeakerModel();
+  return false;
 }
 
 export async function deleteEnrollment(): Promise<void> {
@@ -525,7 +651,11 @@ export async function deleteEnrollment(): Promise<void> {
   if (!userId) return;
   await supabase.from('speaker_enrollment').delete().eq('user_id', userId);
   try {
-    await AsyncStorage.multiRemove([ENROLLMENT_ACK_KEY, calibrationKey(userId)]);
+    await AsyncStorage.multiRemove([
+      ENROLLMENT_ACK_KEY,
+      calibrationKey(userId),
+      neuralProfileKey(userId),
+    ]);
   } catch {
     // best-effort
   }
@@ -538,6 +668,27 @@ async function loadCalibration(userId: string): Promise<SpeakerCalibration | nul
     const c = JSON.parse(raw) as SpeakerCalibration;
     const nums = [c.accept?.strict, c.accept?.balanced, c.accept?.lenient, c.reject, c.enrollmentSnrDb];
     return nums.every((n) => typeof n === 'number' && Number.isFinite(n)) ? c : null;
+  } catch {
+    return null;
+  }
+}
+
+async function loadNeuralProfile(userId: string): Promise<StoredNeuralProfile | null> {
+  try {
+    const raw = await AsyncStorage.getItem(neuralProfileKey(userId));
+    if (!raw) return null;
+    const p = JSON.parse(raw) as StoredNeuralProfile;
+    const ref = p.reference;
+    const c = p.calibration;
+    if (
+      !Array.isArray(ref) ||
+      ref.length !== EMBEDDING_LENGTH ||
+      !ref.every((n) => typeof n === 'number' && Number.isFinite(n))
+    ) {
+      return null;
+    }
+    const nums = [c?.selfMedian, c?.enrollmentSnrDb];
+    return nums.every((n) => typeof n === 'number' && Number.isFinite(n)) ? p : null;
   } catch {
     return null;
   }

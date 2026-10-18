@@ -68,6 +68,13 @@ class HearingService : Service() {
     // segment. Onset stiffness scales with aggressiveness.
     const val VAD_MIN_SPEECH_FRAMES_BASE = 2
 
+    // Audio kept from just before speech onset, so the first syllable
+    // (and the onset frames themselves) reach the segment instead of
+    // being clipped — clipped word starts were a steady source of
+    // transcription errors. Held only in memory, zeroed like the rest.
+    const val PRE_ROLL_MS = 300
+    const val PRE_ROLL_FRAMES = PRE_ROLL_MS / FRAME_MS
+
     private const val TAG = "HearingService"
 
     @Volatile
@@ -95,6 +102,10 @@ class HearingService : Service() {
 
   @Volatile
   private var shouldRun: Boolean = false
+
+  private val preRoll = ShortArray(PRE_ROLL_FRAMES * FRAME_SAMPLES)
+  private var preRollFrames: Int = 0
+  private var preRollHead: Int = 0
 
   private var segmentBuffer: ShortArray? = null
   private var segmentLength: Int = 0
@@ -190,6 +201,7 @@ class HearingService : Service() {
     noiseFloorRms = 0.0
     noiseFloorFrames = 0
     noiseFloorCalibrated = false
+    clearPreRoll()
 
     val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
     wakeLock = pm.newWakeLock(
@@ -294,8 +306,9 @@ class HearingService : Service() {
         inSpeech = true
         segmentBuffer = ShortArray(RING_SIZE)
         segmentLength = 0
+        flushPreRollIntoSegment()
       }
-      if (inSpeech) appendToSegment(frame, len)
+      if (inSpeech) appendToSegment(frame, len) else pushPreRoll(frame, len)
     } else {
       speechFramesInRow = 0
       if (inSpeech) {
@@ -306,6 +319,7 @@ class HearingService : Service() {
         // Slowly track ambient upward drift; never let it climb into the
         // speech band by biasing the update to a small step.
         noiseFloorRms = (noiseFloorRms * 0.98) + (rms * 0.02)
+        pushPreRoll(frame, len)
       }
     }
 
@@ -326,15 +340,39 @@ class HearingService : Service() {
     }
   }
 
-  private fun appendToSegment(frame: ShortArray, len: Int) {
+  private fun appendToSegment(frame: ShortArray, len: Int, offset: Int = 0) {
     val buf = segmentBuffer ?: return
     val toCopy = minOf(len, buf.size - segmentLength)
     if (toCopy <= 0) {
       finalizeSegment()
       return
     }
-    System.arraycopy(frame, 0, buf, segmentLength, toCopy)
+    System.arraycopy(frame, offset, buf, segmentLength, toCopy)
     segmentLength += toCopy
+  }
+
+  private fun pushPreRoll(frame: ShortArray, len: Int) {
+    val off = preRollHead * FRAME_SAMPLES
+    val n = minOf(len, FRAME_SAMPLES)
+    System.arraycopy(frame, 0, preRoll, off, n)
+    if (n < FRAME_SAMPLES) java.util.Arrays.fill(preRoll, off + n, off + FRAME_SAMPLES, 0.toShort())
+    preRollHead = (preRollHead + 1) % PRE_ROLL_FRAMES
+    if (preRollFrames < PRE_ROLL_FRAMES) preRollFrames++
+  }
+
+  private fun flushPreRollIntoSegment() {
+    val first = (preRollHead - preRollFrames + PRE_ROLL_FRAMES) % PRE_ROLL_FRAMES
+    for (i in 0 until preRollFrames) {
+      val slot = (first + i) % PRE_ROLL_FRAMES
+      appendToSegment(preRoll, FRAME_SAMPLES, slot * FRAME_SAMPLES)
+    }
+    clearPreRoll()
+  }
+
+  private fun clearPreRoll() {
+    java.util.Arrays.fill(preRoll, 0.toShort())
+    preRollFrames = 0
+    preRollHead = 0
   }
 
   private fun finalizeSegment() {
@@ -416,6 +454,7 @@ class HearingService : Service() {
     silenceMs = 0
     speechFramesInRow = 0
     inSpeech = false
+    clearPreRoll()
 
     val endedAt = System.currentTimeMillis()
     val summary = Arguments.createMap().apply {

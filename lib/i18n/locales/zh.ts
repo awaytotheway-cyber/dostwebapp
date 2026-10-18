@@ -315,6 +315,10 @@ export const zh: Messages<typeof en> = {
     placeholderListening: '正在聆听...',
     placeholder: '在这里倾诉吧...',
     sendA11y: '发送',
+    deleteMessageTitle: '删除消息？',
+    deleteMessageBody: '这条消息将从你的对话中移除。',
+    deleteMessageConfirm: '删除',
+    messageDeleted: '消息已删除',
   },
   search: {
     title: '搜索聊天',
@@ -891,6 +895,11 @@ export const zh: Messages<typeof en> = {
     intro: '来自倾听时段的信号只保存在这里——DOST 的其他部分目前都不会读取它们。',
     sessions: '倾听次数',
     totalTime: '总时长',
+    cloudTranscription: '转写',
+    cloudOn: '更准确（云端）',
+    cloudOff: '仅在本机',
+    cloudOnHint: '只有你本人的语音——在 DOST 确认是你之后——才会被安全发送去转写，且不会在那里保存。准确度高得多，尤其是印地语和马拉地语。',
+    cloudOffHint: '所有内容都留在你的手机上。在有背景噪音或混合语言时准确度较低。',
     sensitivity: '说话人灵敏度',
     sensitivityA11y: '灵敏度：{level}',
     level: {
@@ -950,6 +959,8 @@ export const zh: Messages<typeof en> = {
     recordA11y: '开始录制这一句',
     record: '录制',
     listeningCountdown: '正在聆听… {seconds} 秒',
+    preparingTitle: '正在准备语音识别…',
+    preparingBody: 'DOST 正在下载语音识别模型（约 {mb} MB）。只需下载一次。',
     processingTitle: '正在读取你的声音…',
     processingBody:
       'DOST 正在把这段录音转换成一个小小的数字指纹。除此之外什么也没发生。',

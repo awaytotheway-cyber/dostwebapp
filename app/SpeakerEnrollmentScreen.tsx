@@ -18,15 +18,18 @@ import {
   ENROLLMENT_CLIP_MS,
   ENROLLMENT_LANGUAGES,
   getEnrollmentLanguages,
+  prepareEnrollmentEngine,
   saveEnrollment,
   saveEnrollmentLanguages,
   selectPromptsFor,
   TARGET_CLIP_COUNT,
   voiceprintFromClip,
   type EnrollmentClipPrint,
+  type EnrollmentEngine,
   type EnrollmentLanguage,
   type EnrollmentPrompt,
 } from '../lib/hearing/enrollment';
+import { SPEAKER_MODEL_APPROX_MB } from '../lib/hearing/speakerEmbedding';
 import { NATIVE_LANGUAGE_NAMES, t as translate, useI18n } from '../lib/i18n';
 
 type Props = NativeStackScreenProps<ChatStackParamList, 'SpeakerEnrollment'>;
@@ -34,6 +37,7 @@ type Props = NativeStackScreenProps<ChatStackParamList, 'SpeakerEnrollment'>;
 type Phase =
   | { kind: 'languages' }
   | { kind: 'intro' }
+  | { kind: 'preparing'; progress: number }
   | { kind: 'prompt'; index: number }
   | { kind: 'recording'; index: number; startedAt: number }
   | { kind: 'processing'; index: number }
@@ -52,6 +56,7 @@ export default function SpeakerEnrollmentScreen({ navigation, route }: Props) {
   ]);
   const [prompts, setPrompts] = useState<EnrollmentPrompt[]>([]);
   const voiceprints = useRef<EnrollmentClipPrint[]>([]);
+  const engine = useRef<EnrollmentEngine>('mfcc');
   const returnTo = route.params?.returnTo;
   const { t } = useI18n();
 
@@ -103,6 +108,12 @@ export default function SpeakerEnrollmentScreen({ navigation, route }: Props) {
       return;
     }
     voiceprints.current = [];
+    // One-time model download on first enrollment; falls back to the
+    // basic voiceprint rather than blocking if it can't be fetched.
+    setPhase({ kind: 'preparing', progress: 0 });
+    engine.current = await prepareEnrollmentEngine((progress) =>
+      setPhase({ kind: 'preparing', progress }),
+    );
     setPhase({ kind: 'prompt', index: 0 });
   }, []);
 
@@ -134,7 +145,7 @@ export default function SpeakerEnrollmentScreen({ navigation, route }: Props) {
         // Yield so the UI can paint 'Processing…' before the heavy
         // FFT pass. voiceprintFromClip itself yields between windows.
         await new Promise<void>((r) => setTimeout(r, 30));
-        const vp = await voiceprintFromClip(clip);
+        const vp = await voiceprintFromClip(clip, engine.current);
         voiceprints.current = [...voiceprints.current, vp];
 
         // Zero the clip's PCM as belt-and-braces — the closure should
@@ -230,6 +241,8 @@ export default function SpeakerEnrollmentScreen({ navigation, route }: Props) {
           clipMs={clipMs}
         />
       )}
+
+      {phase.kind === 'preparing' && <PreparingView progress={phase.progress} />}
 
       {phase.kind === 'processing' && (
         <ProcessingView index={phase.index} total={totalClips} />
@@ -454,6 +467,21 @@ function ProcessingView({ index, total }: { index: number; total: number }) {
       </Text>
       <Text style={styles.title}>{t('enrollment.processingTitle')}</Text>
       <Text style={styles.subtitle}>{t('enrollment.processingBody')}</Text>
+    </View>
+  );
+}
+
+function PreparingView({ progress }: { progress: number }) {
+  const { t } = useI18n();
+  return (
+    <View style={styles.column}>
+      <Text style={styles.title}>{t('enrollment.preparingTitle')}</Text>
+      <Text style={styles.subtitle}>
+        {t('enrollment.preparingBody', { mb: SPEAKER_MODEL_APPROX_MB })}
+      </Text>
+      <View style={styles.progressTrack}>
+        <View style={[styles.progressFill, { width: `${Math.round(progress * 100)}%` }]} />
+      </View>
     </View>
   );
 }

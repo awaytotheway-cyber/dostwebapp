@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabase';
 import { deleteEnrollment, isEnrolled } from '../lib/hearing/enrollment';
 import { getSensitivity, setSensitivity } from '../lib/hearing/sensitivity';
 import type { Sensitivity } from '../lib/hearing/speakerVerification';
+import { getCloudTranscription, setCloudTranscription } from '../lib/hearing/transcription';
 import type { ChatStackParamList } from './chatTypes';
 import { t as translate, useI18n, type TKey } from '../lib/i18n';
 
@@ -28,6 +29,7 @@ export default function HearingSettingsSection() {
   const [sessionCount, setSessionCount] = useState<number>(0);
   const [enrolled, setEnrolled] = useState<boolean | null>(null);
   const [sensitivity, setLocalSensitivity] = useState<Sensitivity>('balanced');
+  const [cloud, setLocalCloud] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const loadTotals = useCallback(async () => {
@@ -52,6 +54,7 @@ export default function HearingSettingsSection() {
     void loadTotals();
     void refreshEnrollment();
     void getSensitivity().then(setLocalSensitivity);
+    void getCloudTranscription().then(setLocalCloud);
     // Refresh on focus so the row reflects a fresh enrollment done
     // via the Listening screen or the row itself.
     const unsub = navigation.addListener('focus', () => {
@@ -63,6 +66,11 @@ export default function HearingSettingsSection() {
   const onSelectSensitivity = (next: Sensitivity) => {
     setLocalSensitivity(next);
     void setSensitivity(next);
+  };
+
+  const onSelectCloud = (next: boolean) => {
+    setLocalCloud(next);
+    void setCloudTranscription(next);
   };
 
   const onDeleteEnrollment = () => {
@@ -191,6 +199,31 @@ export default function HearingSettingsSection() {
         ))}
       </View>
       <Text style={styles.sensHint}>{sensitivityHint(sensitivity)}</Text>
+
+      <Text style={styles.subheading}>{t('hearingSettings.cloudTranscription')}</Text>
+      <View style={styles.sensRow}>
+        {[false, true].map((on) => (
+          <Pressable
+            key={on ? 'on' : 'off'}
+            onPress={() => onSelectCloud(on)}
+            accessibilityRole="button"
+            accessibilityState={{ selected: cloud === on }}
+            accessibilityLabel={t('hearingSettings.cloudTranscription')}
+            style={({ pressed }) => [
+              styles.sensChip,
+              cloud === on && styles.sensChipActive,
+              pressed && { opacity: 0.7 },
+            ]}
+          >
+            <Text style={[styles.sensChipText, cloud === on && styles.sensChipTextActive]}>
+              {on ? t('hearingSettings.cloudOn') : t('hearingSettings.cloudOff')}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+      <Text style={styles.sensHint}>
+        {cloud ? t('hearingSettings.cloudOnHint') : t('hearingSettings.cloudOffHint')}
+      </Text>
 
       <Pressable
         onPress={() => navigation.navigate('SpeakerEnrollment', { returnTo: undefined })}

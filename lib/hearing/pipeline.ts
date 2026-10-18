@@ -7,7 +7,7 @@ import {
   logCalibrationRow,
   shouldLogCalibration,
 } from './calibration';
-import { loadSpeakerProfile } from './enrollment';
+import { getEnrollmentLanguages, loadSpeakerProfile, type SpeakerProfile } from './enrollment';
 import {
   isSessionActive as nativeIsSessionActive,
   startSession as nativeStartSession,
@@ -20,14 +20,20 @@ import {
 } from './hearingBridge';
 import { redactPII } from './redaction';
 import { getSensitivity } from './sensitivity';
-import { analyzeVoiceprint, type Voiceprint } from './speakerFingerprint';
+import { cosineSimilarity, embedSpeech, releaseSpeakerModel, speechStats } from './speakerEmbedding';
+import { analyzeVoiceprint } from './speakerFingerprint';
 import {
+  verifyNeural,
   verifySpeaker,
   type Sensitivity,
-  type SpeakerCalibration,
-  type VerificationResult,
+  type VerificationOutcome,
 } from './speakerVerification';
-import { disposeTranscription, transcribeSegment } from './transcription';
+import {
+  disposeTranscription,
+  getCloudTranscription,
+  transcribeSegment,
+  type TranscriptionOptions,
+} from './transcription';
 
 /**
  * Full hearing pipeline.
@@ -37,9 +43,14 @@ import { disposeTranscription, transcribeSegment } from './transcription';
  *   → start the native foreground service
  *   → subscribe to native events
  *
- * For each VAD-detected speech segment:
+ * For each VAD-detected speech segment (queued, processed one at a time):
+ *   → speaker gate: neural embedding vs the enrolled reference (MFCC
+ *     voiceprint on devices that can't run the model). A long segment
+ *     that doesn't match as a whole — two people taking turns — is
+ *     re-scored in 1.5 s windows and only the user's windows are kept.
  *   → extract acoustic features (real signal processing)
- *   → transcribe on-device with Whisper (fails soft)
+ *   → transcribe: cloud if the user opted in, else on-device Whisper
+ *     (both fail soft)
  *   → redact PII from the transcript
  *   → call hearing-extract-emotions (fails soft)
  *   → compute mock acoustic inference, stamped inference_source='mock'
@@ -50,9 +61,14 @@ import { disposeTranscription, transcribeSegment } from './transcription';
  *   → stop the native service
  *   → update the voice_sessions row with totals
  *
- * Memory hygiene: PCM buffers are local to processSegment(). Nothing
- * accumulates across the session — even in balanced/light modes,
- * queued segments are processed then dropped, not aggregated.
+ * Battery modes only change how much work may wait: the queue holds
+ * 8 / 4 / 2 segments (attentive / balanced / light) and light mode skips
+ * the windowed re-scoring. When the queue is full the oldest waiting
+ * segment is dropped, so speech is never skipped while the phone idles.
+ *
+ * Memory hygiene: PCM buffers are local to the queue and processSegment().
+ * Nothing accumulates across the session — queued segments are processed
+ * then zeroed, not aggregated.
  */
 
 export type BatteryMode = 'attentive' | 'balanced' | 'light';
@@ -102,16 +118,31 @@ export function subscribePipeline(cb: Listener): () => void {
 
 // ─── session lifecycle ────────────────────────────────────────────
 
+const QUEUE_LIMIT: Record<BatteryMode, number> = {
+  attentive: 8,
+  balanced: 4,
+  light: 2,
+};
+
+// Windowed re-scoring for segments that don't match as a whole.
+const SPLIT_MIN_SECONDS = 3;
+const SPLIT_WINDOW_SECONDS = 1.5;
+const SPLIT_HOP_SECONDS = 0.75;
+const SPLIT_MAX_WINDOWS = 40;
+const SPLIT_MIN_KEPT_SECONDS = 1;
+
 type SessionCtx = {
   sessionId: string;
   userId: string;
   batteryMode: BatteryMode;
   sensitivity: Sensitivity;
-  referenceVoiceprint: Voiceprint;
-  calibration: SpeakerCalibration;
+  profile: SpeakerProfile;
+  transcription: TranscriptionOptions;
   startedAt: number;
   segmentsProcessed: number;
-  segmentIndex: number; // increments per received segment, for 'light' sampling
+  queue: HearingSpeechSegment[];
+  draining: boolean;
+  stopped: boolean;
   segmentsMatched: number;
   segmentsDiscardedOtherSpeaker: number;
   segmentsDiscardedAmbiguous: number;
@@ -147,6 +178,7 @@ export async function startHearingSession(
   }
   const sensitivity = await getSensitivity();
   const calibrationDecision = await shouldLogCalibration(userId);
+  const transcription = await transcriptionOptions();
 
   const { data: sessionRow, error: sessErr } = await supabase
     .from('voice_sessions')
@@ -163,63 +195,7 @@ export async function startHearingSession(
   const unsubscribe = subscribeHearing({
     onSegment: (seg) => {
       if (!ctx) return;
-      ctx.segmentIndex++;
-
-      // Battery mode: 'light' processes 1 in 3 segments (sampled coverage).
-      // Note: 'light' drops are separate from speaker-gate discards —
-      // they don't count as "other speaker" or "ambiguous."
-      if (ctx.batteryMode === 'light' && ctx.segmentIndex % 3 !== 1) {
-        seg.pcm.fill(0); // release native-backed bytes
-        return;
-      }
-
-      // Balanced: cap concurrency to 1 (serialize). Attentive: unbounded.
-      // A queued segment would grow across the session; drop instead.
-      if (ctx.batteryMode === 'balanced' && ctx.activeTasks > 0) {
-        seg.pcm.fill(0);
-        return;
-      }
-
-      // ─── Phase 2 speaker gate ──────────────────────────────────
-      // Extract this segment's voiceprint and compare to the enrolled
-      // reference. On match: proceed. On mismatch or ambiguous: drop
-      // the segment without any downstream processing (no acoustic
-      // features, no transcription, no DB insert). Rule 5.
-      const segPrint = analyzeVoiceprint(seg.pcm, seg.sampleRate);
-      const gate = verifySpeaker(
-        segPrint,
-        ctx.referenceVoiceprint,
-        ctx.calibration,
-        ctx.sensitivity,
-      );
-
-      // Time-boxed calibration logging (Step 8). Fire-and-forget; never
-      // awaited, never surfaces errors. Bounded by
-      // ctx.calibrationRowsRemaining so we can't over-write per-user cap.
-      if (ctx.calibrationRowsRemaining > 0) {
-        logCalibrationRow(
-          ctx.userId,
-          gate.similarity,
-          gate.result,
-          ctx.sensitivity,
-        );
-        ctx.calibrationRowsRemaining--;
-      }
-
-      if (gate.result !== 'match') {
-        if (gate.result === 'mismatch') {
-          ctx.segmentsDiscardedOtherSpeaker++;
-        } else {
-          ctx.segmentsDiscardedAmbiguous++;
-        }
-        seg.pcm.fill(0);
-        publishCounters();
-        return;
-      }
-
-      ctx.segmentsMatched++;
-      publishCounters();
-      void processSegment(ctx, seg);
+      enqueueSegment(ctx, seg);
     },
     onTick: (t) => {
       if (!ctx) return;
@@ -249,11 +225,13 @@ export async function startHearingSession(
     userId,
     batteryMode,
     sensitivity,
-    referenceVoiceprint: profile.reference,
-    calibration: profile.calibration,
+    profile,
+    transcription,
     startedAt,
     segmentsProcessed: 0,
-    segmentIndex: 0,
+    queue: [],
+    draining: false,
+    stopped: false,
     segmentsMatched: 0,
     segmentsDiscardedOtherSpeaker: 0,
     segmentsDiscardedAmbiguous: 0,
@@ -306,8 +284,11 @@ export async function stopHearingSession(): Promise<void> {
     // fall through and still update the DB
   }
 
-  // Give any in-flight tasks a brief chance to finish so their rows land
-  // before we write the session summary.
+  // Give queued and in-flight segments a brief chance to finish so their
+  // rows land before we write the session summary; then drop the rest.
+  await waitFor(() => !active.draining && active.queue.length === 0, 8000);
+  active.stopped = true;
+  clearQueue(active);
   await waitForTasks(active, 3000);
   // The stop intent is handled asynchronously by the service, so its
   // summary event can land after nativeStopSession() resolves.
@@ -339,6 +320,8 @@ async function abortSession(reason: string): Promise<void> {
   const active = ctx;
   if (!active) return;
   try { active.unsubscribe(); } catch {}
+  active.stopped = true;
+  clearQueue(active);
   try { await nativeStopSession(); } catch {}
   await supabase.from('voice_sessions').delete().eq('id', active.sessionId);
   ctx = null;
@@ -359,6 +342,181 @@ async function waitFor(done: () => boolean, timeoutMs: number): Promise<void> {
 
 function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
+}
+
+// ─── queue + speaker gate ─────────────────────────────────────────
+
+function enqueueSegment(active: SessionCtx, seg: HearingSpeechSegment): void {
+  if (active.stopped) {
+    seg.pcm.fill(0);
+    return;
+  }
+  const limit = QUEUE_LIMIT[active.batteryMode];
+  while (active.queue.length >= limit) {
+    active.queue.shift()?.pcm.fill(0);
+  }
+  active.queue.push(seg);
+  publishPending();
+  void drainQueue(active);
+}
+
+function clearQueue(active: SessionCtx): void {
+  for (const seg of active.queue) seg.pcm.fill(0);
+  active.queue = [];
+}
+
+async function drainQueue(active: SessionCtx): Promise<void> {
+  if (active.draining) return;
+  active.draining = true;
+  try {
+    while (!active.stopped && active.queue.length > 0) {
+      const seg = active.queue.shift()!;
+      publishPending();
+      try {
+        await handleSegment(active, seg);
+      } catch (err) {
+        seg.pcm.fill(0);
+        if (__DEV__) console.warn('[hearing] segment failed:', err);
+      }
+    }
+  } finally {
+    active.draining = false;
+    publishPending();
+  }
+}
+
+async function handleSegment(active: SessionCtx, seg: HearingSpeechSegment): Promise<void> {
+  // ─── Phase 2 speaker gate ──────────────────────────────────
+  // On match: proceed with only the user's audio. On mismatch or
+  // ambiguous: drop the segment without any downstream processing
+  // (no acoustic features, no transcription, no DB insert). Rule 5.
+  const gate = await gateSegment(active, seg);
+
+  // Time-boxed calibration logging (Step 8). Fire-and-forget; never
+  // awaited, never surfaces errors. Bounded by
+  // calibrationRowsRemaining so we can't over-write the per-user cap.
+  if (active.calibrationRowsRemaining > 0) {
+    logCalibrationRow(active.userId, gate.outcome.similarity, gate.outcome.result, active.sensitivity);
+    active.calibrationRowsRemaining--;
+  }
+
+  if (gate.outcome.result !== 'match' || !gate.pcm) {
+    if (gate.outcome.result === 'mismatch') {
+      active.segmentsDiscardedOtherSpeaker++;
+    } else {
+      active.segmentsDiscardedAmbiguous++;
+    }
+    seg.pcm.fill(0);
+    publishCounters();
+    return;
+  }
+
+  active.segmentsMatched++;
+  publishCounters();
+  const kept = gate.pcm;
+  if (kept !== seg.pcm) seg.pcm.fill(0);
+  await processSegment(active, {
+    ...seg,
+    pcm: kept,
+    durationMs: (kept.length / seg.sampleRate) * 1000,
+  });
+}
+
+type GateResult = { outcome: VerificationOutcome; pcm: Float32Array | null };
+
+async function gateSegment(active: SessionCtx, seg: HearingSpeechSegment): Promise<GateResult> {
+  const { profile } = active;
+  if (profile.engine === 'mfcc') {
+    const outcome = verifySpeaker(
+      analyzeVoiceprint(seg.pcm, seg.sampleRate),
+      profile.reference,
+      profile.calibration,
+      active.sensitivity,
+    );
+    return { outcome, pcm: outcome.result === 'match' ? seg.pcm : null };
+  }
+
+  const whole = await scoreNeural(active, seg.pcm, seg.sampleRate);
+  const seconds = seg.pcm.length / seg.sampleRate;
+  if (active.batteryMode === 'light' || seconds < SPLIT_MIN_SECONDS) {
+    return { outcome: whole, pcm: whole.result === 'match' ? seg.pcm : null };
+  }
+  // Long segments are re-scored in windows either way: a match as a
+  // whole can still carry another person's turn (the user's half
+  // dominates the average), and a non-match can still hold the user's.
+  return splitByWindows(active, seg, whole);
+}
+
+async function scoreNeural(
+  active: SessionCtx,
+  pcm: Float32Array,
+  sampleRate: number,
+): Promise<VerificationOutcome> {
+  if (active.profile.engine !== 'neural') return { result: 'ambiguous', similarity: 0 };
+  const stats = speechStats(pcm, sampleRate);
+  const embedding = await embedSpeech(pcm, sampleRate);
+  if (!embedding) return { result: 'ambiguous', similarity: 0 };
+  return verifyNeural(
+    cosineSimilarity(embedding, active.profile.reference),
+    stats,
+    active.profile.calibration,
+    active.sensitivity,
+  );
+}
+
+/**
+ * Two people taking turns inside one VAD segment average out to a score
+ * that is neither person. Re-score short windows and stitch the user's
+ * audio back together. When the whole segment matched, only windows that
+ * are clearly someone else are cut (borderline windows are usually the
+ * user in noise); when it didn't, only clear matches are kept.
+ */
+async function splitByWindows(
+  active: SessionCtx,
+  seg: HearingSpeechSegment,
+  whole: VerificationOutcome,
+): Promise<GateResult> {
+  const sr = seg.sampleRate;
+  const win = Math.round(SPLIT_WINDOW_SECONDS * sr);
+  const hop = Math.round(SPLIT_HOP_SECONDS * sr);
+  const ranges: Array<[number, number]> = [];
+  let best = whole.similarity;
+  let windows = 0;
+  for (let start = 0; start + win <= seg.pcm.length && windows < SPLIT_MAX_WINDOWS; start += hop) {
+    windows++;
+    const outcome = await scoreNeural(active, seg.pcm.subarray(start, start + win), sr);
+    const keep = whole.result === 'match' ? outcome.result !== 'mismatch' : outcome.result === 'match';
+    if (!keep) continue;
+    if (outcome.result === 'match') best = Math.max(best, outcome.similarity);
+    const last = ranges[ranges.length - 1];
+    if (last && start <= last[1]) last[1] = start + win;
+    else ranges.push([start, start + win]);
+  }
+  const keptSamples = ranges.reduce((n, [a, b]) => n + (b - a), 0);
+  if (keptSamples < SPLIT_MIN_KEPT_SECONDS * sr) {
+    return {
+      outcome: whole.result === 'match' ? { result: 'ambiguous', similarity: whole.similarity } : whole,
+      pcm: null,
+    };
+  }
+
+  const kept = new Float32Array(keptSamples);
+  let offset = 0;
+  for (const [a, b] of ranges) {
+    kept.set(seg.pcm.subarray(a, b), offset);
+    offset += b - a;
+  }
+  return { outcome: { result: 'match', similarity: best }, pcm: kept };
+}
+
+async function transcriptionOptions(): Promise<TranscriptionOptions> {
+  const [cloud, languages] = await Promise.all([
+    getCloudTranscription(),
+    getEnrollmentLanguages(),
+  ]);
+  // A single spoken language is a strong hint; with several, let the
+  // recogniser detect per segment.
+  return { cloud, language: languages.length === 1 ? languages[0] : undefined };
 }
 
 // ─── per-segment pipeline ─────────────────────────────────────────
@@ -388,8 +546,8 @@ async function processSegment(
       durationSeconds,
     );
 
-    // 2. On-device transcription — fails soft, returns ''.
-    transcript = await transcribeSegment(pcm);
+    // 2. Transcription — cloud if opted in, else on-device. Fails soft, returns ''.
+    transcript = await transcribeSegment(pcm, seg.sampleRate, active.transcription);
 
     // Drop the PCM as soon as Whisper is done with it.
     pcm = null;
@@ -456,7 +614,10 @@ async function processSegment(
 
 function publishPending() {
   if (state.status !== 'active' || !ctx) return;
-  setState({ ...state, segmentsPending: ctx.activeTasks });
+  setState({
+    ...state,
+    segmentsPending: ctx.queue.length + (ctx.draining ? 1 : 0),
+  });
 }
 
 function publishCounters() {
@@ -508,4 +669,5 @@ export async function isSessionActive(): Promise<boolean> {
 /** Release the on-device Whisper model when leaving the feature. */
 export async function releaseHearingResources(): Promise<void> {
   await disposeTranscription();
+  await releaseSpeakerModel();
 }

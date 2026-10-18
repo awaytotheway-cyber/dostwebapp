@@ -316,6 +316,10 @@ export const mr: Messages<typeof en> = {
     placeholderListening: 'ऐकत आहे...',
     placeholder: 'इथे मन मोकळं करा...',
     sendA11y: 'पाठवा',
+    deleteMessageTitle: 'संदेश हटवायचा?',
+    deleteMessageBody: 'हा संदेश तुमच्या संभाषणातून काढून टाकला जाईल.',
+    deleteMessageConfirm: 'हटवा',
+    messageDeleted: 'संदेश हटवला',
   },
   search: {
     title: 'चॅट शोधा',
@@ -892,6 +896,11 @@ export const mr: Messages<typeof en> = {
     intro: 'तुमच्या ऐकण्याच्या सत्रांचे संकेत फक्त इथेच राहतात — DOST मधलं दुसरं काहीही ते अजून वाचत नाही.',
     sessions: 'सत्रं',
     totalTime: 'एकूण वेळ',
+    cloudTranscription: 'लिखित रूप (ट्रान्सक्रिप्शन)',
+    cloudOn: 'अधिक अचूक (क्लाउड)',
+    cloudOff: 'याच फोनवर',
+    cloudOnHint: 'फक्त तुमचा स्वतःचा आवाज — DOST ने तो तुमचा म्हणून ओळखल्यानंतर — सुरक्षितपणे लिहिण्यासाठी पाठवला जातो आणि तिथे साठवला जात नाही. विशेषतः हिंदी आणि मराठीत खूप अधिक अचूक.',
+    cloudOffHint: 'सर्व काही तुमच्या फोनवरच राहते. आवाजाच्या गोंगाटात किंवा मिश्र भाषांमध्ये कमी अचूक.',
     sensitivity: 'वक्ता संवेदनशीलता',
     sensitivityA11y: 'संवेदनशीलता: {level}',
     level: {
@@ -951,6 +960,8 @@ export const mr: Messages<typeof en> = {
     recordA11y: 'या ओळीचं रेकॉर्डिंग सुरू करा',
     record: 'रेकॉर्ड करा',
     listeningCountdown: 'ऐकत आहे… {seconds} से.',
+    preparingTitle: 'आवाज ओळख तयार होत आहे…',
+    preparingBody: 'DOST आपले आवाज-ओळख मॉडेल डाउनलोड करत आहे (सुमारे {mb} MB). हे फक्त एकदाच होते.',
     processingTitle: 'तुमचा आवाज वाचत आहे…',
     processingBody:
       'DOST ती क्लिप एका छोट्या संख्यात्मक फिंगरप्रिंटमध्ये बदलत आहे. दुसरं काहीही होत नाही.',

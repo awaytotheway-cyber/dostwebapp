@@ -14,6 +14,7 @@ import com.facebook.react.bridge.ReactMethod
  *   HearingModule.startSession()
  *   HearingModule.stopSession()
  *   HearingModule.isSessionActive()
+ *   HearingModule.computeSpeakerEmbedding(modelPath, featuresBase64, frames)
  *
  * Events emitted on DeviceEventEmitter from the service:
  *   HearingSessionStarted   { startedAt, sampleRate }
@@ -28,6 +29,7 @@ class HearingModule(reactContext: ReactApplicationContext) :
   override fun getName(): String = "HearingModule"
 
   private val enrollmentRecorder by lazy { EnrollmentRecorder(reactApplicationContext) }
+  private val speakerEmbedder by lazy { SpeakerEmbedder() }
 
   init {
     HearingService.attachReactContext(reactContext)
@@ -85,6 +87,26 @@ class HearingModule(reactContext: ReactApplicationContext) :
   @ReactMethod
   fun cancelEnrollmentCapture(promise: Promise) {
     enrollmentRecorder.cancel()
+    promise.resolve(true)
+  }
+
+  /**
+   * Neural speaker embedding for a filterbank computed in JS. Resolves
+   * with the raw 256-dim embedding (not normalised). See SpeakerEmbedder.
+   */
+  @ReactMethod
+  fun computeSpeakerEmbedding(
+    modelPath: String,
+    featuresBase64: String,
+    frames: Int,
+    promise: Promise,
+  ) {
+    speakerEmbedder.embed(modelPath, featuresBase64, frames, promise)
+  }
+
+  @ReactMethod
+  fun releaseSpeakerModel(promise: Promise) {
+    speakerEmbedder.release()
     promise.resolve(true)
   }
 

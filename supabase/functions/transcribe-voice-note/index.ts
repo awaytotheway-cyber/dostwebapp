@@ -5,7 +5,15 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 // CLI deploy of other functions still uses supabase/functions/_shared/safe.ts.
 
 const OPENAI_TRANSCRIPTIONS_URL = "https://api.openai.com/v1/audio/transcriptions";
-const OPENAI_MODEL = "whisper-1";
+// gpt-4o-transcribe has a markedly lower word error rate than whisper-1,
+// most of all on Hindi and Marathi. Override with OPENAI_TRANSCRIBE_MODEL;
+// whisper-1 stays as the fallback if the preferred model is refused.
+const OPENAI_MODEL = (Deno.env.get("OPENAI_TRANSCRIBE_MODEL") ?? "").trim() ||
+  "gpt-4o-transcribe";
+const OPENAI_FALLBACK_MODEL = "whisper-1";
+// Voice notes have always been transcribed as English; callers that know
+// better (hearing sessions) pass ?language=hi|mr|en|auto.
+const DEFAULT_LANGUAGE = "en";
 const MAX_BYTES = 25 * 1024 * 1024;
 const FILE_FIELDS = ["file", "audio", "voice"];
 
@@ -217,9 +225,11 @@ async function handleRequest(req: Request): Promise<Response> {
       return json(audio.status, { error: audio.error });
     }
 
+    const language = parseLanguage(new URL(req.url).searchParams.get("language"));
+
     let transcript: string;
     try {
-      transcript = await callWhisper(openaiKey, audio.file);
+      transcript = await transcribe(openaiKey, audio.file, language);
     } catch (error) {
       logFnError("transcribe-voice-note", "whisper", error);
       return json(502, { error: GENERIC_UPSTREAM });
@@ -299,15 +309,47 @@ async function extractAudioFile(req: Request): Promise<AudioOk | AudioErr> {
   return { ok: false, status: 400, error: GENERIC_NO_FILE };
 }
 
-async function callWhisper(apiKey: string, file: File): Promise<string> {
+/** ISO 639-1 code, or null for auto-detect. */
+function parseLanguage(raw: string | null): string | null {
+  if (raw === null) return DEFAULT_LANGUAGE;
+  const value = raw.trim().toLowerCase();
+  if (value === "auto") return null;
+  return /^[a-z]{2}$/.test(value) ? value : DEFAULT_LANGUAGE;
+}
+
+async function transcribe(
+  apiKey: string,
+  file: File,
+  language: string | null,
+): Promise<string> {
+  try {
+    return await callWhisper(apiKey, file, language, OPENAI_MODEL);
+  } catch (error) {
+    // An unknown or unavailable model is a 4xx; anything else (empty
+    // audio, outage) would fail the same way on the fallback.
+    const status = error instanceof Error ? error.message : "";
+    if (OPENAI_MODEL === OPENAI_FALLBACK_MODEL || !/^whisper_4\d\d$/.test(status)) {
+      throw error;
+    }
+    logFnError("transcribe-voice-note", "preferred_model", error);
+    return await callWhisper(apiKey, file, language, OPENAI_FALLBACK_MODEL);
+  }
+}
+
+async function callWhisper(
+  apiKey: string,
+  file: File,
+  language: string | null,
+  model: string,
+): Promise<string> {
   if (!OPENAI_TRANSCRIPTIONS_URL.startsWith("https://")) {
     throw new Error("bad_url");
   }
 
   const form = new FormData();
   form.append("file", file, file.name || "voice-note.m4a");
-  form.append("model", OPENAI_MODEL);
-  form.append("language", "en");
+  form.append("model", model);
+  if (language) form.append("language", language);
   form.append("response_format", "json");
 
   const response = await fetch(OPENAI_TRANSCRIPTIONS_URL, {

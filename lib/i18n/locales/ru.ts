@@ -321,6 +321,10 @@ export const ru: Messages<typeof en> = {
     placeholderListening: 'Слушаю...',
     placeholder: 'Выговоритесь здесь...',
     sendA11y: 'Отправить',
+    deleteMessageTitle: 'Удалить сообщение?',
+    deleteMessageBody: 'Это сообщение будет удалено из вашего разговора.',
+    deleteMessageConfirm: 'Удалить',
+    messageDeleted: 'Сообщение удалено',
   },
   search: {
     title: 'Поиск по разговорам',
@@ -902,6 +906,11 @@ export const ru: Messages<typeof en> = {
     intro: 'Сигналы из ваших сеансов слушания хранятся только здесь — больше ничто в DOST их пока не читает.',
     sessions: 'Сеансы',
     totalTime: 'Общее время',
+    cloudTranscription: 'Расшифровка',
+    cloudOn: 'Точнее (облако)',
+    cloudOff: 'На этом телефоне',
+    cloudOnHint: 'Только ваша собственная речь — после того как DOST узнал в ней вас — безопасно отправляется на расшифровку и там не хранится. Гораздо точнее, особенно для хинди и маратхи.',
+    cloudOffHint: 'Всё остаётся на вашем телефоне. Менее точно при фоновом шуме или смешении языков.',
     sensitivity: 'Чувствительность к голосу',
     sensitivityA11y: 'Чувствительность: {level}',
     level: {
@@ -961,6 +970,8 @@ export const ru: Messages<typeof en> = {
     recordA11y: 'Начать запись этой фразы',
     record: 'Записать',
     listeningCountdown: 'Слушаю… {seconds} с',
+    preparingTitle: 'Подготовка распознавания голоса…',
+    preparingBody: 'DOST загружает модель распознавания голоса (около {mb} МБ). Это происходит только один раз.',
     processingTitle: 'Читаем ваш голос…',
     processingBody:
       'DOST превращает этот фрагмент в небольшой числовой отпечаток. Больше ничего не происходит.',
