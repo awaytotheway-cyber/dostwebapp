@@ -45,5 +45,8 @@ yarn-error.*
 # scratch
 .tmp_*
 
+# Supabase CLI temp
+supabase/.temp/
+
 # Phase 4 Step 1 validation clips - voice recordings, never committed
 .spike-clips/

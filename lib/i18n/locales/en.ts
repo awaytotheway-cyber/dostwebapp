@@ -313,6 +313,10 @@ export const en = {
     placeholderListening: 'Listening...',
     placeholder: 'Pour your heart out here...',
     sendA11y: 'Send',
+    deleteMessageTitle: 'Delete message?',
+    deleteMessageBody: 'This message will be removed from your conversation.',
+    deleteMessageConfirm: 'Delete',
+    messageDeleted: 'Message deleted',
   },
   search: {
     title: 'Search chats',
