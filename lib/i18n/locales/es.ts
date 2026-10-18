@@ -316,6 +316,10 @@ export const es: Messages<typeof en> = {
     placeholderListening: 'Escuchando...',
     placeholder: 'Desahógate aquí...',
     sendA11y: 'Enviar',
+    deleteMessageTitle: '¿Eliminar mensaje?',
+    deleteMessageBody: 'Este mensaje se quitará de tu conversación.',
+    deleteMessageConfirm: 'Eliminar',
+    messageDeleted: 'Mensaje eliminado',
   },
   search: {
     title: 'Buscar conversaciones',

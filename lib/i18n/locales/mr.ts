@@ -316,6 +316,10 @@ export const mr: Messages<typeof en> = {
     placeholderListening: 'ऐकत आहे...',
     placeholder: 'इथे मन मोकळं करा...',
     sendA11y: 'पाठवा',
+    deleteMessageTitle: 'संदेश हटवायचा?',
+    deleteMessageBody: 'हा संदेश तुमच्या संभाषणातून काढून टाकला जाईल.',
+    deleteMessageConfirm: 'हटवा',
+    messageDeleted: 'संदेश हटवला',
   },
   search: {
     title: 'चॅट शोधा',

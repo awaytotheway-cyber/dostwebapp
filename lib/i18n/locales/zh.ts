@@ -315,6 +315,10 @@ export const zh: Messages<typeof en> = {
     placeholderListening: '正在聆听...',
     placeholder: '在这里倾诉吧...',
     sendA11y: '发送',
+    deleteMessageTitle: '删除这条消息？',
+    deleteMessageBody: '这条消息将从你的对话中移除。',
+    deleteMessageConfirm: '删除',
+    messageDeleted: '消息已删除',
   },
   search: {
     title: '搜索聊天',

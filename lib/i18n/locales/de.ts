@@ -315,6 +315,10 @@ export const de: Messages<typeof en> = {
     placeholderListening: 'Hört zu...',
     placeholder: 'Schreib dir hier alles von der Seele...',
     sendA11y: 'Senden',
+    deleteMessageTitle: 'Nachricht löschen?',
+    deleteMessageBody: 'Diese Nachricht wird aus deiner Unterhaltung entfernt.',
+    deleteMessageConfirm: 'Löschen',
+    messageDeleted: 'Nachricht gelöscht',
   },
   search: {
     title: 'Chats durchsuchen',

@@ -315,6 +315,10 @@ export const ja: Messages<typeof en> = {
     placeholderListening: '聞いています...',
     placeholder: 'ここに思いを書き出してください...',
     sendA11y: '送信',
+    deleteMessageTitle: 'メッセージを削除しますか？',
+    deleteMessageBody: 'このメッセージは会話から削除されます。',
+    deleteMessageConfirm: '削除',
+    messageDeleted: 'メッセージを削除しました',
   },
   search: {
     title: 'チャットを検索',

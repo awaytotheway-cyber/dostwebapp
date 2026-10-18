@@ -316,6 +316,10 @@ export const hi: Messages<typeof en> = {
     placeholderListening: 'सुन रहा है...',
     placeholder: 'यहाँ दिल खोलकर लिखिए...',
     sendA11y: 'भेजें',
+    deleteMessageTitle: 'संदेश हटा दें?',
+    deleteMessageBody: 'यह संदेश आपकी बातचीत से हट जाएगा।',
+    deleteMessageConfirm: 'हटाएँ',
+    messageDeleted: 'संदेश हटा दिया गया',
   },
   search: {
     title: 'चैट खोजें',

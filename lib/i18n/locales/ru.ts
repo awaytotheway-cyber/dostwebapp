@@ -321,6 +321,10 @@ export const ru: Messages<typeof en> = {
     placeholderListening: 'Слушаю...',
     placeholder: 'Выговоритесь здесь...',
     sendA11y: 'Отправить',
+    deleteMessageTitle: 'Удалить сообщение?',
+    deleteMessageBody: 'Это сообщение будет удалено из разговора.',
+    deleteMessageConfirm: 'Удалить',
+    messageDeleted: 'Сообщение удалено',
   },
   search: {
     title: 'Поиск по разговорам',
