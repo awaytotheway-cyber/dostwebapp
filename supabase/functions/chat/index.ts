@@ -230,9 +230,10 @@ const FALLBACK_MATCH_COUNT = 5;
 const KB_TITLE_MAX = 200;
 const KB_CONTENT_MAX = 4000;
 const OPENAI_COMPLETIONS_URL = "https://api.openai.com/v1/chat/completions";
-// Override with the OPENAI_CHAT_MODEL secret (e.g. gpt-4.1 or gpt-4o):
-// larger models follow the per-turn guidance noticeably better.
-const OPENAI_CHAT_MODEL = (Deno.env.get("OPENAI_CHAT_MODEL") ?? "").trim() || "gpt-4o-mini";
+// gpt-4.1 follows the per-turn guidance (moves, variety, no repeated
+// question shapes) far better than gpt-4o-mini did. The OPENAI_CHAT_MODEL
+// secret overrides it.
+const OPENAI_CHAT_MODEL = (Deno.env.get("OPENAI_CHAT_MODEL") ?? "").trim() || "gpt-4.1";
 const OPENAI_EMBEDDINGS_URL = "https://api.openai.com/v1/embeddings";
 const OPENAI_EMBED_MODEL = "text-embedding-3-small";
 
@@ -1729,7 +1730,7 @@ function describeOpenAiFailure(error: unknown): { message: string; code?: string
   }
   if (httpStatus) {
     return {
-      message: `OpenAI chat failed (HTTP ${httpStatus}: ${reason}). Check API key, billing, and model gpt-4o-mini.`,
+      message: `OpenAI chat failed (HTTP ${httpStatus}: ${reason}). Check API key, billing, and model ${OPENAI_CHAT_MODEL}.`,
       code: httpStatus,
     };
   }
