@@ -894,6 +894,11 @@ export const en = {
     intro: 'Signals from your listening sessions live only here — nothing else in DOST reads them yet.',
     sessions: 'Sessions',
     totalTime: 'Total time',
+    cloudTranscription: 'Transcription',
+    cloudOn: 'More accurate (cloud)',
+    cloudOff: 'On this phone',
+    cloudOnHint: 'Only your own speech — after DOST has recognised it as you — is sent securely for transcription and is not stored there. Much more accurate, especially for Hindi and Marathi.',
+    cloudOffHint: 'Everything stays on your phone. Less accurate with background noise or mixed languages.',
     sensitivity: 'Speaker sensitivity',
     sensitivityA11y: 'Sensitivity: {level}',
     level: {
@@ -953,6 +958,8 @@ export const en = {
     recordA11y: 'Start recording this line',
     record: 'Record',
     listeningCountdown: 'Listening… {seconds}s',
+    preparingTitle: 'Preparing voice recognition…',
+    preparingBody: 'DOST is downloading its voice-recognition model (about {mb} MB). This happens only once.',
     processingTitle: 'Reading your voice…',
     processingBody:
       'DOST is turning that clip into a small numeric fingerprint. Nothing else is happening.',

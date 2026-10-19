@@ -9,15 +9,23 @@
 // module in the bundle but never evaluates it on web.
 import type { WhisperContext } from 'whisper.rn/index';
 import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system/legacy';
+import { supabase } from '../supabase';
 
 /**
- * On-device Whisper transcription for hearing sessions.
+ * Transcription for hearing sessions.
  *
- * The tiny English quantized model (~31 MB) is downloaded once from the
- * canonical whisper.cpp HuggingFace repository — the same URL pattern
- * whisper.rn's own docs point at — and cached in the app's document
- * directory. It is never bundled.
+ * Default: on-device Whisper. The multilingual base quantized model
+ * (~57 MB) is downloaded once from the canonical whisper.cpp HuggingFace
+ * repository — the same URL pattern whisper.rn's own docs point at — and
+ * cached in the app's document directory. It is never bundled.
+ *
+ * Opt-in ("More accurate transcription" in Settings): segments that
+ * already passed the speaker gate — only the user's own voice — are sent
+ * to the transcribe-voice-note edge function (OpenAI speech-to-text, the
+ * same cloud-recognition approach Alexa uses). Nothing is stored there.
+ * Any cloud failure falls back to on-device Whisper for that segment.
  *
  * Every function here is designed to fail soft. A hearing session must
  * still run and produce acoustic features even if the model download
@@ -25,21 +33,46 @@ import * as FileSystem from 'expo-file-system/legacy';
  * for that segment and the semantic-emotions leg is simply skipped.
  */
 
-// Multilingual tiny model — supports 99 languages including English,
-// Hindi and Marathi (the three languages DOST's users speak). The
-// English-only variant (ggml-tiny.en-q5_1.bin) would garble anything
-// non-English, so we deliberately use the multilingual build even
-// though it's slightly less accurate on pure English input.
-const MODEL_FILENAME = 'ggml-tiny-q5_1.bin';
+// Multilingual base model — supports 99 languages including English,
+// Hindi and Marathi (the three languages DOST's users speak). tiny
+// garbled too much real conversation, Hindi and Marathi especially;
+// base roughly halves the word error rate for ~2x the compute.
+const MODEL_FILENAME = 'ggml-base-q5_1.bin';
+// Replaced by MODEL_FILENAME; deleted on first download to free space.
+const LEGACY_MODEL_FILENAMES = ['ggml-tiny-q5_1.bin'];
 
 // Canonical whisper.cpp GGML model URL. This is where ggerganov
 // publishes every whisper.cpp GGML/quantized model.
 const MODEL_URL =
-  'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny-q5_1.bin';
+  'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base-q5_1.bin';
 
-// Approximate on-disk size (~31 MB). Used only for the disclosure copy
+// Approximate on-disk size (~57 MB). Used only for the disclosure copy
 // so we don't hardcode a number the UI can lie about.
-export const MODEL_APPROX_MB = 31;
+export const MODEL_APPROX_MB = 57;
+
+const CLOUD_KEY = 'dost.hearing.cloudTranscription.v1';
+
+export type TranscriptionOptions = {
+  cloud: boolean;
+  // ISO 639-1 hint ('en' | 'hi' | 'mr'); undefined = detect.
+  language?: string;
+};
+
+export async function getCloudTranscription(): Promise<boolean> {
+  try {
+    return (await AsyncStorage.getItem(CLOUD_KEY)) === 'on';
+  } catch {
+    return false;
+  }
+}
+
+export async function setCloudTranscription(on: boolean): Promise<void> {
+  try {
+    await AsyncStorage.setItem(CLOUD_KEY, on ? 'on' : 'off');
+  } catch {
+    // best-effort
+  }
+}
 
 let whisperContext: WhisperContext | null = null;
 let inFlightInit: Promise<WhisperContext> | null = null;
@@ -99,6 +132,11 @@ export async function ensureModelDownloaded(
   if (!result?.uri) {
     throw new Error('Whisper model download failed');
   }
+  const dir = FileSystem.documentDirectory;
+  for (const legacy of LEGACY_MODEL_FILENAMES) {
+    if (!dir) break;
+    await FileSystem.deleteAsync(`${dir}${legacy}`, { idempotent: true }).catch(() => {});
+  }
   return result.uri;
 }
 
@@ -123,11 +161,72 @@ export async function initTranscription(
 }
 
 /**
- * Transcribe a single VAD-detected speech segment. Returns '' on any
+ * Transcribe a single speaker-verified speech segment. Returns '' on any
  * failure — the caller is expected to keep the pipeline running and let
  * the semantic-emotion leg be skipped for that segment.
  */
-export async function transcribeSegment(pcm: Float32Array): Promise<string> {
+export async function transcribeSegment(
+  pcm: Float32Array,
+  sampleRate: number,
+  options: TranscriptionOptions = { cloud: false },
+): Promise<string> {
+  if (options.cloud) {
+    const text = await transcribeInCloud(pcm, sampleRate, options.language);
+    if (text) return text;
+  }
+  return transcribeOnDevice(pcm, options.language);
+}
+
+async function transcribeInCloud(
+  pcm: Float32Array,
+  sampleRate: number,
+  language?: string,
+): Promise<string> {
+  try {
+    const lang = language ?? 'auto';
+    const { data, error } = await supabase.functions.invoke<{ transcript?: string }>(
+      `transcribe-voice-note?language=${encodeURIComponent(lang)}`,
+      {
+        body: encodeWav(pcm, sampleRate),
+        headers: { 'Content-Type': 'audio/wav' },
+      },
+    );
+    if (error || typeof data?.transcript !== 'string') return '';
+    return data.transcript.trim();
+  } catch (err) {
+    if (__DEV__) console.warn('[hearing] cloud transcription failed:', err);
+    return '';
+  }
+}
+
+/** 16-bit PCM mono WAV. */
+export function encodeWav(pcm: Float32Array, sampleRate: number): ArrayBuffer {
+  const buffer = new ArrayBuffer(44 + pcm.length * 2);
+  const view = new DataView(buffer);
+  const ascii = (offset: number, text: string) => {
+    for (let i = 0; i < text.length; i++) view.setUint8(offset + i, text.charCodeAt(i));
+  };
+  ascii(0, 'RIFF');
+  view.setUint32(4, 36 + pcm.length * 2, true);
+  ascii(8, 'WAVE');
+  ascii(12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true); // PCM
+  view.setUint16(22, 1, true); // mono
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  ascii(36, 'data');
+  view.setUint32(40, pcm.length * 2, true);
+  for (let i = 0; i < pcm.length; i++) {
+    const v = Math.max(-1, Math.min(1, pcm[i]));
+    view.setInt16(44 + i * 2, v < 0 ? v * 0x8000 : v * 0x7fff, true);
+  }
+  return buffer;
+}
+
+async function transcribeOnDevice(pcm: Float32Array, language?: string): Promise<string> {
   try {
     const ctx = whisperContext ?? (await initTranscription());
     // whisper.rn accepts a base64-encoded Float32 string OR an ArrayBuffer.
@@ -141,10 +240,10 @@ export async function transcribeSegment(pcm: Float32Array): Promise<string> {
       pcm.byteOffset + pcm.byteLength,
     ) as ArrayBuffer;
     const { promise } = ctx.transcribeData(buf, {
-      // 'auto' lets Whisper detect the language per segment, so a
-      // session that mixes English, Hindi and Marathi transcribes
-      // each segment in its own language rather than forcing one.
-      language: 'auto',
+      // With one enrolled language, say so — detection on short clips
+      // often mislabels Hindi/Marathi. With several, 'auto' detects per
+      // segment so a mixed session keeps each segment's own language.
+      language: language ?? 'auto',
       maxThreads: 2,
     });
     const res = await promise;

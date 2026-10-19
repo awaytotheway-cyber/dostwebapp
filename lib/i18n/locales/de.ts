@@ -315,6 +315,10 @@ export const de: Messages<typeof en> = {
     placeholderListening: 'Hört zu...',
     placeholder: 'Schreib dir hier alles von der Seele...',
     sendA11y: 'Senden',
+    deleteMessageTitle: 'Nachricht löschen?',
+    deleteMessageBody: 'Diese Nachricht wird aus deinem Gespräch entfernt.',
+    deleteMessageConfirm: 'Löschen',
+    messageDeleted: 'Nachricht gelöscht',
   },
   search: {
     title: 'Chats durchsuchen',
@@ -891,6 +895,11 @@ export const de: Messages<typeof en> = {
     intro: 'Signale aus deinen Zuhör-Sitzungen bleiben nur hier – nichts anderes in DOST liest sie bisher.',
     sessions: 'Sitzungen',
     totalTime: 'Gesamtzeit',
+    cloudTranscription: 'Transkription',
+    cloudOn: 'Genauer (Cloud)',
+    cloudOff: 'Auf diesem Telefon',
+    cloudOnHint: 'Nur deine eigene Stimme — nachdem DOST sie als deine erkannt hat — wird sicher zur Transkription gesendet und dort nicht gespeichert. Deutlich genauer, vor allem bei Hindi und Marathi.',
+    cloudOffHint: 'Alles bleibt auf deinem Telefon. Weniger genau bei Hintergrundgeräuschen oder gemischten Sprachen.',
     sensitivity: 'Stimmempfindlichkeit',
     sensitivityA11y: 'Empfindlichkeit: {level}',
     level: {
@@ -950,6 +959,8 @@ export const de: Messages<typeof en> = {
     recordA11y: 'Aufnahme dieses Satzes starten',
     record: 'Aufnehmen',
     listeningCountdown: 'Hört zu… {seconds} s',
+    preparingTitle: 'Spracherkennung wird vorbereitet…',
+    preparingBody: 'DOST lädt sein Stimmerkennungsmodell herunter (etwa {mb} MB). Das passiert nur einmal.',
     processingTitle: 'Deine Stimme wird gelesen…',
     processingBody:
       'DOST verwandelt diesen Clip in einen kleinen numerischen Fingerabdruck. Sonst passiert nichts.',

@@ -1,4 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { sliceCurrentConversation } from "../_shared/conversationFlow.ts";
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 import {
   computeThemeRepeatCount,
@@ -613,8 +614,10 @@ async function loadRecentStageRows(
   }
   if (!Array.isArray(data)) return [];
 
+  // Only this conversation counts toward the arc: without the cut, the
+  // stage machine carried yesterday's turns into today's first message.
   const rows: RecentStageRow[] = [];
-  for (const row of data.slice().reverse()) {
+  for (const row of sliceCurrentConversation(data.slice().reverse(), Date.now())) {
     if (!row || typeof row !== "object") continue;
     const record = row as Record<string, unknown>;
     rows.push({

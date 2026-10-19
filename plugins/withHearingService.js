@@ -10,6 +10,8 @@
  *      android:exported="false".
  *   3. Registers HearingPackage() in MainApplication.kt so RN can
  *      resolve NativeModules.HearingModule.
+ *   4. Adds ONNX Runtime (Maven Central) to app/build.gradle for the
+ *      neural speaker-embedding model used by the speaker gate.
  *
  * The service is session-based only. It is started explicitly by a JS
  * call and stopped either from JS or from the notification's Stop
@@ -17,6 +19,7 @@
  */
 const {
   withAndroidManifest,
+  withAppBuildGradle,
   withMainApplication,
   withDangerousMod,
 } = require('@expo/config-plugins');
@@ -31,7 +34,10 @@ const KOTLIN_FILES = [
   'HearingModule.kt',
   'HearingPackage.kt',
   'EnrollmentRecorder.kt',
+  'SpeakerEmbedder.kt',
 ];
+const ONNXRUNTIME_DEP =
+  "implementation 'com.microsoft.onnxruntime:onnxruntime-android:1.20.0'";
 
 function withHearingKotlinSources(config) {
   return withDangerousMod(config, [
@@ -132,9 +138,23 @@ function withHearingPackageRegistration(config) {
   });
 }
 
+function withOnnxRuntimeDependency(config) {
+  return withAppBuildGradle(config, (cfg) => {
+    let src = cfg.modResults.contents;
+    if (src.includes('com.microsoft.onnxruntime:onnxruntime-android')) return cfg;
+    if (!/dependencies\s*\{/.test(src)) {
+      throw new Error('withHearingService: dependencies block not found in app/build.gradle');
+    }
+    src = src.replace(/dependencies\s*\{/, (m) => `${m}\n    ${ONNXRUNTIME_DEP}`);
+    cfg.modResults.contents = src;
+    return cfg;
+  });
+}
+
 module.exports = function withHearingService(config) {
   config = withHearingKotlinSources(config);
   config = withHearingServiceManifest(config);
   config = withHearingPackageRegistration(config);
+  config = withOnnxRuntimeDependency(config);
   return config;
 };

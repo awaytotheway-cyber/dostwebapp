@@ -315,6 +315,10 @@ export const ja: Messages<typeof en> = {
     placeholderListening: '聞いています...',
     placeholder: 'ここに思いを書き出してください...',
     sendA11y: '送信',
+    deleteMessageTitle: 'メッセージを削除しますか？',
+    deleteMessageBody: 'このメッセージは会話から削除されます。',
+    deleteMessageConfirm: '削除',
+    messageDeleted: 'メッセージを削除しました',
   },
   search: {
     title: 'チャットを検索',
@@ -891,6 +895,11 @@ export const ja: Messages<typeof en> = {
     intro: 'リスニングセッションのシグナルはここにだけ保存されます — DOST のほかの機能はまだこれを読み取りません。',
     sessions: 'セッション',
     totalTime: '合計時間',
+    cloudTranscription: '文字起こし',
+    cloudOn: 'より正確（クラウド）',
+    cloudOff: 'この端末のみ',
+    cloudOnHint: 'DOST があなたの声だと認識した、あなた自身の発話だけが安全に送信されて文字起こしされ、そこには保存されません。特にヒンディー語とマラーティー語でずっと正確です。',
+    cloudOffHint: 'すべてこの端末内にとどまります。周囲の雑音や複数の言語が混ざると精度が下がります。',
     sensitivity: '話者の感度',
     sensitivityA11y: '感度：{level}',
     level: {
@@ -950,6 +959,8 @@ export const ja: Messages<typeof en> = {
     recordA11y: 'この文の録音を始める',
     record: '録音',
     listeningCountdown: '聞いています… {seconds} 秒',
+    preparingTitle: '音声認識を準備しています…',
+    preparingBody: 'DOST が音声認識モデルをダウンロードしています（約 {mb} MB）。これは一度だけです。',
     processingTitle: 'あなたの声を読み取っています…',
     processingBody:
       'DOST は、その音声を小さな数値の指紋に変換しています。それ以外のことは何もしていません。',

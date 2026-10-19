@@ -316,6 +316,10 @@ export const es: Messages<typeof en> = {
     placeholderListening: 'Escuchando...',
     placeholder: 'Desahógate aquí...',
     sendA11y: 'Enviar',
+    deleteMessageTitle: '¿Eliminar mensaje?',
+    deleteMessageBody: 'Este mensaje se quitará de tu conversación.',
+    deleteMessageConfirm: 'Eliminar',
+    messageDeleted: 'Mensaje eliminado',
   },
   search: {
     title: 'Buscar conversaciones',
@@ -892,6 +896,11 @@ export const es: Messages<typeof en> = {
     intro: 'Las señales de tus sesiones de escucha solo viven aquí; nada más en DOST las lee todavía.',
     sessions: 'Sesiones',
     totalTime: 'Tiempo total',
+    cloudTranscription: 'Transcripción',
+    cloudOn: 'Más precisa (nube)',
+    cloudOff: 'En este teléfono',
+    cloudOnHint: 'Solo tu propia voz — una vez que DOST la reconoce como tuya — se envía de forma segura para transcribirla y no se guarda allí. Mucho más precisa, sobre todo en hindi y maratí.',
+    cloudOffHint: 'Todo se queda en tu teléfono. Menos precisa con ruido de fondo o idiomas mezclados.',
     sensitivity: 'Sensibilidad de voz',
     sensitivityA11y: 'Sensibilidad: {level}',
     level: {
@@ -951,6 +960,8 @@ export const es: Messages<typeof en> = {
     recordA11y: 'Empezar a grabar esta frase',
     record: 'Grabar',
     listeningCountdown: 'Escuchando… {seconds} s',
+    preparingTitle: 'Preparando el reconocimiento de voz…',
+    preparingBody: 'DOST está descargando su modelo de reconocimiento de voz (unos {mb} MB). Solo ocurre una vez.',
     processingTitle: 'Leyendo tu voz…',
     processingBody:
       'DOST está convirtiendo ese fragmento en una pequeña huella numérica. No pasa nada más.',
