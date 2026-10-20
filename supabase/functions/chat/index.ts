@@ -455,6 +455,7 @@ async function handleRequest(req: Request): Promise<Response> {
   }
 
   try {
+    const timing = startTiming();
     const jwt = bearerToken(req.headers.get("Authorization"));
     if (!jwt) {
       return json(401, { error: GENERIC_UNAUTHORIZED });
@@ -494,18 +495,20 @@ async function handleRequest(req: Request): Promise<Response> {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
-    const rate = await applyRateLimit(admin, userId);
-    if (rate === "limited") {
-      return json(429, { error: GENERIC_RATE_LIMIT });
-    }
+    timing.mark("auth");
 
-    const [historyRows, profile, memory, personalityProfile, adminAnswers] = await Promise.all([
+    const [rate, historyRows, profile, memory, personalityProfile, adminAnswers] = await Promise.all([
+      applyRateLimit(admin, userId),
       loadHistory(userClient, userId),
       loadProfile(userClient, userId),
       loadMemory(userClient, userId),
       loadPersonalityProfile(userClient, userId),
       loadAdminOnboardingAnswers(userClient, userId),
     ]);
+    if (rate === "limited") {
+      return json(429, { error: GENERIC_RATE_LIMIT });
+    }
+    timing.mark("load");
 
     const { data: userRow, error: userInsertError } = await admin
       .from("conversations")
@@ -528,23 +531,34 @@ async function handleRequest(req: Request): Promise<Response> {
       });
     }
     const userMessageId = userRow.id;
+    timing.mark("insert_user");
 
-    // Extract emotions first (timeout-bounded), then RAG with emotion-aware query.
+    // Emotion extraction, the knowledge-base search and the last chip
+    // lookup don't depend on each other, so they run side by side; the
+    // extraction (its own OpenAI call) used to hold up everything after it.
     // On extract error/timeout the reply still proceeds. Assistant messages are never sent.
-    const emotionSnapshot = await awaitEmotionExtraction({
-      supabaseUrl: env.url,
-      anonKey: env.anonKey,
-      jwt,
-      userId,
-      messageId: userMessageId,
-      messageText: parsed.message,
-    });
+    const [emotionSnapshot, kbMatches, recentSelectedEmotion] = await Promise.all([
+      awaitEmotionExtraction({
+        supabaseUrl: env.url,
+        anonKey: env.anonKey,
+        jwt,
+        userId,
+        messageId: userMessageId,
+        messageText: parsed.message,
+      }).finally(() => timing.mark("extract")),
+      retrieveKbMatches(admin, userId, parsed.message).finally(() => timing.mark("kb")),
+      parsed.selectedEmotion
+        ? Promise.resolve(null)
+        : loadRecentSelectedEmotion(admin, userId, userMessageId),
+    ]);
 
+    // The reply doesn't depend on these writes; finish them after responding.
+    const background: Promise<unknown>[] = [];
     if (parsed.selectedEmotion || parsed.selectedNeed) {
-      await storeSelectedChip(admin, userId, userMessageId, {
+      background.push(storeSelectedChip(admin, userId, userMessageId, {
         selected_emotion: parsed.selectedEmotion,
         selected_need: parsed.selectedNeed,
-      });
+      }));
     }
 
     const history: HistoryTurn[] = historyRows.map(({ role, content }) => ({ role, content }));
@@ -569,9 +583,7 @@ async function handleRequest(req: Request): Promise<Response> {
     // need chips appear without asking them to name it twice.
     const typedFeeling = userTexts.map(namedFeeling).find((f) => f) ?? null;
     const selectedEmotion =
-      parsed.selectedEmotion ??
-      (await loadRecentSelectedEmotion(admin, userId, userMessageId)) ??
-      typedFeeling;
+      parsed.selectedEmotion ?? recentSelectedEmotion ?? typedFeeling;
     const turnPlan = planTurn({
       stage: conversationStage,
       latestUserText: parsed.message,
@@ -595,18 +607,13 @@ async function handleRequest(req: Request): Promise<Response> {
       emotionSnapshot &&
       (suggestedEmotions.length > 0 || suggestedNeeds.length > 0)
     ) {
-      await storeSuggestedChips(admin, userId, userMessageId, {
+      background.push(storeSuggestedChips(admin, userId, userMessageId, {
         suggested_emotions: suggestedEmotions,
         suggested_needs: suggestedNeeds,
-      });
+      }));
     }
 
-    const kbBlock = await retrieveKbBlock(
-      admin,
-      userId,
-      buildKbQuery(parsed.message, emotionSnapshot),
-      emotionSnapshot,
-    );
+    const kbBlock = kbMatches.length > 0 ? formatKbBlock(kbMatches, emotionSnapshot) : "";
     const systemPrompt = buildSystemPrompt(
       profile,
       kbBlock,
@@ -624,6 +631,7 @@ async function handleRequest(req: Request): Promise<Response> {
     let assistantText: string;
     try {
       assistantText = await callOpenAI(systemPrompt, history, parsed.message);
+      timing.mark("llm");
     } catch (openAiError) {
       logFnError("chat", "openai", openAiError);
       const detail = describeOpenAiFailure(openAiError);
@@ -634,20 +642,18 @@ async function handleRequest(req: Request): Promise<Response> {
       });
     }
 
-    const { error: insertError } = await admin.from("conversations").insert({
-      user_id: userId,
-      role: "assistant",
-      content: assistantText,
-    });
-    if (insertError) {
-      logFnError("chat", "insert_assistant", insertError);
-      // Still return the reply — user can chat; history may not persist until DB is fixed.
-      return json(200, buildChatPayload(assistantText, turnExtras, {
-        warning: "history_not_saved",
-        step: "insert_assistant",
-        code: pgCode(insertError),
-      }));
-    }
+    // Saving the reply happens after it is sent; a failure is only logged
+    // (the client never used the old history_not_saved warning).
+    background.push((async () => {
+      const { error: insertError } = await admin.from("conversations").insert({
+        user_id: userId,
+        role: "assistant",
+        content: assistantText,
+      });
+      if (insertError) logFnError("chat", "insert_assistant", insertError);
+    })());
+    runInBackground(Promise.allSettled(background));
+    timing.log();
 
     return json(200, buildChatPayload(assistantText, turnExtras));
   } catch (error) {
@@ -990,23 +996,6 @@ function asTokenArray(
   return out;
 }
 
-function buildKbQuery(
-  message: string,
-  emotions: EmotionSnapshot | null,
-): string {
-  if (!emotions) return message;
-  const themes = [
-    ...emotions.primary_emotions,
-    ...emotions.secondary_emotions,
-    ...emotions.needs,
-  ]
-    .map((t) => sanitizeInject(t, 40))
-    .filter(Boolean);
-  if (themes.length === 0) return message;
-  // Append compact theme tags so embedding retrieval can lean on emotion/need context.
-  return `${message}\n\nThemes: ${themes.join(", ")}`;
-}
-
 type RateResult = "ok" | "limited";
 
 async function applyRateLimit(
@@ -1110,27 +1099,53 @@ async function applyEmbeddingRateLimit(
   return error ? "unavailable" : "ok";
 }
 
-async function retrieveKbBlock(
+/**
+ * Knowledge-base passages for the user's message. Runs alongside emotion
+ * extraction, so it searches on the message itself rather than waiting for
+ * the extracted theme words.
+ */
+async function retrieveKbMatches(
   admin: SupabaseClient,
   userId: string,
   message: string,
-  emotions: EmotionSnapshot | null = null,
-): Promise<string> {
+): Promise<ModuleMatch[]> {
   try {
-    const embedRate = await applyEmbeddingRateLimit(admin, userId);
-    if (embedRate === "limited") return "";
-
-    const embedding = await embedUserMessage(message);
-    if (!embedding) return "";
+    const [embedRate, embedding] = await Promise.all([
+      applyEmbeddingRateLimit(admin, userId),
+      embedUserMessage(message),
+    ]);
+    if (embedRate === "limited" || !embedding) return [];
 
     const result = await matchModules(admin, embedding);
     logKbMatch(result.tier, result.matches);
-    if (result.matches.length === 0) return "";
-
-    return formatKbBlock(result.matches, emotions);
+    return result.matches;
   } catch {
-    return "";
+    return [];
   }
+}
+
+/** Keep the isolate alive for work that finishes after the response. */
+function runInBackground(promise: Promise<unknown>): void {
+  const runtime = (globalThis as {
+    EdgeRuntime?: { waitUntil(p: Promise<unknown>): void };
+  }).EdgeRuntime;
+  // Off the edge runtime (local tests) the promise simply runs on its own.
+  if (runtime) runtime.waitUntil(promise);
+  else void promise;
+}
+
+/** Per-phase durations, logged once per request (no message content). */
+function startTiming() {
+  const start = Date.now();
+  const marks: Record<string, number> = {};
+  return {
+    mark(name: string) {
+      marks[name] = Date.now() - start;
+    },
+    log() {
+      console.log("chat", "timing_ms", JSON.stringify({ ...marks, total: Date.now() - start }));
+    },
+  };
 }
 
 async function embedUserMessage(message: string): Promise<number[] | null> {
@@ -1222,8 +1237,9 @@ function parseMatches(data: unknown[]): ModuleMatch[] {
   const matches: ModuleMatch[] = [];
   for (const row of data) {
     if (!row || typeof row !== "object") continue;
-    const title = typeof row.title === "string" ? row.title.trim() : "";
-    const content = typeof row.content === "string" ? row.content.trim() : "";
+    const record = row as Record<string, unknown>;
+    const title = typeof record.title === "string" ? record.title.trim() : "";
+    const content = typeof record.content === "string" ? record.content.trim() : "";
     if (!title && !content) continue;
     const similarity =
       typeof (row as Record<string, unknown>).similarity === "number"

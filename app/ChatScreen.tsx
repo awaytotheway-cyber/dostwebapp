@@ -9,11 +9,13 @@ import {
   Keyboard,
   KeyboardAvoidingView,
   Linking,
+  type NativeSyntheticEvent,
   Platform,
   Pressable,
   StyleSheet,
   Text,
   TextInput,
+  type TextInputKeyPressEventData,
   View,
 } from 'react-native';
 import NetInfo, { type NetInfoState } from '@react-native-community/netinfo';
@@ -1229,6 +1231,24 @@ export default function ChatScreen({ navigation, route }: Props) {
   const canSend =
     Boolean(input.trim()) && !isTyping && !gentleLoading && !listening && isOnline;
   const micDisabled = isTyping || gentleLoading || !isOnline;
+
+  const onSubmitFromKeyboard = useCallback(() => {
+    if (canSend) void onSend();
+  }, [canSend, onSend]);
+
+  const onComposerKeyPress = useCallback(
+    (e: NativeSyntheticEvent<TextInputKeyPressEventData>) => {
+      if (Platform.OS !== 'web') return;
+      const key = e.nativeEvent as TextInputKeyPressEventData & {
+        shiftKey?: boolean;
+        isComposing?: boolean;
+      };
+      if (key.key !== 'Enter' || key.shiftKey || key.isComposing) return;
+      e.preventDefault();
+      if (canSend) void onSend();
+    },
+    [canSend, onSend],
+  );
   const composerBottom = Math.max(insets.bottom, spacing.sm);
 
   return (
@@ -1402,7 +1422,13 @@ export default function ChatScreen({ navigation, route }: Props) {
             maxLength={MAX_MESSAGE_LEN}
             multiline
             editable={!listening}
-            blurOnSubmit={false}
+            // Enter sends. Phones: the return key becomes "Send". Web
+            // ignores submitBehavior for multiline, so onComposerKeyPress
+            // handles Enter there (Shift+Enter still adds a new line).
+            submitBehavior="submit"
+            returnKeyType="send"
+            onSubmitEditing={onSubmitFromKeyboard}
+            onKeyPress={onComposerKeyPress}
             textAlignVertical="top"
             autoCapitalize="sentences"
             underlineColorAndroid="transparent"
