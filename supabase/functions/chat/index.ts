@@ -223,10 +223,14 @@ const EMBED_RATE_LIMIT_PER_HOUR = 100;
 const EMBED_RATE_WINDOW_MS = 60 * 60 * 1000;
 const HISTORY_LIMIT = 20;
 const EMBEDDING_DIMS = 1536;
-const MATCH_THRESHOLD = 0.7;
+// Cosine similarity with text-embedding-3-small runs low: even two
+// passages of the mentor's own book on related topics peak around 0.65,
+// and a short chat message scores lower still against a passage. The old
+// 0.7 / 0.55 floors meant the knowledge base was almost never used.
+const MATCH_THRESHOLD = 0.45;
 const MATCH_COUNT = 3;
-const FALLBACK_MATCH_THRESHOLD = 0.55;
-const FALLBACK_MATCH_COUNT = 5;
+const FALLBACK_MATCH_THRESHOLD = 0.3;
+const FALLBACK_MATCH_COUNT = 3;
 const KB_TITLE_MAX = 200;
 const KB_CONTENT_MAX = 4000;
 const OPENAI_COMPLETIONS_URL = "https://api.openai.com/v1/chat/completions";
@@ -310,7 +314,7 @@ const VALID_CONVERSATION_STAGES = new Set<string>([
 ]);
 
 const RAG_GROUNDING_INSTRUCTION =
-  "Reference material below is for you to draw wisdom from silently. Do not quote it, cite it, or teach from it. Let it shape your reflection.";
+  "The passages below come from your mentor's teaching modules — the source of your understanding. Let their ideas, distinctions and practices shape what you notice, the question you ask and any small tool you offer (with permission), and convey them with quiet conviction. Say it in your own brief, warm words: one idea at a time, never quoting passages, naming chapters, or lecturing.";
 
 const AMBIGUOUS_EMOTION_GUIDANCE =
   "The emotional tone of this message is a bit ambiguous. Acknowledge that gently, and invite the user to share more about their experience if they feel comfortable. Don't push or pry, but create an open space for exploration. Prefer curiosity over naming a firm emotion.";

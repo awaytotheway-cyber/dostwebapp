@@ -47,3 +47,6 @@ yarn-error.*
 
 # Supabase CLI temp
 supabase/.temp/
+
+# Knowledge-base loader credentials (scripts/kb/ingest.cjs)
+.env.kb
