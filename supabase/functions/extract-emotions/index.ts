@@ -421,20 +421,21 @@ async function handleRequest(req: Request): Promise<Response> {
       return json(403, { error: GENERIC_FORBIDDEN });
     }
 
-    const owned = await messageOwnedByUser(
-      userClient,
-      userId,
-      parsedBody.messageId,
-    );
-    if (!owned) {
-      return json(400, { error: GENERIC_INVALID });
-    }
-
     const admin = createClient(env.url, env.serviceRoleKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
-    const existing = await loadExisting(admin, userId, parsedBody.messageId);
+    // Independent lookups, run together. Nothing is returned or written
+    // before the ownership check below passes.
+    const [owned, existing, recentRows] = await Promise.all([
+      messageOwnedByUser(userClient, userId, parsedBody.messageId),
+      loadExisting(admin, userId, parsedBody.messageId),
+      loadRecentStageRows(admin, userId, parsedBody.messageId),
+    ]);
+    if (!owned) {
+      return json(400, { error: GENERIC_INVALID });
+    }
+
     if (existing) {
       console.log(
         "extract-emotions",
@@ -446,15 +447,10 @@ async function handleRequest(req: Request): Promise<Response> {
       return json(200, existing);
     }
 
-    const recentRows = await loadRecentStageRows(
-      admin,
-      userId,
-      parsedBody.messageId,
-    );
-
     let extracted: ExtractedEmotions;
+    let ambiguityNote: string | null;
     try {
-      extracted = await callOpenAI(parsedBody.messageText);
+      ({ result: extracted, ambiguityNote } = await callOpenAI(parsedBody.messageText));
     } catch (error) {
       if (error instanceof Error && error.message === "parse") {
         logFnError("extract-emotions", "parse", error);
@@ -507,6 +503,12 @@ async function handleRequest(req: Request): Promise<Response> {
       logFnError("extract-emotions", "insert", insertError);
       return json(502, { error: GENERIC_ERROR });
     }
+
+    // The written rationale is enrichment only; chat's reply shouldn't wait
+    // for a second OpenAI round trip. Stored on the row once it arrives.
+    runInBackground(
+      storeExplanation(admin, userId, parsedBody.messageId, parsedBody.messageText, extracted, ambiguityNote),
+    );
 
     // Step 4 prep (metrics only): labels + confidence/ambiguity — never message text.
     console.log(
@@ -811,14 +813,16 @@ RESPOND ONLY WITH VALID JSON:
 }`;
 }
 
-async function callOpenAI(messageText: string): Promise<ExtractedEmotions> {
-  const apiKey = Deno.env.get("OPENAI_API_KEY");
-  if (!apiKey) {
-    throw new Error("missing_key");
-  }
-  if (!OPENAI_COMPLETIONS_URL.startsWith("https://")) {
-    throw new Error("bad_url");
-  }
+/**
+ * Labels (plus one reconsideration pass when confidence is low). The
+ * longer explanation is written afterwards by storeExplanation; an
+ * ambiguous result carries its short ambiguity note as the explanation
+ * meanwhile.
+ */
+async function callOpenAI(
+  messageText: string,
+): Promise<{ result: ExtractedEmotions; ambiguityNote: string | null }> {
+  const apiKey = openAiKey();
 
   let extracted = await openAIJson(
     apiKey,
@@ -856,28 +860,62 @@ async function callOpenAI(messageText: string): Promise<ExtractedEmotions> {
     result = { ...result, is_ambiguous: false };
   }
 
-  // Explanation follow-up on the settled extraction (enrichment only).
+  if (result.is_ambiguous && ambiguityNote) {
+    result = { ...result, explanation: ambiguityNote };
+  }
+  return { result, ambiguityNote };
+}
+
+function openAiKey(): string {
+  const apiKey = Deno.env.get("OPENAI_API_KEY");
+  if (!apiKey) {
+    throw new Error("missing_key");
+  }
+  if (!OPENAI_COMPLETIONS_URL.startsWith("https://")) {
+    throw new Error("bad_url");
+  }
+  return apiKey;
+}
+
+/** Explanation follow-up on the settled extraction (enrichment only). */
+async function storeExplanation(
+  admin: SupabaseClient,
+  userId: string,
+  messageId: string,
+  messageText: string,
+  extracted: ExtractedEmotions,
+  ambiguityNote: string | null,
+): Promise<void> {
   try {
     const explanationRaw = await openAIJson(
-      apiKey,
-      explanationPrompt(messageText, result),
+      openAiKey(),
+      explanationPrompt(messageText, extracted),
       280,
     );
     let explanation = parseExplanation(explanationRaw);
-    if (result.is_ambiguous && ambiguityNote) {
+    if (extracted.is_ambiguous && ambiguityNote) {
       explanation = mergeExplanation(explanation, ambiguityNote);
     }
-    if (explanation) {
-      result = { ...result, explanation };
-    }
+    if (!explanation) return;
+    const { error } = await admin
+      .from("message_emotions")
+      .update({ explanation })
+      .eq("user_id", userId)
+      .eq("message_id", messageId);
+    if (error) logFnError("extract-emotions", "store_explanation", error);
   } catch (error) {
     logFnError("extract-emotions", "explanation", error);
-    if (result.is_ambiguous && ambiguityNote) {
-      result = { ...result, explanation: ambiguityNote };
-    }
   }
+}
 
-  return result;
+/** Keep the isolate alive for work that finishes after the response. */
+function runInBackground(promise: Promise<unknown>): void {
+  const runtime = (globalThis as {
+    EdgeRuntime?: { waitUntil(p: Promise<unknown>): void };
+  }).EdgeRuntime;
+  // Off the edge runtime (local tests) the promise simply runs on its own.
+  if (runtime) runtime.waitUntil(promise);
+  else void promise;
 }
 
 async function openAIJson(
