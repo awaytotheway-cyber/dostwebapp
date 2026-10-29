@@ -75,6 +75,14 @@ made only in the dashboard can be lost by the next deploy.
   is empty, because the device-side writer ships with the next Android
   build. Until then the chat block is empty for everyone, which is why
   deploying it was safe.
+- **The nightly synthesis has never produced a row.** Its scheduled run
+  on 2026-10-29 at 03:00 failed with `DeepSeek synthesis failed: 401`,
+  and the key in the error reads `undefined` — so `DEEPSEEK_API_KEY` is
+  not set on Edge Functions. `user_understanding` has no rows at all,
+  so this has presumably failed from the start. Set the secret under
+  Project Settings → Edge Functions → Secrets; nothing in the code
+  needs changing. Until then the voice block in the nightly prompt is
+  built and then thrown away with the failed run.
 - Listening emotions still do not reach the Journey screen; it reads
   `message_emotions` and `voice_notes` only.
 - Acoustic emotion remains mocked — that is Phase 4, which is gated on
