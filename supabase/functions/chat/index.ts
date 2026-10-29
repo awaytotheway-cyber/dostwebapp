@@ -23,6 +23,7 @@ import {
   type Stage,
 } from "../_shared/suggestionChips.ts";
 import { streamCompletion } from "../_shared/sse.ts";
+import { formatVoiceContext, type VoiceSummaryRow } from "../_shared/voiceContext.ts";
 
 // Helpers live in this file so dashboard deploy (this folder only) can bundle.
 // CLI deploy of other functions still uses supabase/functions/_shared/safe.ts.
@@ -498,14 +499,16 @@ async function handleRequest(req: Request): Promise<Response> {
 
     timing.mark("auth");
 
-    const [rate, historyRows, profile, memory, personalityProfile, adminAnswers] = await Promise.all([
-      applyRateLimit(admin, userId),
-      loadHistory(userClient, userId),
-      loadProfile(userClient, userId),
-      loadMemory(userClient, userId),
-      loadPersonalityProfile(userClient, userId),
-      loadAdminOnboardingAnswers(userClient, userId),
-    ]);
+    const [rate, historyRows, profile, memory, personalityProfile, adminAnswers, voiceContext] =
+      await Promise.all([
+        applyRateLimit(admin, userId),
+        loadHistory(userClient, userId),
+        loadProfile(userClient, userId),
+        loadMemory(userClient, userId),
+        loadPersonalityProfile(userClient, userId),
+        loadAdminOnboardingAnswers(userClient, userId),
+        loadVoiceContext(userClient, userId),
+      ]);
     if (rate === "limited") {
       return json(429, { error: GENERIC_RATE_LIMIT });
     }
@@ -627,6 +630,7 @@ async function handleRequest(req: Request): Promise<Response> {
       parsed.language,
       adminAnswers,
       turnPlan.guidance,
+      voiceContext,
     );
 
     const saveAssistant = (content: string) => (async () => {
@@ -1556,6 +1560,7 @@ function buildSystemPrompt(
   language = "en",
   adminAnswers: AdminOnboardingAnswerBit[] = [],
   turnGuidance = "",
+  voiceContext = "",
 ): string {
   const stage = extracted?.conversation_stage ?? "meeting";
   const themeRepeatNote =
@@ -1577,6 +1582,7 @@ function buildSystemPrompt(
     turnGuidance,
     themeRepeatNote,
     buildUserContextSection(profile, memory),
+    voiceContext,
     formatAdminOnboardingBlock(adminAnswers),
   ].filter((section) => section.trim().length > 0);
 
@@ -1843,6 +1849,43 @@ function describeOpenAiFailure(error: unknown): { message: string; code?: string
       "OpenAI chat failed after a valid response. Redeploy the chat function and try again.",
     code: reason.slice(0, 32),
   };
+}
+
+/**
+ * Recent listening-session summaries as a private tonal lens (Phase 3).
+ *
+ * Reads the user's own rows under RLS. Labels and numbers only — the
+ * table holds no audio and no transcript text. Fail-open: a missing
+ * table or any error yields "" and the reply proceeds unchanged.
+ */
+const VOICE_CONTEXT_DAYS = 14;
+const VOICE_CONTEXT_SESSIONS = 10;
+
+async function loadVoiceContext(
+  userClient: SupabaseClient,
+  userId: string,
+): Promise<string> {
+  try {
+    const since = new Date(
+      Date.now() - VOICE_CONTEXT_DAYS * 24 * 60 * 60 * 1000,
+    ).toISOString();
+    const { data, error } = await userClient
+      .from("listening_summaries")
+      .select(
+        "session_started_at, speech_duration_seconds, emotion_counts, need_counts, " +
+          "avg_speaking_rate_wpm, avg_vocal_stress_index, avg_silence_ratio, " +
+          "avg_arousal, inference_source",
+      )
+      .eq("user_id", userId)
+      .gte("session_started_at", since)
+      .order("session_started_at", { ascending: false })
+      .limit(VOICE_CONTEXT_SESSIONS);
+
+    if (error || !Array.isArray(data)) return "";
+    return formatVoiceContext(data as VoiceSummaryRow[]);
+  } catch {
+    return "";
+  }
 }
 
 /**
