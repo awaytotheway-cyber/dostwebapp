@@ -22,7 +22,7 @@ import NetInfo, { type NetInfoState } from '@react-native-community/netinfo';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { formatChatErrorForUi, sendChatMessage } from '../lib/chat';
+import { formatChatErrorForUi, streamChatMessage } from '../lib/chat';
 import {
   labelForEmotionChip,
   labelForNeedChip,
@@ -110,6 +110,8 @@ type ChipSendOptions = {
 type Props = NativeStackScreenProps<ChatStackParamList, 'Chat'> & {
   onStartOver?: () => void;
 };
+
+const STREAM_PAINT_MS = 60;
 
 function createClientId(): string {
   const c = globalThis.crypto;
@@ -324,6 +326,7 @@ export default function ChatScreen({ navigation, route }: Props) {
   const reduceMotion = useReducedMotion();
   const listRef = useRef<FlatList<ChatMessage>>(null);
   const sendingRef = useRef(false);
+  const paintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sessionExchangesRef = useRef(0);
   const reflectionModeRef = useRef(false);
   const reflectionFollowUpRef = useRef(false);
@@ -349,6 +352,8 @@ export default function ChatScreen({ navigation, route }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([greetingMessage()]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  // True once the reply's first words are on screen (hides "reflecting…").
+  const [replyStreaming, setReplyStreaming] = useState(false);
   const [gentleLoading, setGentleLoading] = useState(false);
   const [showNoticingsBanner, setShowNoticingsBanner] = useState(false);
   const [micState, setMicState] = useState<MicUiState>('idle');
@@ -827,6 +832,7 @@ export default function ChatScreen({ navigation, route }: Props) {
 
       sendingRef.current = true;
       const clientId = existingId ?? createClientId();
+      const assistantId = createClientId();
       const createdAt =
         createdAtByIdRef.current.get(clientId) ?? new Date().toISOString();
       let requestSucceeded = false;
@@ -877,12 +883,55 @@ export default function ChatScreen({ navigation, route }: Props) {
         }
 
         setIsTyping(true);
-        const result = await sendChatMessage(text, {
-          emotionalState: emotionalStateRef.current,
-          selected_emotion: chipSend?.selected_emotion,
-          selected_need: chipSend?.selected_need,
-        });
+        // The reply grows in its own bubble as it streams in; repaints are
+        // capped at one per STREAM_PAINT_MS.
+        const draftAt = new Date();
+        let lastPaint = 0;
+        let pendingText: string | null = null;
+        const paint = (draft: string) => {
+          lastPaint = Date.now();
+          pendingText = null;
+          setReplyStreaming(true);
+          setMessages((prev) => {
+            const draftMsg: ChatMessage = {
+              _id: assistantId,
+              text: draft,
+              createdAt: draftAt,
+              user: { _id: DOST_ID, name: 'DOST' },
+            };
+            return prev.some((m) => m._id === assistantId)
+              ? prev.map((m) => (m._id === assistantId ? draftMsg : m))
+              : [...prev, draftMsg];
+          });
+        };
+        const onText = (draft: string) => {
+          if (!draft) return;
+          pendingText = draft;
+          if (Date.now() - lastPaint >= STREAM_PAINT_MS) {
+            paint(draft);
+          } else if (!paintTimerRef.current) {
+            paintTimerRef.current = setTimeout(() => {
+              paintTimerRef.current = null;
+              if (pendingText !== null) paint(pendingText);
+            }, STREAM_PAINT_MS);
+          }
+        };
+        const result = await streamChatMessage(
+          text,
+          {
+            emotionalState: emotionalStateRef.current,
+            selected_emotion: chipSend?.selected_emotion,
+            selected_need: chipSend?.selected_need,
+          },
+          onText,
+        );
+        if (paintTimerRef.current) {
+          clearTimeout(paintTimerRef.current);
+          paintTimerRef.current = null;
+        }
         if (!result.ok) {
+          // Drop a half-written reply; the server didn't save it either.
+          setMessages((prev) => prev.filter((m) => m._id !== assistantId));
           await updateMessageDelivery(db, userId, clientId, 'failed').catch(() => {});
           setMessages((prev) =>
             prev.map((m) =>
@@ -906,7 +955,6 @@ export default function ChatScreen({ navigation, route }: Props) {
         await updateMessageDelivery(db, userId, clientId, 'sent').catch(() => {});
 
         const replyText = result.reply;
-        const assistantId = createClientId();
         const assistantAt = new Date().toISOString();
         createdAtByIdRef.current.set(assistantId, assistantAt);
         const hasChips =
@@ -937,7 +985,7 @@ export default function ChatScreen({ navigation, route }: Props) {
 
         setMessages((prev) => {
           const withReply = [
-            ...prev,
+            ...prev.filter((m) => m._id !== assistantId),
             {
               _id: assistantId,
               text: replyText,
@@ -976,6 +1024,7 @@ export default function ChatScreen({ navigation, route }: Props) {
         }
       } catch {
         if (!requestSucceeded) {
+          setMessages((prev) => prev.filter((m) => m._id !== assistantId));
           await updateMessageDelivery(db, userId, clientId, 'failed').catch(() => {});
           setMessages((prev) =>
             prev.map((m) =>
@@ -985,7 +1034,12 @@ export default function ChatScreen({ navigation, route }: Props) {
           setSendHint(t('chat.sendFailHint'));
         }
       } finally {
+        if (paintTimerRef.current) {
+          clearTimeout(paintTimerRef.current);
+          paintTimerRef.current = null;
+        }
         setIsTyping(false);
+        setReplyStreaming(false);
         sendingRef.current = false;
       }
     },
@@ -1375,7 +1429,7 @@ export default function ChatScreen({ navigation, route }: Props) {
               />
             )}
             ListFooterComponent={
-              isTyping ? (
+              isTyping && !replyStreaming ? (
                 <View
                   style={styles.typing}
                   accessible
