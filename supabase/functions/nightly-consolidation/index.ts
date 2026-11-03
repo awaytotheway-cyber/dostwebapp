@@ -1,14 +1,14 @@
 // Captured from the deployed function (version 3) on 2026-10-29, which
-// had never been committed. Identical at runtime; the only change is
-// type annotations on the Supabase client, so the file passes
-// `deno check`. Production was left running version 3 — redeploy from
-// here only alongside a real change.
+// had never been committed. Swapped to Groq on 2026-11-03: the
+// DEEPSEEK_API_KEY secret was never set, so this job had failed every
+// night since at least 2026-10-29 with a 401 and never once produced a
+// row. Nothing else about the synthesis logic changed.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY")!;
+const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY")!;
 
 const MIN_NEW_MESSAGES = 5;
 
@@ -86,7 +86,7 @@ async function consolidateUser(admin: SupabaseClient, userId: string, since: str
   const voiceBlock = await fetchVoiceContextForSynthesis(admin, userId, since);
 
   const synthesisPrompt = buildSynthesisPrompt(previous, newMessages, signals, profile, voiceBlock);
-  const updated = await callDeepSeekForSynthesis(synthesisPrompt);
+  const updated = await callGroqForSynthesis(synthesisPrompt);
 
   const nextVersion = (previous?.version ?? 0) + 1;
   const { error: insertErr } = await admin.from("user_understanding").insert({
@@ -161,15 +161,15 @@ Respond ONLY with valid JSON in this exact shape:
 `;
 }
 
-async function callDeepSeekForSynthesis(prompt: string): Promise<Record<string, unknown>> {
-  const response = await fetch("https://api.deepseek.com/chat/completions", {
+async function callGroqForSynthesis(prompt: string): Promise<Record<string, unknown>> {
+  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${DEEPSEEK_API_KEY}`,
+      Authorization: `Bearer ${GROQ_API_KEY}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "deepseek-chat",
+      model: "llama-3.3-70b-versatile",
       messages: [
         { role: "system", content: "You synthesize private psychological understanding notes. Return JSON only, no markdown, no commentary." },
         { role: "user", content: prompt },
@@ -182,7 +182,7 @@ async function callDeepSeekForSynthesis(prompt: string): Promise<Record<string, 
 
   if (!response.ok) {
     const body = await response.text();
-    throw new Error(`DeepSeek synthesis failed: ${response.status} ${body}`);
+    throw new Error(`Groq synthesis failed: ${response.status} ${body}`);
   }
   const data = await response.json();
   const content = data?.choices?.[0]?.message?.content;
