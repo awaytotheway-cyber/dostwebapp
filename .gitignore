@@ -53,3 +53,6 @@ supabase/.temp/
 
 # Deno lockfile from running the function/hearing tests locally
 deno.lock
+
+# Python bytecode from the Phase 4 validation scripts
+__pycache__/
