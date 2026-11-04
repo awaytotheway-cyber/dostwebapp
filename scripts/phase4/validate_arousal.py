@@ -77,7 +77,7 @@ FEATURES_TO_SCORE = [
     ("speaking_rate_wpm", lambda f: f.speaking_rate_wpm),
     ("pitch_mean_hz", lambda f: f.pitch_mean_hz),
     ("pitch_variability", lambda f: f.pitch_variability),
-    ("pitch_variability_normalised*", lambda f: f.pitch_variability_normalised),
+    ("pitch_variability_pre_fix*", lambda f: f.pitch_variability_pre_fix),
     ("vocal_stress_index", lambda f: f.vocal_stress_index),
     ("silence_ratio", lambda f: f.silence_ratio),
     ("voiced_fraction*", lambda f: f.voiced_fraction),
@@ -290,9 +290,10 @@ Worth looking for as well:
   - A single feature beating the combined heuristic. The heuristic
     only uses loudness and pace; if pitch variability or vocal strain
     scores higher, the heuristic should be reweighted.
-  - pitch_variability_normalised* beating pitch_variability. That
-    would mean the app's raw-correlation voicing threshold is costing
-    real signal and is worth fixing.
+  - pitch_variability beating pitch_variability_pre_fix*. The starred
+    feature is the voicing bug the app had until it was fixed; the gap
+    between the two is what that fix bought on real speech. If pre_fix
+    scores higher, the fix hurt and should be revisited.
   - rms_energy carrying most of the weight. That is a warning, not a
     win: loudness tracks mic distance and phone auto-gain as much as
     activation, so it may not survive everyday use.

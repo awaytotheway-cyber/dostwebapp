@@ -153,12 +153,15 @@ chance on the noisy clips.
   heuristic only uses loudness and pace. If pitch variability or vocal
   strain scores higher on its own, the heuristic is weighted wrongly and
   should be changed.
-- **`pitch_variability_normalised*` beating `pitch_variability`.** The
-  starred features are not in the app; they are candidate fixes measured
-  alongside. We already know the app's voicing test is really a loudness
-  gate — on synthetic clips, pitch detection returned 0 Hz for every
-  quiet clip and found pitch in every loud one. Your clips will show how
-  much that costs on real speech.
+- **`pitch_variability` beating `pitch_variability_pre_fix*`.** The
+  starred feature is not in the app. It reproduces a bug the app had
+  until recently: its voicing test compared raw correlation against a
+  threshold, which made it a loudness gate rather than a periodicity
+  test. On synthetic clips it returned 0 Hz for every quiet clip, found
+  pitch in every loud one, and assigned a pitch to loud noise. That is
+  now fixed, and the gap between these two features is what the fix
+  bought on your real speech. If the starred one scores higher, the fix
+  hurt and we should look again.
 - **`rms_energy` carrying most of the weight.** That is a warning, not a
   win. Loudness follows how you held the phone as much as how you felt,
   so it may not survive everyday use even if it scores well here.

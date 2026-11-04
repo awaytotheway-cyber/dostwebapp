@@ -7,8 +7,10 @@ ships*, not a tidied-up version of it. Where the TypeScript does
 something odd, this does the same odd thing, and the oddity is called
 out in a comment rather than quietly fixed.
 
-Deliberate exception: `pitch_variability_normalised` is an extra
-feature the app does NOT compute. See estimate_pitch_contour.
+Deliberate exception: `pitch_variability_pre_fix` is an extra feature
+the app does NOT compute. It reproduces the voicing bug that was in the
+app until the normalisation fix, so the clips can show what that fix
+actually bought. See estimate_pitch_contour.
 """
 
 from __future__ import annotations
@@ -32,9 +34,9 @@ class AcousticFeatures:
     speaking_rate_wpm: float
     silence_ratio: float
     vocal_stress_index: float
-    # Not in the app. A candidate fix, measured alongside so we can see
-    # whether it would separate better than what ships.
-    pitch_variability_normalised: float
+    # Not in the app. The pre-fix voicing behaviour, measured alongside
+    # so we can see what the normalisation fix changed on real speech.
+    pitch_variability_pre_fix: float
     voiced_fraction: float
 
     def as_dict(self) -> dict:
@@ -72,18 +74,18 @@ def estimate_pitch_contour(pcm: np.ndarray, sample_rate: int) -> tuple[list[floa
     """
     Short-window autocorrelation pitch, 70–400 Hz.
 
-    Returns (app_contour, normalised_contour).
+    Returns (app_contour, pre_fix_contour).
 
-    THE QUIRK, REPRODUCED. The app accepts a window as voiced when the
-    raw autocorrelation exceeds 0.3. Raw correlation scales with signal
-    energy, so that threshold is really a loudness gate: a loud window
-    almost always passes and a quiet one almost never does, whatever the
-    actual periodicity. app_contour keeps this behaviour so the measured
-    numbers match production.
+    app_contour matches what ships: the correlation is divided by the
+    window's own energy before the 0.3 voicing test, so the threshold
+    asks "is this periodic?" and the answer does not change when the
+    same speech is recorded louder or softer.
 
-    normalised_contour divides by the window's own energy, making the
-    threshold mean what it looks like it means. It is reported separately
-    as a candidate improvement — it is not what the app does today.
+    pre_fix_contour reproduces the bug the app had until that fix, where
+    the raw correlation was compared against 0.3. Raw correlation scales
+    with energy, so the test was really a loudness gate — quiet voiced
+    speech came back as 0 Hz and loud noise came back with a pitch. It is
+    kept only so the validation can report what the fix changed.
     """
     window_size = int(sample_rate * 0.04)  # 40 ms
     hop = max(1, window_size // 2)
@@ -91,7 +93,7 @@ def estimate_pitch_contour(pcm: np.ndarray, sample_rate: int) -> tuple[list[floa
     max_lag = sample_rate // 70
 
     app_contour: list[float] = []
-    norm_contour: list[float] = []
+    pre_fix_contour: list[float] = []
 
     for start in range(0, max(0, len(pcm) - window_size), hop):
         window = pcm[start:start + window_size]
@@ -106,10 +108,10 @@ def estimate_pitch_contour(pcm: np.ndarray, sample_rate: int) -> tuple[list[floa
                 best_corr, best_lag = corr, lag
                 best_norm = corr / energy
 
-        app_contour.append(sample_rate / best_lag if best_lag > 0 and best_corr > 0.3 else 0.0)
-        norm_contour.append(sample_rate / best_lag if best_lag > 0 and best_norm > 0.3 else 0.0)
+        app_contour.append(sample_rate / best_lag if best_lag > 0 and best_norm > 0.3 else 0.0)
+        pre_fix_contour.append(sample_rate / best_lag if best_lag > 0 and best_corr > 0.3 else 0.0)
 
-    return app_contour, norm_contour
+    return app_contour, pre_fix_contour
 
 
 def _variability(contour: list[float]) -> float:
@@ -137,11 +139,11 @@ def extract_features(
     rms = float(np.sqrt(np.mean(pcm * pcm)))
     rms_energy = min(1.0, rms * 4)
 
-    app_contour, norm_contour = estimate_pitch_contour(pcm, sample_rate)
+    app_contour, pre_fix_contour = estimate_pitch_contour(pcm, sample_rate)
     voiced = [p for p in app_contour if p > 0]
     pitch_mean_hz = sum(voiced) / len(voiced) if voiced else 0.0
     pitch_variability = _variability(app_contour)
-    pitch_variability_normalised = _variability(norm_contour)
+    pitch_variability_pre_fix = _variability(pre_fix_contour)
     voiced_fraction = (len(voiced) / len(app_contour)) if app_contour else 0.0
 
     speaking_rate_wpm = (word_count / duration_seconds) * 60 if duration_seconds > 0 else 0.0
@@ -171,7 +173,7 @@ def extract_features(
         speaking_rate_wpm=speaking_rate_wpm,
         silence_ratio=silence_ratio,
         vocal_stress_index=vocal_stress_index,
-        pitch_variability_normalised=pitch_variability_normalised,
+        pitch_variability_pre_fix=pitch_variability_pre_fix,
         voiced_fraction=voiced_fraction,
     )
 
