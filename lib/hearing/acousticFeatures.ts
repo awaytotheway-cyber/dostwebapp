@@ -80,7 +80,23 @@ export function extractAcousticFeatures(
   };
 }
 
-function estimatePitchContour(
+/**
+ * Short-window autocorrelation pitch, restricted to 70-400 Hz.
+ *
+ * The correlation is divided by the window's own energy before the 0.3
+ * voicing test. Without that division the test is a loudness gate rather
+ * than a periodicity test: raw autocorrelation scales with how loud the
+ * window is, so a loud window passes almost regardless of whether it is
+ * periodic and a quiet one almost never passes however clearly voiced it
+ * is. Measured on synthetic clips before the fix, every quiet clip
+ * reported 0 Hz and 0% voiced frames while every loud clip reported 100%.
+ *
+ * Dividing by energy makes the ratio scale-free — it is unchanged if the
+ * same speech is recorded louder or softer — so 0.3 means "at least 30%
+ * of the window's energy repeats at this lag", which is what the
+ * threshold was always meant to mean.
+ */
+export function estimatePitchContour(
   pcm: Float32Array,
   sampleRate: number,
 ): number[] {
@@ -91,6 +107,12 @@ function estimatePitchContour(
   const contour: number[] = [];
 
   for (let start = 0; start + windowSize < pcm.length; start += hopSize) {
+    // The window's own energy. Constant across lags, so it does not
+    // change which lag wins — only whether that lag counts as voiced.
+    let energy = 0;
+    for (let i = start; i < start + windowSize; i++) energy += pcm[i] * pcm[i];
+    if (energy <= 0) energy = 1e-12;
+
     let bestLag = 0;
     let bestCorr = 0;
     for (let lag = minLag; lag <= maxLag; lag++) {
@@ -103,7 +125,8 @@ function estimatePitchContour(
         bestLag = lag;
       }
     }
-    contour.push(bestLag > 0 && bestCorr > 0.3 ? sampleRate / bestLag : 0);
+    const periodicity = bestCorr / energy;
+    contour.push(bestLag > 0 && periodicity > 0.3 ? sampleRate / bestLag : 0);
   }
   return contour;
 }

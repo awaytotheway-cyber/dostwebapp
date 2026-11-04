@@ -1,9 +1,10 @@
 import { FunctionsFetchError, FunctionsHttpError } from '@supabase/supabase-js';
 import { recordApiError } from './diagnostics';
+import { createSseParser } from './sse';
 import type { ConversationStage } from './emotionalStates';
 import { ensureAnonymousSession } from './session';
 import { getAppLanguage, t as translate } from './i18n';
-import { supabase } from './supabase';
+import { supabase, supabaseAnonKey, supabaseUrl } from './supabase';
 
 const MAX_MESSAGE_LEN = 2000;
 
@@ -193,30 +194,27 @@ export function formatChatErrorForUi(message: string): string {
   return trimmed;
 }
 
-export async function sendChatMessage(
-  raw: unknown,
-  options?: {
-    emotionalState?: string | null;
-    selected_emotion?: string | null;
-    selected_need?: string | null;
-  },
-): Promise<ChatSendResult> {
-  if (typeof raw !== 'string') {
-    return { ok: false, message: translate('errors.invalidMessage') };
-  }
+type ChatOptions = {
+  emotionalState?: string | null;
+  selected_emotion?: string | null;
+  selected_need?: string | null;
+};
 
+type ChatRequestBody = {
+  message: string;
+  emotional_state?: string;
+  selected_emotion?: string;
+  selected_need?: string;
+  language: string;
+  stream?: boolean;
+};
+
+function buildChatBody(raw: unknown, options?: ChatOptions): ChatRequestBody | null {
+  if (typeof raw !== 'string') return null;
   const text = raw.trim();
-  if (!text || text.length > MAX_MESSAGE_LEN) {
-    return { ok: false, message: translate('errors.invalidMessage') };
-  }
+  if (!text || text.length > MAX_MESSAGE_LEN) return null;
 
-  const body: {
-    message: string;
-    emotional_state?: string;
-    selected_emotion?: string;
-    selected_need?: string;
-    language: string;
-  } = { message: text, language: getAppLanguage() };
+  const body: ChatRequestBody = { message: text, language: getAppLanguage() };
   const emotion =
     typeof options?.emotionalState === 'string'
       ? options.emotionalState.trim()
@@ -238,17 +236,32 @@ export async function sendChatMessage(
   if (selectedNeed) {
     body.selected_need = selectedNeed;
   }
+  return body;
+}
 
+async function ensureChatSession(): Promise<{ ok: false; message: string } | null> {
   const session = await ensureAnonymousSession();
-  if (!session.ok) {
-    return {
-      ok: false,
-      message:
-        session.kind === 'anonymous_disabled'
-          ? sessionDisabledError()
-          : sessionError(),
-    };
+  if (session.ok) return null;
+  return {
+    ok: false,
+    message:
+      session.kind === 'anonymous_disabled'
+        ? sessionDisabledError()
+        : sessionError(),
+  };
+}
+
+export async function sendChatMessage(
+  raw: unknown,
+  options?: ChatOptions,
+): Promise<ChatSendResult> {
+  const body = buildChatBody(raw, options);
+  if (!body) {
+    return { ok: false, message: translate('errors.invalidMessage') };
   }
+
+  const sessionFailure = await ensureChatSession();
+  if (sessionFailure) return sessionFailure;
 
   try {
     const { data, error, response } = await supabase.functions.invoke<{
@@ -294,23 +307,7 @@ export async function sendChatMessage(
       };
     }
 
-    const reply = typeof data?.reply === 'string' ? data.reply.trim() : '';
-    if (!reply) {
-      await recordApiError({
-        source: 'chat',
-        code: 'empty-reply',
-        detail: 'chat returned 200 but reply field empty',
-      });
-      return { ok: false, message: gentleError() };
-    }
-
-    return {
-      ok: true,
-      reply,
-      suggested_emotions: parseStringArray(data?.suggested_emotions),
-      suggested_needs: parseStringArray(data?.suggested_needs),
-      conversation_stage: parseConversationStage(data?.conversation_stage),
-    };
+    return await resultFromReply(data?.reply, data);
   } catch (caught) {
     const caughtName =
       caught instanceof Error
@@ -324,6 +321,192 @@ export async function sendChatMessage(
       errorName: caughtName,
     });
     return { ok: false, message: gentleError() };
+  }
+}
+
+function parseTurnMetadata(data: unknown): ChatTurnMetadata {
+  const record = data && typeof data === 'object' ? (data as Record<string, unknown>) : {};
+  return {
+    suggested_emotions: parseStringArray(record.suggested_emotions),
+    suggested_needs: parseStringArray(record.suggested_needs),
+    conversation_stage: parseConversationStage(record.conversation_stage),
+  };
+}
+
+async function resultFromReply(rawReply: unknown, metadata: unknown): Promise<ChatSendResult> {
+  const reply = typeof rawReply === 'string' ? rawReply.trim() : '';
+  if (!reply) {
+    await recordApiError({
+      source: 'chat',
+      code: 'empty-reply',
+      detail: 'chat returned 200 but reply field empty',
+    });
+    return { ok: false, message: gentleError() };
+  }
+  return { ok: true, reply, ...parseTurnMetadata(metadata) };
+}
+
+type StreamingFetch = (
+  url: string,
+  init: { method: string; headers: Record<string, string>; body: string; signal?: AbortSignal },
+) => Promise<Response>;
+
+/**
+ * expo/fetch streams the response body on iOS and Android (React Native's
+ * own fetch can't); on web it is the browser's fetch. Builds made before
+ * the native module existed can't load it — those fall back to one-shot.
+ */
+function loadStreamingFetch(): StreamingFetch | null {
+  try {
+    const loaded = require('expo/fetch') as { fetch?: unknown };
+    return typeof loaded.fetch === 'function' ? (loaded.fetch as StreamingFetch) : null;
+  } catch {
+    return null;
+  }
+}
+
+const STREAM_TIMEOUT_MS = 60_000;
+
+/**
+ * Like sendChatMessage, but the reply arrives as it is written: onText gets
+ * the reply so far after every piece. Resolves with the same result once
+ * the reply is complete (chips and stage included).
+ */
+export async function streamChatMessage(
+  raw: unknown,
+  options: ChatOptions | undefined,
+  onText: (replySoFar: string) => void,
+): Promise<ChatSendResult> {
+  const streamingFetch = loadStreamingFetch();
+  if (!streamingFetch) return sendChatMessage(raw, options);
+
+  const body = buildChatBody(raw, options);
+  if (!body) {
+    return { ok: false, message: translate('errors.invalidMessage') };
+  }
+  body.stream = true;
+
+  const sessionFailure = await ensureChatSession();
+  if (sessionFailure) return sessionFailure;
+  const { data: sessionData } = await supabase.auth.getSession();
+  const accessToken = sessionData.session?.access_token;
+  if (!accessToken) return { ok: false, message: sessionError() };
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), STREAM_TIMEOUT_MS);
+  let replySoFar = '';
+  try {
+    let response: Response;
+    try {
+      response = await streamingFetch(`${supabaseUrl.replace(/\/$/, '')}/functions/v1/chat`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          apikey: supabaseAnonKey,
+          'Content-Type': 'application/json',
+          Accept: 'text/event-stream',
+        },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+    } catch (caught) {
+      await recordApiError({
+        source: 'chat',
+        code: 'stream-network',
+        errorName: caught instanceof Error ? caught.name : 'unknown',
+      });
+      return { ok: false, message: messageForStatus(undefined, true) };
+    }
+
+    if (!response.ok) {
+      let serverError: string | undefined;
+      let step: string | undefined;
+      try {
+        const payload = (await response.json()) as { error?: unknown; step?: unknown };
+        if (typeof payload?.error === 'string' && payload.error.trim()) {
+          serverError = payload.error.trim().slice(0, 200);
+        }
+        if (typeof payload?.step === 'string' && payload.step.trim()) {
+          step = payload.step.trim().slice(0, 40);
+        }
+      } catch {
+        // Not JSON — ignore.
+      }
+      await recordApiError({
+        source: 'chat',
+        code: `http-${response.status}`,
+        httpStatus: response.status,
+        serverError,
+        step,
+      });
+      return { ok: false, message: userFacingChatError(response.status, false, serverError) };
+    }
+
+    // A server without streaming answers with the usual JSON.
+    const contentType = response.headers.get('content-type') ?? '';
+    if (!contentType.includes('text/event-stream')) {
+      const payload = (await response.json()) as { reply?: unknown };
+      return await resultFromReply(payload?.reply, payload);
+    }
+
+    let metadata: unknown = null;
+    let finalReply: string | null = null;
+    let streamError: string | null = null;
+    const parse = createSseParser();
+    const handle = (chunk: string) => {
+      for (const { event, data } of parse(chunk)) {
+        let payload: Record<string, unknown>;
+        try {
+          payload = JSON.parse(data) as Record<string, unknown>;
+        } catch {
+          continue;
+        }
+        if (event === 'meta') {
+          metadata = payload;
+        } else if (event === 'delta' && typeof payload.text === 'string') {
+          replySoFar += payload.text;
+          onText(replySoFar.trimStart());
+        } else if (event === 'done') {
+          finalReply = typeof payload.reply === 'string' ? payload.reply : replySoFar;
+        } else if (event === 'error') {
+          streamError = typeof payload.code === 'string' ? payload.code : 'stream';
+        }
+      }
+    };
+
+    const decoder = new TextDecoder();
+    const reader = response.body?.getReader();
+    if (!reader) {
+      handle(await response.text());
+      handle('\n\n');
+    } else {
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        handle(decoder.decode(value, { stream: true }));
+      }
+      handle(decoder.decode() + '\n\n');
+    }
+
+    if (finalReply === null) {
+      await recordApiError({
+        source: 'chat',
+        code: streamError ? `stream-${streamError}` : 'stream-cut',
+        detail: replySoFar ? 'reply stopped partway' : 'no reply text',
+      });
+      return { ok: false, message: gentleError() };
+    }
+    return await resultFromReply(finalReply, metadata);
+  } catch (caught) {
+    const aborted = controller.signal.aborted;
+    await recordApiError({
+      source: 'chat',
+      code: aborted ? 'stream-timeout' : 'stream-read',
+      errorName: caught instanceof Error ? caught.name : 'unknown',
+    });
+    return { ok: false, message: aborted ? gentleError() : messageForStatus(undefined, true) };
+  } finally {
+    clearTimeout(timer);
   }
 }
 

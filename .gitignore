@@ -50,3 +50,9 @@ supabase/.temp/
 
 # Knowledge-base loader credentials (scripts/kb/ingest.cjs)
 .env.kb
+
+# Deno lockfile from running the function/hearing tests locally
+deno.lock
+
+# Python bytecode from the Phase 4 validation scripts
+__pycache__/

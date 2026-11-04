@@ -22,6 +22,8 @@ import {
   generateSuggestionChips,
   type Stage,
 } from "../_shared/suggestionChips.ts";
+import { streamCompletion } from "../_shared/sse.ts";
+import { formatVoiceContext, type VoiceSummaryRow } from "../_shared/voiceContext.ts";
 
 // Helpers live in this file so dashboard deploy (this folder only) can bundle.
 // CLI deploy of other functions still uses supabase/functions/_shared/safe.ts.
@@ -497,14 +499,16 @@ async function handleRequest(req: Request): Promise<Response> {
 
     timing.mark("auth");
 
-    const [rate, historyRows, profile, memory, personalityProfile, adminAnswers] = await Promise.all([
-      applyRateLimit(admin, userId),
-      loadHistory(userClient, userId),
-      loadProfile(userClient, userId),
-      loadMemory(userClient, userId),
-      loadPersonalityProfile(userClient, userId),
-      loadAdminOnboardingAnswers(userClient, userId),
-    ]);
+    const [rate, historyRows, profile, memory, personalityProfile, adminAnswers, voiceContext] =
+      await Promise.all([
+        applyRateLimit(admin, userId),
+        loadHistory(userClient, userId),
+        loadProfile(userClient, userId),
+        loadMemory(userClient, userId),
+        loadPersonalityProfile(userClient, userId),
+        loadAdminOnboardingAnswers(userClient, userId),
+        loadVoiceContext(userClient, userId),
+      ]);
     if (rate === "limited") {
       return json(429, { error: GENERIC_RATE_LIMIT });
     }
@@ -626,7 +630,63 @@ async function handleRequest(req: Request): Promise<Response> {
       parsed.language,
       adminAnswers,
       turnPlan.guidance,
+      voiceContext,
     );
+
+    const saveAssistant = (content: string) => (async () => {
+      const { error: insertError } = await admin.from("conversations").insert({
+        user_id: userId,
+        role: "assistant",
+        content,
+      });
+      if (insertError) logFnError("chat", "insert_assistant", insertError);
+    })();
+
+    if (parsed.stream) {
+      // Open the OpenAI stream before answering, so a key or quota problem
+      // still comes back as the usual JSON error instead of a broken stream.
+      let upstream: ReadableStream<Uint8Array>;
+      try {
+        upstream = await openOpenAIStream(systemPrompt, history, parsed.message);
+      } catch (openAiError) {
+        logFnError("chat", "openai", openAiError);
+        const detail = describeOpenAiFailure(openAiError);
+        return json(502, {
+          error: detail.message,
+          step: "openai",
+          code: detail.code,
+        });
+      }
+      runInBackground(Promise.allSettled(background));
+      // Keep the worker alive until the reply has finished and is saved,
+      // even if the app disconnects partway through.
+      let streamEnded!: () => void;
+      runInBackground(new Promise<void>((resolve) => (streamEnded = resolve)));
+      return new Response(
+        streamCompletion(upstream, turnExtras, {
+          maxLength: MAX_MESSAGE_LEN,
+          errorMessage: GENERIC_UPSTREAM,
+          onFirstText: () => timing.mark("first_token"),
+          onComplete: (reply) => {
+            timing.mark("llm");
+            runInBackground(saveAssistant(reply));
+          },
+          onError: (code) => console.error("chat", "openai_stream", code),
+          onEnd: () => {
+            timing.log();
+            streamEnded();
+          },
+        }),
+        {
+          status: 200,
+          headers: {
+            ...cors,
+            "Content-Type": "text/event-stream; charset=utf-8",
+            "Cache-Control": "no-cache",
+          },
+        },
+      );
+    }
 
     let assistantText: string;
     try {
@@ -644,14 +704,7 @@ async function handleRequest(req: Request): Promise<Response> {
 
     // Saving the reply happens after it is sent; a failure is only logged
     // (the client never used the old history_not_saved warning).
-    background.push((async () => {
-      const { error: insertError } = await admin.from("conversations").insert({
-        user_id: userId,
-        role: "assistant",
-        content: assistantText,
-      });
-      if (insertError) logFnError("chat", "insert_assistant", insertError);
-    })());
+    background.push(saveAssistant(assistantText));
     runInBackground(Promise.allSettled(background));
     timing.log();
 
@@ -672,6 +725,7 @@ function parseBody(
     selectedEmotion: string | null;
     selectedNeed: string | null;
     language: string;
+    stream: boolean;
   }
   | { ok: false } {
   if (!body || typeof body !== "object") return { ok: false };
@@ -712,6 +766,7 @@ function parseBody(
     selectedEmotion,
     selectedNeed,
     language: parseReplyLanguage(record.language),
+    stream: record.stream === true,
   };
 }
 
@@ -1505,6 +1560,7 @@ function buildSystemPrompt(
   language = "en",
   adminAnswers: AdminOnboardingAnswerBit[] = [],
   turnGuidance = "",
+  voiceContext = "",
 ): string {
   const stage = extracted?.conversation_stage ?? "meeting";
   const themeRepeatNote =
@@ -1526,6 +1582,7 @@ function buildSystemPrompt(
     turnGuidance,
     themeRepeatNote,
     buildUserContextSection(profile, memory),
+    voiceContext,
     formatAdminOnboardingBlock(adminAnswers),
   ].filter((section) => section.trim().length > 0);
 
@@ -1619,11 +1676,12 @@ function formatExtractedEmotionContext(
   return lines.join("\n");
 }
 
-async function callOpenAI(
+function openAIRequest(
   systemPrompt: string,
   history: HistoryTurn[],
   userMessage: string,
-): Promise<string> {
+  stream: boolean,
+): RequestInit {
   const apiKey = (Deno.env.get("OPENAI_API_KEY") ?? "").trim();
   if (!apiKey) {
     throw new Error("missing_key");
@@ -1638,7 +1696,7 @@ async function callOpenAI(
     { role: "user", content: userMessage },
   ];
 
-  const response = await fetch(OPENAI_COMPLETIONS_URL, {
+  return {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
@@ -1653,31 +1711,45 @@ async function callOpenAI(
       // made replies feel monotonous.
       presence_penalty: 0.4,
       frequency_penalty: 0.3,
+      ...(stream ? { stream: true } : {}),
     }),
-  });
+  };
+}
+
+async function throwUpstreamError(response: Response): Promise<never> {
+  const errBody = await response.text();
+  let errType = "api_error";
+  try {
+    const parsed = JSON.parse(errBody) as {
+      error?: { type?: string; code?: string; message?: string };
+    };
+    errType =
+      parsed?.error?.code ??
+      parsed?.error?.type ??
+      parsed?.error?.message?.slice(0, 40) ??
+      "api_error";
+  } catch {
+    errType = errBody.slice(0, 40) || "api_error";
+  }
+  console.error(
+    "chat",
+    "openai_completions",
+    response.status,
+    errType,
+  );
+  throw new Error(`upstream:${response.status}:${errType}`);
+}
+
+async function callOpenAI(
+  systemPrompt: string,
+  history: HistoryTurn[],
+  userMessage: string,
+): Promise<string> {
+  const init = openAIRequest(systemPrompt, history, userMessage, false);
+  const response = await fetch(OPENAI_COMPLETIONS_URL, init);
 
   if (!response.ok) {
-    const errBody = await response.text();
-    let errType = "api_error";
-    try {
-      const parsed = JSON.parse(errBody) as {
-        error?: { type?: string; code?: string; message?: string };
-      };
-      errType =
-        parsed?.error?.code ??
-        parsed?.error?.type ??
-        parsed?.error?.message?.slice(0, 40) ??
-        "api_error";
-    } catch {
-      errType = errBody.slice(0, 40) || "api_error";
-    }
-    console.error(
-      "chat",
-      "openai_completions",
-      response.status,
-      errType,
-    );
-    throw new Error(`upstream:${response.status}:${errType}`);
+    await throwUpstreamError(response);
   }
 
   const data = await response.json();
@@ -1695,6 +1767,23 @@ async function callOpenAI(
     throw new Error(`upstream:200:empty_reply:${finishReason || "unknown"}`);
   }
   return reply.length > MAX_MESSAGE_LEN ? reply.slice(0, MAX_MESSAGE_LEN) : reply;
+}
+
+/** Starts a streamed completion; resolves once OpenAI has accepted it. */
+async function openOpenAIStream(
+  systemPrompt: string,
+  history: HistoryTurn[],
+  userMessage: string,
+): Promise<ReadableStream<Uint8Array>> {
+  const init = openAIRequest(systemPrompt, history, userMessage, true);
+  const response = await fetch(OPENAI_COMPLETIONS_URL, init);
+  if (!response.ok) {
+    await throwUpstreamError(response);
+  }
+  if (!response.body) {
+    throw new Error("upstream:200:no_content:no_body");
+  }
+  return response.body;
 }
 
 function describeOpenAiFailure(error: unknown): { message: string; code?: string } {
@@ -1760,6 +1849,43 @@ function describeOpenAiFailure(error: unknown): { message: string; code?: string
       "OpenAI chat failed after a valid response. Redeploy the chat function and try again.",
     code: reason.slice(0, 32),
   };
+}
+
+/**
+ * Recent listening-session summaries as a private tonal lens (Phase 3).
+ *
+ * Reads the user's own rows under RLS. Labels and numbers only — the
+ * table holds no audio and no transcript text. Fail-open: a missing
+ * table or any error yields "" and the reply proceeds unchanged.
+ */
+const VOICE_CONTEXT_DAYS = 14;
+const VOICE_CONTEXT_SESSIONS = 10;
+
+async function loadVoiceContext(
+  userClient: SupabaseClient,
+  userId: string,
+): Promise<string> {
+  try {
+    const since = new Date(
+      Date.now() - VOICE_CONTEXT_DAYS * 24 * 60 * 60 * 1000,
+    ).toISOString();
+    const { data, error } = await userClient
+      .from("listening_summaries")
+      .select(
+        "session_started_at, speech_duration_seconds, emotion_counts, need_counts, " +
+          "avg_speaking_rate_wpm, avg_vocal_stress_index, avg_silence_ratio, " +
+          "avg_arousal, inference_source",
+      )
+      .eq("user_id", userId)
+      .gte("session_started_at", since)
+      .order("session_started_at", { ascending: false })
+      .limit(VOICE_CONTEXT_SESSIONS);
+
+    if (error || !Array.isArray(data)) return "";
+    return formatVoiceContext(data as VoiceSummaryRow[]);
+  } catch {
+    return "";
+  }
 }
 
 /**

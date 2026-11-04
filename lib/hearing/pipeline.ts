@@ -19,6 +19,7 @@ import {
   type HearingTick,
 } from './hearingBridge';
 import { redactPII } from './redaction';
+import { summariseSignals, type VoiceSignalRow } from './sessionSummary';
 import { getSensitivity } from './sensitivity';
 import { cosineSimilarity, embedSpeech, releaseSpeakerModel, speechStats } from './speakerEmbedding';
 import { analyzeVoiceprint } from './speakerFingerprint';
@@ -311,9 +312,64 @@ export async function stopHearingSession(): Promise<void> {
     })
     .eq('id', active.sessionId);
 
+  // Phase 3: fold this session's signals into the one row DOST reads.
+  await writeListeningSummary(active, endedAt, totalMs, speechMs);
+
   active.unsubscribe();
   ctx = null;
   setState({ status: 'idle' });
+}
+
+/**
+ * Writes the per-session listening_summaries row (Phase 3).
+ *
+ * Reads the signals back rather than accumulating them in memory, so
+ * segments finished by background tasks are included and nothing has to
+ * be held across the session.
+ *
+ * Fail-open: the session itself is already saved, so a failure here only
+ * costs DOST this session's context. Never throws into session stop.
+ */
+async function writeListeningSummary(
+  active: SessionCtx,
+  endedAt: number,
+  totalMs: number,
+  speechMs: number,
+): Promise<void> {
+  try {
+    const { data, error } = await supabase
+      .from('voice_signals')
+      .select(
+        'rms_energy, pitch_mean_hz, pitch_variability, speaking_rate_wpm, silence_ratio, ' +
+          'vocal_stress_index, primary_emotion, secondary_emotions, underlying_need, ' +
+          'acoustic_arousal, acoustic_valence, inference_source',
+      )
+      .eq('session_id', active.sessionId);
+
+    if (error || !Array.isArray(data)) return;
+    // Nothing was captured (all silence, or every segment another voice) —
+    // an empty summary would only add noise to the nightly synthesis.
+    if (data.length === 0) return;
+
+    const summary = summariseSignals(data as unknown as VoiceSignalRow[], {
+      startedAt: active.startedAt,
+      endedAt,
+      totalSeconds: totalMs / 1000,
+      speechSeconds: speechMs / 1000,
+      totalSegments:
+        active.segmentsMatched +
+        active.segmentsDiscardedOtherSpeaker +
+        active.segmentsDiscardedAmbiguous,
+      matchedSegments: active.segmentsMatched,
+    });
+
+    await supabase.from('listening_summaries').upsert(
+      { user_id: active.userId, session_id: active.sessionId, ...summary },
+      { onConflict: 'session_id' },
+    );
+  } catch (err) {
+    if (__DEV__) console.warn('[hearing] listening summary failed:', err);
+  }
 }
 
 async function abortSession(reason: string): Promise<void> {
