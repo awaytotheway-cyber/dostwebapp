@@ -736,6 +736,23 @@ export const zh: Messages<typeof en> = {
     listening: '正在倾听值得留意的东西…',
     insightPending:
       '我还在细细体会你分享的内容——等多积累一些天气后再来看看。',
+    listeningTitle: '来自聆听',
+    listeningHint:
+      '在后台聆听时收集到的 — {duration}，{sessions}。这些话并不是对我说的，所以我轻轻地捧着它们。',
+    listeningMinutes: plural({
+      other: '{count} 分钟',
+    }),
+    listeningHours: plural({
+      other: '约 {count} 小时',
+    }),
+    listeningSessions: plural({
+      other: '在 {count} 次会话中',
+    }),
+    listeningHeard: '最常浮现的是：{emotions}。',
+    listeningNeeds: '在那之下，是对{needs}的渴望。',
+    listeningSparse: '目前浮现的还太少，无法诚实地命名什么。',
+    listeningToneHeld:
+      '你听起来如何，我并不试图解读。这里只计数你的话语。',
   },
   privacy: {
     eyebrow: '隐私为本',

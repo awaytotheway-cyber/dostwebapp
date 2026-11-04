@@ -18,6 +18,10 @@ import {
   type JourneyAggregate,
   type JourneyRangeKey,
 } from '../lib/journey';
+import {
+  describeListenedDuration,
+  type ListeningReflection,
+} from '../lib/journeyListening';
 import { radius, spacing, type as typography } from '../lib/theme';
 import type { ChatStackParamList } from './chatTypes';
 import BreathingDot from './BreathingDot';
@@ -139,9 +143,10 @@ function SoftLoading({ label }: { label: string }) {
 
 export default function YourJourneyScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
-  const { t, lang, locale } = useI18n();
+  const { t, tn, lang, locale } = useI18n();
   const [range, setRange] = useState<JourneyRangeKey>('7d');
   const [aggregate, setAggregate] = useState<JourneyAggregate | null>(null);
+  const [listening, setListening] = useState<ListeningReflection | null>(null);
   const [insight, setInsight] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [insightLoading, setInsightLoading] = useState(false);
@@ -158,6 +163,7 @@ export default function YourJourneyScreen({ navigation }: Props) {
       void (async () => {
         setError(null);
         setLoading(true);
+        setListening(null);
         setInsight(null);
         setInsightError(null);
         setInsightLoading(false);
@@ -167,12 +173,14 @@ export default function YourJourneyScreen({ navigation }: Props) {
 
         if (!result.ok) {
           setAggregate(null);
+          setListening(null);
           setError(result.message);
           setLoading(false);
           return;
         }
 
         setAggregate(result.aggregate);
+        setListening(result.listening);
         setLoading(false);
 
         if (result.aggregate.sparse) {
@@ -232,10 +240,22 @@ export default function YourJourneyScreen({ navigation }: Props) {
     setInsight(insightRes.insight);
   }, [aggregate, range, rangeLabel]);
 
-  const empty =
-    !loading &&
-    !error &&
-    (!aggregate || aggregate.totalTags === 0 || aggregate.sparse);
+  const listenedFor = useMemo(() => {
+    if (!listening) return '';
+    const d = describeListenedDuration(listening.listenedSeconds);
+    return tn(d.key, d.amount);
+  }, [listening, tn]);
+
+  // Whether there is enough typed/voice-note material for the weather
+  // chart and themes. This is exactly what gated the whole screen
+  // before listening existed, so those sections behave as they did.
+  const hasTyped =
+    !!aggregate && aggregate.totalTags > 0 && !aggregate.sparse;
+
+  // Listening-only data still counts as something to show: someone who
+  // has used listening but never typed should not meet an empty screen.
+  // They see the listening section alone rather than empty chart frames.
+  const empty = !loading && !error && !hasTyped && !listening;
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -309,60 +329,120 @@ export default function YourJourneyScreen({ navigation }: Props) {
             </View>
           ) : (
             <>
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>{t('journey.weatherTitle')}</Text>
-                <Text style={styles.sectionHint}>
-                  {t('journey.weatherHint', {
-                    range: t(rangeEntry.labelKey).toLocaleLowerCase(locale),
-                  })}
-                </Text>
-                {aggregate ? <WeatherChart points={aggregate.weather} /> : null}
-              </View>
+              {hasTyped ? (
+                <>
+                  <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>{t('journey.weatherTitle')}</Text>
+                    <Text style={styles.sectionHint}>
+                      {t('journey.weatherHint', {
+                        range: t(rangeEntry.labelKey).toLocaleLowerCase(locale),
+                      })}
+                    </Text>
+                    {aggregate ? <WeatherChart points={aggregate.weather} /> : null}
+                  </View>
 
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>{t('journey.themesTitle')}</Text>
-                {aggregate?.themeSentences.map((sentence) => (
-                  <Text key={sentence} style={styles.themeLine}>
-                    {sentence}
+                  <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>{t('journey.themesTitle')}</Text>
+                    {aggregate?.themeSentences.map((sentence) => (
+                      <Text key={sentence} style={styles.themeLine}>
+                        {sentence}
+                      </Text>
+                    ))}
+                    {aggregate && aggregate.topNeeds.length > 0 ? (
+                      <Text style={styles.needsHint}>
+                        {t('journey.needsHint', {
+                          needs: aggregate.topNeeds
+                            .slice(0, 3)
+                            .map((n) => n.label.toLocaleLowerCase(locale))
+                            .join(', '),
+                        })}
+                      </Text>
+                    ) : null}
+                  </View>
+
+                  <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>{t('journey.noticesTitle')}</Text>
+                    {insightLoading ? (
+                      <SoftLoading label={t('journey.listening')} />
+                    ) : insight ? (
+                      <Text style={styles.insight}>{insight}</Text>
+                    ) : insightError ? (
+                      <View style={styles.insightErrorWrap}>
+                        <Text style={styles.insightErrorText}>{insightError}</Text>
+                        <GentlePressable
+                          accessibilityRole="button"
+                          accessibilityLabel={t('common.tryAgain')}
+                          onPress={() => void retryInsight()}
+                          style={({ pressed }) => [
+                            styles.retryButton,
+                            pressed && styles.pressed,
+                          ]}
+                        >
+                          <Text style={styles.retryLabel}>{t('common.tryAgain')}</Text>
+                        </GentlePressable>
+                      </View>
+                    ) : (
+                      <Text style={styles.themeLine}>{t('journey.insightPending')}</Text>
+                    )}
+                  </View>
+                </>
+              ) : null}
+
+              {listening ? (
+                <View style={styles.section}>
+                  <Text style={styles.sectionTitle}>
+                    {t('journey.listeningTitle')}
                   </Text>
-                ))}
-                {aggregate && aggregate.topNeeds.length > 0 ? (
-                  <Text style={styles.needsHint}>
-                    {t('journey.needsHint', {
-                      needs: aggregate.topNeeds
-                        .slice(0, 3)
-                        .map((n) => n.label.toLocaleLowerCase(locale))
-                        .join(', '),
+                  <Text style={styles.sectionHint}>
+                    {t('journey.listeningHint', {
+                      duration: listenedFor,
+                      sessions: tn(
+                        'journey.listeningSessions',
+                        listening.sessions,
+                      ),
                     })}
                   </Text>
-                ) : null}
-              </View>
 
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>{t('journey.noticesTitle')}</Text>
-                {insightLoading ? (
-                  <SoftLoading label={t('journey.listening')} />
-                ) : insight ? (
-                  <Text style={styles.insight}>{insight}</Text>
-                ) : insightError ? (
-                  <View style={styles.insightErrorWrap}>
-                    <Text style={styles.insightErrorText}>{insightError}</Text>
-                    <GentlePressable
-                      accessibilityRole="button"
-                      accessibilityLabel={t('common.tryAgain')}
-                      onPress={() => void retryInsight()}
-                      style={({ pressed }) => [
-                        styles.retryButton,
-                        pressed && styles.pressed,
-                      ]}
-                    >
-                      <Text style={styles.retryLabel}>{t('common.tryAgain')}</Text>
-                    </GentlePressable>
-                  </View>
-                ) : (
-                  <Text style={styles.themeLine}>{t('journey.insightPending')}</Text>
-                )}
-              </View>
+                  {listening.sparse || listening.topEmotions.length === 0 ? (
+                    <Text style={styles.themeLine}>
+                      {t('journey.listeningSparse')}
+                    </Text>
+                  ) : (
+                    <>
+                      <Text style={styles.themeLine}>
+                        {t('journey.listeningHeard', {
+                          emotions: listening.topEmotions
+                            .map((e) => e.label.toLocaleLowerCase(locale))
+                            .join(', '),
+                        })}
+                      </Text>
+                      {listening.topNeeds.length > 0 ? (
+                        <Text style={styles.needsHint}>
+                          {t('journey.listeningNeeds', {
+                            needs: listening.topNeeds
+                              .slice(0, 3)
+                              .map((n) => n.label.toLocaleLowerCase(locale))
+                              .join(', '),
+                          })}
+                        </Text>
+                      ) : null}
+                    </>
+                  )}
+
+                  {/*
+                    The mock quarantine, made visible. avg_arousal and
+                    avg_valence are fabricated until Phase 4 validates a
+                    real model, so rather than show a tone reading or say
+                    nothing at all, say plainly that tone is not read.
+                    hasRealAcoustic is false for every Phase 1-3 row.
+                  */}
+                  {!listening.hasRealAcoustic ? (
+                    <Text style={styles.listeningCaveat}>
+                      {t('journey.listeningToneHeld')}
+                    </Text>
+                  ) : null}
+                </View>
+              ) : null}
             </>
           )}
         </ScrollView>
@@ -372,6 +452,13 @@ export default function YourJourneyScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
+  listeningCaveat: {
+    ...typography.caption,
+    color: dawn.clay,
+    marginTop: spacing.md,
+    opacity: 0.85,
+    fontStyle: 'italic',
+  },
   container: {
     flex: 1,
     backgroundColor: dawn.base,

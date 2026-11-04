@@ -735,6 +735,27 @@ export const en = {
     listening: 'Listening for what wants noticing…',
     insightPending:
       'I am still sitting with what you have shared — check back when a little more weather has gathered.',
+    listeningTitle: 'From listening',
+    listeningHint:
+      'Gathered while listening ran in the background — {duration}, {sessions}. These words were not spoken to me, so I hold them lightly.',
+    listeningMinutes: plural({
+      one: '{count} minute',
+      other: '{count} minutes',
+    }),
+    listeningHours: plural({
+      one: 'about {count} hour',
+      other: 'about {count} hours',
+    }),
+    listeningSessions: plural({
+      one: 'across {count} session',
+      other: 'across {count} sessions',
+    }),
+    listeningHeard: 'What came through most: {emotions}.',
+    listeningNeeds: 'And underneath, a reach toward {needs}.',
+    listeningSparse:
+      'Too little came through so far to name anything honestly.',
+    listeningToneHeld:
+      'How you sounded is not something I try to read. Only your words are counted here.',
   },
   privacy: {
     eyebrow: 'Private by design',

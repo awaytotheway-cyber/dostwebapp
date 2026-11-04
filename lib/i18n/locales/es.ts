@@ -737,6 +737,27 @@ export const es: Messages<typeof en> = {
     listening: 'Escuchando lo que pide ser visto…',
     insightPending:
       'Sigo con lo que has compartido; vuelve cuando se haya reunido un poco más de clima.',
+    listeningTitle: 'De la escucha',
+    listeningHint:
+      'Recogido mientras la escucha corría en segundo plano — {duration}, {sessions}. Estas palabras no me fueron dichas, así que las sostengo con suavidad.',
+    listeningMinutes: plural({
+      one: '{count} minuto',
+      other: '{count} minutos',
+    }),
+    listeningHours: plural({
+      one: 'cerca de {count} hora',
+      other: 'cerca de {count} horas',
+    }),
+    listeningSessions: plural({
+      one: 'en {count} sesión',
+      other: 'en {count} sesiones',
+    }),
+    listeningHeard: 'Lo que más llegó: {emotions}.',
+    listeningNeeds: 'Y debajo, un alcance hacia {needs}.',
+    listeningSparse:
+      'Todavía ha llegado muy poco para nombrar algo con honestidad.',
+    listeningToneHeld:
+      'Cómo sonabas no es algo que intente leer. Aquí solo se cuentan tus palabras.',
   },
   privacy: {
     eyebrow: 'Privado por diseño',

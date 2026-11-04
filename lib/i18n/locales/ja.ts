@@ -736,6 +736,24 @@ export const ja: Messages<typeof en> = {
     listening: '気づかれたがっているものに耳を澄ませています…',
     insightPending:
       'あなたが話してくれたことを、まだ静かに受け止めています — もう少し天気が集まったら、また見に来てください。',
+    listeningTitle: '聞こえていたものから',
+    listeningHint:
+      'バックグラウンドで聞いている間に集まったものです — {duration}、{sessions}。これらの言葉は私に向けて話されたものではないので、軽く受けとめています。',
+    listeningMinutes: plural({
+      other: '{count}分',
+    }),
+    listeningHours: plural({
+      other: '約{count}時間',
+    }),
+    listeningSessions: plural({
+      other: '{count}回のセッションで',
+    }),
+    listeningHeard: 'もっとも多く届いたもの：{emotions}。',
+    listeningNeeds: 'その下には、{needs}へのもとめ。',
+    listeningSparse:
+      '正直に何かを名づけるには、まだ届いたものが少なすぎます。',
+    listeningToneHeld:
+      'どんな声だったかを読み取ろうとはしていません。ここでは言葉だけを数えています。',
   },
   privacy: {
     eyebrow: 'プライバシーを大切に',

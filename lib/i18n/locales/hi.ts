@@ -737,6 +737,27 @@ export const hi: Messages<typeof en> = {
     listening: 'जो ध्यान चाहता है, उसे सुना जा रहा है…',
     insightPending:
       'आपने जो साझा किया है, मैं अभी उसके साथ बैठा हूँ — थोड़ा और मौसम जुटने पर फिर देखें।',
+    listeningTitle: 'सुनने से',
+    listeningHint:
+      'पृष्ठभूमि में सुनते हुए जो इकट्ठा हुआ — {duration}, {sessions}। ये शब्द मुझसे कहे नहीं गए थे, इसलिए मैं इन्हें हल्के से थामता हूँ।',
+    listeningMinutes: plural({
+      one: '{count} मिनट',
+      other: '{count} मिनट',
+    }),
+    listeningHours: plural({
+      one: 'लगभग {count} घंटा',
+      other: 'लगभग {count} घंटे',
+    }),
+    listeningSessions: plural({
+      one: '{count} सत्र में',
+      other: '{count} सत्रों में',
+    }),
+    listeningHeard: 'जो सबसे ज़्यादा उभरकर आया: {emotions}।',
+    listeningNeeds: 'और उसके नीचे, {needs} की ओर एक पहुँच।',
+    listeningSparse:
+      'अभी इतना कम उभरा है कि ईमानदारी से कुछ नाम देना ठीक नहीं होगा।',
+    listeningToneHeld:
+      'आप कैसे सुनाई दिए, यह मैं पढ़ने की कोशिश नहीं करता। यहाँ केवल आपके शब्द गिने जाते हैं।',
   },
   privacy: {
     eyebrow: 'शुरू से निजी',
