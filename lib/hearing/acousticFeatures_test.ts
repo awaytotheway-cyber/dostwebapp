@@ -4,6 +4,8 @@ import { assertEquals, assert } from "jsr:@std/assert@1";
 import {
   extractAcousticFeatures,
   estimatePitchContour,
+  vocalStressIndex,
+  withSpeakingRate,
 } from "./acousticFeatures.ts";
 
 const SR = 16_000;
@@ -101,4 +103,72 @@ Deno.test("empty input returns zeroed features", () => {
   const f = extractAcousticFeatures(new Float32Array(0), SR, "", 0);
   assertEquals(f.pitch_mean_hz, 0);
   assertEquals(f.vocal_stress_index, 0);
+});
+
+// ── vocal_stress_index and the two-stage pipeline ────────────────────
+//
+// The pipeline cannot know the speaking rate until Whisper returns, so
+// it extracts features with an empty transcript and fills the rate in
+// afterwards. It used to do that with a plain spread, which left
+// vocal_stress_index computed against a rate of zero.
+
+Deno.test("speaking rate actually moves vocal stress", () => {
+  const slow = vocalStressIndex(0.3, 40, 0.2);
+  const fast = vocalStressIndex(0.3, 180, 0.2);
+  assert(fast > slow, `expected ${fast} > ${slow}`);
+  // The rate term carries 0.4 of the formula.
+  assert(
+    Math.abs(fast - slow - 0.4 * (Math.min(1, 180 / 200) - Math.min(1, 40 / 200))) < 1e-9,
+  );
+});
+
+Deno.test("the full range stays reachable, so 'elevated' can occur", () => {
+  // Both consumers label > 0.6 as "elevated". With the rate term dead
+  // the ceiling was 0.6 and that label could never be produced.
+  const high = vocalStressIndex(1, 200, 0);
+  assertEquals(high, 1);
+  assert(vocalStressIndex(0.6, 180, 0.1) > 0.6, "a plausible stressed clip should clear 0.6");
+});
+
+Deno.test("withSpeakingRate recomputes stress, not just the rate", () => {
+  const pcm = tone(150, 2, 0.2);
+  // What the pipeline does: features first, with no transcript.
+  const staged = extractAcousticFeatures(pcm, SR, "", 2);
+  const filled = withSpeakingRate(staged, 170);
+
+  assertEquals(filled.speaking_rate_wpm, 170);
+  assert(
+    filled.vocal_stress_index > staged.vocal_stress_index,
+    `stress should rise once the rate is known: ${staged.vocal_stress_index} -> ${filled.vocal_stress_index}`,
+  );
+});
+
+// The property that matters: computing in two stages must equal
+// computing in one. This is what a naive spread broke.
+Deno.test("two-stage extraction matches single-pass extraction", () => {
+  const pcm = tone(150, 2, 0.2);
+  const transcript = Array(50).fill("word").join(" ");
+  const wpm = (50 / 2) * 60;
+
+  const onePass = extractAcousticFeatures(pcm, SR, transcript, 2);
+  const twoStage = withSpeakingRate(extractAcousticFeatures(pcm, SR, "", 2), wpm);
+
+  assertEquals(twoStage.speaking_rate_wpm, onePass.speaking_rate_wpm);
+  assertEquals(twoStage.vocal_stress_index, onePass.vocal_stress_index);
+  assertEquals(twoStage.pitch_mean_hz, onePass.pitch_mean_hz);
+  assertEquals(twoStage.silence_ratio, onePass.silence_ratio);
+});
+
+Deno.test("a nonsense rate cannot produce a nonsense stress value", () => {
+  for (const bad of [Number.NaN, Number.POSITIVE_INFINITY, -50]) {
+    const f = withSpeakingRate(extractAcousticFeatures(tone(150, 1, 0.2), SR, "", 1), bad);
+    assert(Number.isFinite(f.speaking_rate_wpm), `rate ${bad}`);
+    assert(f.speaking_rate_wpm >= 0, `rate ${bad}`);
+    assert(
+      Number.isFinite(f.vocal_stress_index) &&
+        f.vocal_stress_index >= 0 &&
+        f.vocal_stress_index <= 1,
+      `stress from rate ${bad} was ${f.vocal_stress_index}`,
+    );
+  }
 });
