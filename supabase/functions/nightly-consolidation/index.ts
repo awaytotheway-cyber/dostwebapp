@@ -10,6 +10,66 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY")!;
 
+// Which model writes the synthesis.
+//
+// This job has now been broken twice by a provider detail rather than
+// by its own logic: DEEPSEEK_API_KEY was never set, and then
+// llama-3.3-70b-versatile stopped being available on this account. So
+// the model is no longer a hard-coded string.
+//
+// Set GROQ_MODEL as an Edge Function secret to pin one; otherwise the
+// first available name from PREFERRED_MODELS is used, resolved against
+// what Groq actually serves. If none of them are available the job
+// fails loudly and names what IS available, rather than falling back
+// to some arbitrary model — this writes private psychological notes,
+// and a guard or speech model picked at random would produce confident
+// nonsense. A wrong note is worse than no note.
+const GROQ_MODEL = Deno.env.get("GROQ_MODEL")?.trim() || "";
+
+const PREFERRED_MODELS = [
+  "llama-3.3-70b-versatile",
+  "openai/gpt-oss-120b",
+  "moonshotai/kimi-k2-instruct",
+  "qwen/qwen3-32b",
+  "deepseek-r1-distill-llama-70b",
+  "llama-3.1-8b-instant",
+];
+
+/** Resolved once per cold start; the list rarely changes mid-run. */
+let resolvedModel: string | null = null;
+
+async function listGroqModels(): Promise<string[]> {
+  const res = await fetch("https://api.groq.com/openai/v1/models", {
+    headers: { Authorization: `Bearer ${GROQ_API_KEY}` },
+  });
+  if (!res.ok) {
+    throw new Error(`Groq model list failed: ${res.status} ${await res.text()}`);
+  }
+  const body = await res.json();
+  return (body?.data ?? [])
+    .map((m: { id?: unknown }) => (typeof m.id === "string" ? m.id : ""))
+    .filter(Boolean);
+}
+
+async function resolveModel(): Promise<string> {
+  if (GROQ_MODEL) return GROQ_MODEL;
+  if (resolvedModel) return resolvedModel;
+
+  const available = await listGroqModels();
+  const pick = PREFERRED_MODELS.find((m) => available.includes(m));
+  if (!pick) {
+    throw new Error(
+      `No preferred Groq model is available to this account. ` +
+        `Wanted one of: ${PREFERRED_MODELS.join(", ")}. ` +
+        `Groq offers: ${available.join(", ") || "(nothing)"}. ` +
+        `Set the GROQ_MODEL secret to one of those.`,
+    );
+  }
+  resolvedModel = pick;
+  console.log(`Groq synthesis model resolved to ${pick}`);
+  return pick;
+}
+
 const MIN_NEW_MESSAGES = 5;
 
 Deno.serve(async (req) => {
@@ -162,6 +222,7 @@ Respond ONLY with valid JSON in this exact shape:
 }
 
 async function callGroqForSynthesis(prompt: string): Promise<Record<string, unknown>> {
+  const model = await resolveModel();
   const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -169,7 +230,7 @@ async function callGroqForSynthesis(prompt: string): Promise<Record<string, unkn
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "llama-3.3-70b-versatile",
+      model,
       messages: [
         { role: "system", content: "You synthesize private psychological understanding notes. Return JSON only, no markdown, no commentary." },
         { role: "user", content: prompt },
@@ -182,7 +243,10 @@ async function callGroqForSynthesis(prompt: string): Promise<Record<string, unkn
 
   if (!response.ok) {
     const body = await response.text();
-    throw new Error(`Groq synthesis failed: ${response.status} ${body}`);
+    // Name the model: "model_not_found" is meaningless without it.
+    throw new Error(
+      `Groq synthesis failed (model ${model}): ${response.status} ${body}`,
+    );
   }
   const data = await response.json();
   const content = data?.choices?.[0]?.message?.content;

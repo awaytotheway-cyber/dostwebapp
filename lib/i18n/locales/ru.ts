@@ -747,6 +747,33 @@ export const ru: Messages<typeof en> = {
     listening: 'Прислушиваюсь к тому, что просит внимания…',
     insightPending:
       'Я всё ещё с тем, чем вы поделились, — загляните, когда соберётся ещё немного погоды.',
+    listeningTitle: 'Из слушания',
+    listeningHint:
+      'Собрано, пока слушание работало в фоне — {duration}, {sessions}. Эти слова были сказаны не мне, поэтому я держу их легко.',
+    listeningMinutes: plural({
+      one: '{count} минута',
+      few: '{count} минуты',
+      many: '{count} минут',
+      other: '{count} минуты',
+    }),
+    listeningHours: plural({
+      one: 'около {count} часа',
+      few: 'около {count} часов',
+      many: 'около {count} часов',
+      other: 'около {count} часов',
+    }),
+    listeningSessions: plural({
+      one: 'за {count} сеанс',
+      few: 'за {count} сеанса',
+      many: 'за {count} сеансов',
+      other: 'за {count} сеанса',
+    }),
+    listeningHeard: 'Что приходило чаще всего: {emotions}.',
+    listeningNeeds: 'А под этим — тяга к {needs}.',
+    listeningSparse:
+      'Пока пришло слишком мало, чтобы честно что-то назвать.',
+    listeningToneHeld:
+      'Как вы звучали, я не пытаюсь читать. Здесь считаются только ваши слова.',
   },
   privacy: {
     eyebrow: 'Приватность по умолчанию',

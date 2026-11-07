@@ -737,6 +737,27 @@ export const mr: Messages<typeof en> = {
     listening: 'ज्याकडे लक्ष द्यायला हवं ते ऐकत आहे…',
     insightPending:
       'तुम्ही जे शेअर केलं त्यावर मी अजून विचार करत आहे — थोडं अजून हवामान जमलं की पुन्हा पाहा.',
+    listeningTitle: 'ऐकण्यातून',
+    listeningHint:
+      'पार्श्वभूमीवर ऐकत असताना जे जमलं — {duration}, {sessions}. हे शब्द मला उद्देशून बोलले गेले नव्हते, म्हणून मी ते हलक्या हातानं धरतो.',
+    listeningMinutes: plural({
+      one: '{count} मिनिट',
+      other: '{count} मिनिटे',
+    }),
+    listeningHours: plural({
+      one: 'सुमारे {count} तास',
+      other: 'सुमारे {count} तास',
+    }),
+    listeningSessions: plural({
+      one: '{count} सत्रात',
+      other: '{count} सत्रांत',
+    }),
+    listeningHeard: 'सर्वात जास्त जे जाणवलं: {emotions}.',
+    listeningNeeds: 'आणि त्याखाली, {needs} कडे एक ओढ.',
+    listeningSparse:
+      'अजून इतकं थोडं जाणवलं आहे की प्रामाणिकपणे काही नाव देणं जमणार नाही.',
+    listeningToneHeld:
+      'तुमचा आवाज कसा वाटला, ते मी वाचण्याचा प्रयत्न करत नाही. येथे फक्त तुमचे शब्द मोजले जातात.',
   },
   privacy: {
     eyebrow: 'मुळापासून खाजगी',

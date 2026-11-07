@@ -4,6 +4,11 @@ import {
   labelForExtractedNeed,
 } from './emotionalStates';
 import { getAppLanguage, getLocaleTag, t, type TKey } from './i18n';
+import {
+  aggregateListeningSummaries,
+  type ListeningReflection,
+  type ListeningSummaryRow,
+} from './journeyListening';
 import { supabase } from './supabase';
 
 export type JourneyRangeKey = '7d' | '30d' | 'all';
@@ -209,7 +214,12 @@ export function aggregateJourneyRows(
 export async function loadJourneyAggregate(
   rangeKey: JourneyRangeKey,
 ): Promise<
-  | { ok: true; aggregate: JourneyAggregate }
+  | {
+      ok: true;
+      aggregate: JourneyAggregate;
+      /** Null when listening has never run, or could not be read. */
+      listening: ListeningReflection | null;
+    }
   | { ok: false; message: string }
 > {
   try {
@@ -239,12 +249,28 @@ export async function loadJourneyAggregate(
       .order('created_at', { ascending: true })
       .limit(400);
 
+    // Listening summaries are dated by when the session began, not by
+    // when the row was written.
+    let listeningQuery = supabase
+      .from('listening_summaries')
+      .select(
+        'session_started_at, session_duration_seconds, speech_duration_seconds, emotion_counts, need_counts, inference_source',
+      )
+      .eq('user_id', userId)
+      .order('session_started_at', { ascending: true })
+      .limit(400);
+
     if (since) {
       emotionsQuery = emotionsQuery.gte('created_at', since);
       voiceQuery = voiceQuery.gte('created_at', since);
+      listeningQuery = listeningQuery.gte('session_started_at', since);
     }
 
-    let [emotionsRes, voiceRes] = await Promise.all([emotionsQuery, voiceQuery]);
+    let [emotionsRes, voiceRes, listeningRes] = await Promise.all([
+      emotionsQuery,
+      voiceQuery,
+      listeningQuery,
+    ]);
 
     // Older DBs may lack enrichment columns — retry a leaner select.
     if (emotionsRes.error) {
@@ -316,7 +342,21 @@ export async function loadJourneyAggregate(
       }
     }
 
-    return { ok: true, aggregate: aggregateJourneyRows(rows, rangeKey) };
+    // Listening is additional, never required. A database without the
+    // table, or a failed read, leaves the rest of the screen intact.
+    let listening: ListeningReflection | null = null;
+    if (!listeningRes.error && Array.isArray(listeningRes.data)) {
+      listening = aggregateListeningSummaries(
+        listeningRes.data as unknown as ListeningSummaryRow[],
+        { emotion: labelForExtractedEmotion, need: labelForExtractedNeed },
+      );
+    }
+
+    return {
+      ok: true,
+      aggregate: aggregateJourneyRows(rows, rangeKey),
+      listening,
+    };
   } catch {
     return {
       ok: false,
