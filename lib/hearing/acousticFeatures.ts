@@ -64,10 +64,10 @@ export function extractAcousticFeatures(
   const silence_ratio = totalFrames > 0 ? silentFrames / totalFrames : 0;
 
   // Heuristic composite. Labeled and treated as such — not a clinical index.
-  const rateNorm = Math.min(1, speaking_rate_wpm / 200);
-  const vocal_stress_index = Math.min(
-    1,
-    pitch_variability * 0.4 + rateNorm * 0.4 + (1 - silence_ratio) * 0.2,
+  const vocal_stress_index = vocalStressIndex(
+    pitch_variability,
+    speaking_rate_wpm,
+    silence_ratio,
   );
 
   return {
@@ -77,6 +77,63 @@ export function extractAcousticFeatures(
     speaking_rate_wpm,
     silence_ratio,
     vocal_stress_index,
+  };
+}
+
+/**
+ * The heuristic composite, in one place.
+ *
+ * NOT a validated clinical measure — a weighted blend of pitch
+ * variability, speaking rate and speech density. The UI must label it
+ * as such wherever it appears.
+ *
+ * Exported so there is exactly one definition. The pipeline cannot know
+ * the speaking rate until the transcript comes back from Whisper, so it
+ * has to compute these features in two stages; having the formula in
+ * two places is what let the rate term silently go missing.
+ */
+export function vocalStressIndex(
+  pitchVariability: number,
+  speakingRateWpm: number,
+  silenceRatio: number,
+): number {
+  const rateNorm = Math.min(1, Math.max(0, speakingRateWpm) / 200);
+  return Math.min(
+    1,
+    pitchVariability * 0.4 + rateNorm * 0.4 + (1 - silenceRatio) * 0.2,
+  );
+}
+
+/**
+ * Fill in the speaking rate once the transcript exists, and recompute
+ * everything that depends on it.
+ *
+ * THE BUG THIS EXISTS TO PREVENT. The pipeline used to extract features
+ * with an empty transcript and then spread `{ ...features,
+ * speaking_rate_wpm }` over the result. That patched the rate but left
+ * vocal_stress_index as it was — computed with a rate of zero, so the
+ * 0.4 weight on speaking rate was permanently dead. Stored values
+ * topped out around 0.37 against a formula that reads up to 1.0, and
+ * both the chat lens and the nightly synthesis call anything above 0.6
+ * "elevated" — a label that could never be produced.
+ *
+ * Use this rather than spreading the rate in by hand: anything derived
+ * from speaking rate is recomputed here, so a future derived field
+ * cannot be forgotten the same way.
+ */
+export function withSpeakingRate(
+  features: AcousticFeatures,
+  speakingRateWpm: number,
+): AcousticFeatures {
+  const rate = Number.isFinite(speakingRateWpm) ? Math.max(0, speakingRateWpm) : 0;
+  return {
+    ...features,
+    speaking_rate_wpm: rate,
+    vocal_stress_index: vocalStressIndex(
+      features.pitch_variability,
+      rate,
+      features.silence_ratio,
+    ),
   };
 }
 

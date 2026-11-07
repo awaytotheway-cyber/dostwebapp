@@ -1,6 +1,6 @@
 import { t as translate } from '../i18n';
 import { supabase } from '../supabase';
-import { extractAcousticFeatures } from './acousticFeatures';
+import { extractAcousticFeatures, withSpeakingRate } from './acousticFeatures';
 import type { AcousticFeatures } from './acousticFeatures';
 import { inferAcousticState } from './acousticInference';
 import {
@@ -608,11 +608,13 @@ async function processSegment(
     // Drop the PCM as soon as Whisper is done with it.
     pcm = null;
 
-    // Recompute speaking_rate_wpm now that we have a word count.
-    const withRate: AcousticFeatures = {
-      ...features,
-      speaking_rate_wpm: computeWpm(transcript, durationSeconds),
-    };
+    // Fill in the speaking rate now that we have a word count, and
+    // recompute what depends on it. Spreading the rate in by hand here
+    // is what left vocal_stress_index computed with a rate of zero.
+    const withRate: AcousticFeatures = withSpeakingRate(
+      features,
+      computeWpm(transcript, durationSeconds),
+    );
 
     // 3. Redact PII before it leaves the device.
     redacted = redactPII(transcript);
