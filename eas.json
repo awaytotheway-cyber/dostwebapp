@@ -35,5 +35,9 @@
       "distribution": "store",
       "environment": "production"
     }
+  },
+  "submit": {
+    "testflight": {},
+    "production": {}
   }
 }
