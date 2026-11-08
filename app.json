@@ -18,7 +18,7 @@
       "bundleIdentifier": "com.dost.app",
       "infoPlist": {
         "NSSpeechRecognitionUsageDescription": "DOST uses your device to convert speech to text. Nothing is recorded or stored.",
-        "NSMicrophoneUsageDescription": "DOST uses your device to convert speech to text. Nothing is recorded or stored."
+        "NSMicrophoneUsageDescription": "DOST uses the microphone to turn your speech into text, for voice notes and during listening sessions you start yourself. DOST never saves the audio."
       }
     },
     "androidNavigationBar": {
@@ -53,7 +53,7 @@
       [
         "expo-speech-recognition",
         {
-          "microphonePermission": "DOST uses your device to convert speech to text. Nothing is recorded or stored.",
+          "microphonePermission": "DOST uses the microphone to turn your speech into text, for voice notes and during listening sessions you start yourself. DOST never saves the audio.",
           "speechRecognitionPermission": "DOST uses your device to convert speech to text. Nothing is recorded or stored."
         }
       ],

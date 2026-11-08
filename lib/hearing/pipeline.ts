@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import { t as translate } from '../i18n';
 import { supabase } from '../supabase';
 import { extractAcousticFeatures, withSpeakingRate } from './acousticFeatures';
@@ -214,6 +215,14 @@ export async function startHearingSession(
     },
     onStopped: (s) => {
       if (ctx) ctx.lastSummary = s;
+      // iOS can end a session on its own: a phone call or another app
+      // took the microphone and iOS wouldn't give it back. Finish it
+      // properly (session row closed, summary written) rather than leave
+      // the screen showing a session that has stopped listening. Android's
+      // service only stops when asked, so it keeps its existing flow.
+      if (Platform.OS === 'ios' && !s.userRequested && ctx && !ctx.stopped) {
+        void stopHearingSession().catch(() => {});
+      }
     },
     onStartError: (e: HearingStartError) => {
       // Native side couldn't start capture. Roll back the session row.

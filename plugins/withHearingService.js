@@ -1,7 +1,8 @@
 /**
- * Expo config plugin: injects the DOST hearing foreground service into
- * the native Android project.
+ * Expo config plugin: injects DOST listening sessions into both native
+ * projects.
  *
+ * ANDROID — the Kotlin foreground service:
  * What this plugin does:
  *   1. Copies HearingService.kt / HearingModule.kt / HearingPackage.kt
  *      into android/app/src/main/java/com/dost/app/hearing/
@@ -16,12 +17,24 @@
  * The service is session-based only. It is started explicitly by a JS
  * call and stopped either from JS or from the notification's Stop
  * action — never on boot, never on schedule.
+ *
+ * iOS — the Swift module in plugins/hearing-service/ios/ is linked by
+ * Expo autolinking (package.json: expo.autolinking.nativeModulesDir), not
+ * copied in by this plugin. This plugin only adds what autolinking can't:
+ *   5. The `audio` background mode in Info.plist, so a session the
+ *      person started keeps capturing when they leave the app. iOS shows
+ *      its microphone indicator for as long as it does.
+ *   6. ONNX Runtime declared in the Podfile with modular headers. The pod
+ *      ships no module map, and without one Swift cannot
+ *      `import onnxruntime_objc`.
  */
 const {
   withAndroidManifest,
   withAppBuildGradle,
   withMainApplication,
   withDangerousMod,
+  withInfoPlist,
+  withPodfile,
 } = require('@expo/config-plugins');
 const fs = require('fs');
 const path = require('path');
@@ -151,10 +164,45 @@ function withOnnxRuntimeDependency(config) {
   });
 }
 
+// Must match the dependency in plugins/hearing-service/ios/DostHearing.podspec
+// and the Android version above, so both platforms run the same runtime.
+const ONNXRUNTIME_POD = "pod 'onnxruntime-objc', '1.20.0', :modular_headers => true";
+
+function withHearingBackgroundAudio(config) {
+  return withInfoPlist(config, (cfg) => {
+    const modes = Array.isArray(cfg.modResults.UIBackgroundModes)
+      ? cfg.modResults.UIBackgroundModes
+      : [];
+    if (!modes.includes('audio')) modes.push('audio');
+    cfg.modResults.UIBackgroundModes = modes;
+    return cfg;
+  });
+}
+
+function withOnnxRuntimePod(config) {
+  return withPodfile(config, (cfg) => {
+    let src = cfg.modResults.contents;
+    if (src.includes("pod 'onnxruntime-objc'")) return cfg;
+    // Inside the app target, right after Expo's own module pods.
+    if (!/^[ \t]*use_expo_modules![ \t]*$/m.test(src)) {
+      throw new Error('withHearingService: use_expo_modules! not found in ios/Podfile');
+    }
+    // [ \t] rather than \s: \s also matches newlines, letting the match
+    // run across neighbouring blank lines.
+    src = src.replace(/^([ \t]*)use_expo_modules![ \t]*$/m, (line, indent) => `${line}\n${indent}${ONNXRUNTIME_POD}`);
+    cfg.modResults.contents = src;
+    return cfg;
+  });
+}
+
 module.exports = function withHearingService(config) {
+  // Android
   config = withHearingKotlinSources(config);
   config = withHearingServiceManifest(config);
   config = withHearingPackageRegistration(config);
   config = withOnnxRuntimeDependency(config);
+  // iOS
+  config = withHearingBackgroundAudio(config);
+  config = withOnnxRuntimePod(config);
   return config;
 };
