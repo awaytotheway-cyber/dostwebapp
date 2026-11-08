@@ -18,7 +18,8 @@
       "bundleIdentifier": "com.dostapp.app",
       "infoPlist": {
         "NSSpeechRecognitionUsageDescription": "DOST uses your device to convert speech to text. Nothing is recorded or stored.",
-        "NSMicrophoneUsageDescription": "DOST uses the microphone to turn your speech into text, for voice notes and during listening sessions you start yourself. DOST never saves the audio."
+        "NSMicrophoneUsageDescription": "DOST uses the microphone to turn your speech into text, for voice notes and during listening sessions you start yourself. DOST never saves the audio.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "androidNavigationBar": {
