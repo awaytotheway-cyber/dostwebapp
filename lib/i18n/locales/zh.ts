@@ -889,7 +889,7 @@ export const zh: Messages<typeof en> = {
       '录音从不保存。音频只在内存中存在几秒钟，然后就会被丢弃。',
     bullet3:
       '为了留意情绪，你所说内容的文字会被发送给一项 AI 服务（OpenAI）。电话号码、邮箱和地址会先被移除，但姓名不会。DOST 只保存与你账户关联的情绪标签和语速等信号——从不保存你的原话。',
-    bullet4: '每次倾听都由你亲自开始和结束。倾听进行时——即使应用在后台——都会有一条通知显示 DOST 正在倾听。',
+    bullet4: '每次倾听都由你亲自开始和结束。倾听进行时——即使应用在后台——你的手机都会显示 DOST 正在倾听：Android 上是一条通知，iPhone 上是麦克风指示标志。',
     notice:
       '请注意：倾听期间，手机附近任何人说话都可能被收录。只在你对周围的人感到放心时才开始。',
     continue: '我明白了——继续',
@@ -1042,7 +1042,7 @@ export const zh: Messages<typeof en> = {
   },
   permissions: {
     notYetAvailable: '暂不可用',
-    androidOnly: '倾听时段目前仅支持 Android。',
+    unavailableHere: '此处无法使用倾听功能。需要在手机上使用最新版的 DOST 应用。',
     micTitle: '麦克风权限',
     micBody:
       'DOST 需要使用麦克风，在倾听时段中听清你说的话。录音从不保存。',

@@ -184,8 +184,9 @@ export default function HomeScreen({ navigation }: Props) {
           </GentlePressable>
         </View>
 
-        {/* Listening session — Android only: it runs on the native
-            foreground service, so elsewhere it could never start. */}
+        {/* Listening session — only where the native listening module
+            exists (Android, and iOS builds that include it). On web it
+            could never start. */}
         {isHearingAvailable() && (
           <GentlePressable
             accessibilityRole="button"

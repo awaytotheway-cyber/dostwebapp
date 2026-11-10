@@ -893,7 +893,7 @@ export const de: Messages<typeof en> = {
       'Aufnahmen werden nie gespeichert. Audio existiert nur ein paar Sekunden im Arbeitsspeicher und wird dann verworfen.',
     bullet3:
       'Um Gefühle wahrzunehmen, wird der Text dessen, was du gesagt hast, an einen KI-Dienst (OpenAI) gesendet. Telefonnummern, E-Mail-Adressen und Anschriften werden vorher entfernt, Namen jedoch nicht. DOST behält nur Gefühls-Labels und Signale wie das Tempo, verknüpft mit deinem Konto – nie deine Worte.',
-    bullet4: 'Du startest und beendest jede Sitzung selbst. Solange eine läuft – auch wenn die App im Hintergrund ist –, zeigt eine Benachrichtigung, dass DOST zuhört.',
+    bullet4: 'Du startest und beendest jede Sitzung selbst. Solange eine läuft – auch wenn die App im Hintergrund ist –, zeigt dein Handy an, dass DOST zuhört: auf Android mit einer Benachrichtigung, auf dem iPhone mit der Mikrofonanzeige.',
     notice:
       'Bitte beachte: Wer während einer Sitzung in der Nähe deines Handys spricht, kann miterfasst werden. Starte eine Sitzung nur, wenn du dich mit den Menschen um dich herum wohlfühlst.',
     continue: 'Verstanden – weiter',
@@ -1047,7 +1047,7 @@ export const de: Messages<typeof en> = {
   },
   permissions: {
     notYetAvailable: 'Noch nicht verfügbar',
-    androidOnly: 'Zuhör-Sitzungen gibt es vorerst nur auf Android.',
+    unavailableHere: 'Zuhören ist hier nicht verfügbar. Dafür brauchst du die neueste DOST-App auf deinem Handy.',
     micTitle: 'Mikrofonzugriff',
     micBody:
       'DOST braucht dein Mikrofon, um während einer Sitzung zu hören, was du sagst. Aufnahmen werden nie gespeichert.',

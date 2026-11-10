@@ -894,7 +894,7 @@ export const es: Messages<typeof en> = {
       'Las grabaciones nunca se guardan. El audio solo existe en memoria unos segundos y luego se descarta.',
     bullet3:
       'Para percibir sentimientos, el texto de lo que dijiste se envía a un servicio de IA (OpenAI). Antes se eliminan los números de teléfono, correos y direcciones, pero no los nombres. DOST solo guarda etiquetas de sentimientos y señales como el ritmo, vinculadas a tu cuenta; nunca tus palabras.',
-    bullet4: 'Tú inicias y detienes cada sesión. Mientras una está activa, incluso con la app en segundo plano, una notificación muestra que DOST está escuchando.',
+    bullet4: 'Tú inicias y detienes cada sesión. Mientras una está activa, incluso con la app en segundo plano, tu teléfono muestra que DOST está escuchando: una notificación en Android y el indicador del micrófono en iPhone.',
     notice:
       'Ten en cuenta que durante una sesión puede captarse la voz de cualquier persona que hable cerca del teléfono. Inicia una sesión solo cuando te sientas a gusto con quien tienes alrededor.',
     continue: 'Entendido, continuar',
@@ -1048,7 +1048,7 @@ export const es: Messages<typeof en> = {
   },
   permissions: {
     notYetAvailable: 'Aún no disponible',
-    androidOnly: 'Por ahora, las sesiones de escucha solo están disponibles en Android.',
+    unavailableHere: 'La escucha no está disponible aquí. Necesitas la última versión de la app DOST en tu teléfono.',
     micTitle: 'Acceso al micrófono',
     micBody:
       'DOST necesita el micrófono para oír lo que dices durante una sesión. Las grabaciones nunca se guardan.',

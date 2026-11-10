@@ -30,6 +30,7 @@ const REWRITTEN = [
   "hearingSettings.cloudOnHint",
   "hearingSettings.cloudOffHint",
   "permissions.micBody",
+  "permissions.unavailableHere",
 ] as const;
 
 async function messagesFor(lang: string): Promise<unknown> {
@@ -69,11 +70,27 @@ Deno.test("the disclosure names who reads the words, in every locale", async () 
   }
 });
 
+Deno.test("the listening indicator is described for both platforms, in every locale", async () => {
+  // Android shows a notification; iOS shows only its microphone
+  // indicator. Promising a notification on an iPhone is a false promise.
+  for (const lang of LANGS) {
+    const M = await messagesFor(lang);
+    const v = text(M, lang, "disclosure.bullet4");
+    assert(v.includes("Android") && v.includes("iPhone"), `${lang}: bullet4 must cover Android and iPhone`);
+  }
+});
+
 Deno.test("no locale still promises that nothing leaves the phone", async () => {
   // The English phrases that were false; translations are checked by the
   // OpenAI test above, and by a human reading them.
   const M = await messagesFor("en");
-  const banned = [/never leaves/i, /stays on your phone/i, /entirely on your phone/i, /anonymous/i];
+  const banned = [
+    /never leaves/i,
+    /stays on your phone/i,
+    /entirely on your phone/i,
+    /anonymous/i,
+    /android-only/i,
+  ];
   for (const key of REWRITTEN) {
     const v = text(M, "en", key);
     for (const re of banned) assert(!re.test(v), `en: ${key} still says ${re}`);

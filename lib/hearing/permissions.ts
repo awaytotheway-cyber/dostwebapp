@@ -21,7 +21,7 @@ export async function requestHearingPermissions(): Promise<HearingPermissionResu
 
   if (Platform.OS !== 'android') {
     // Web, or an iOS build that predates listening on iOS.
-    Alert.alert(translate('permissions.notYetAvailable'), translate('permissions.androidOnly'));
+    Alert.alert(translate('permissions.notYetAvailable'), translate('permissions.unavailableHere'));
     return { granted: false, reason: 'not-android' };
   }
 

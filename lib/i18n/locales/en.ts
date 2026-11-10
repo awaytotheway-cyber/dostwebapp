@@ -892,7 +892,7 @@ export const en = {
       'Recordings are never saved. Audio exists only in memory for a few seconds, then is discarded.',
     bullet3:
       'To notice feelings, the text of what you said is sent to an AI service (OpenAI). Phone numbers, emails and addresses are removed first, but names are not. DOST keeps only feeling labels and signals like pace, linked to your account — never your words.',
-    bullet4: 'You start and stop each session yourself. While one runs — even with the app in the background — a notification shows that DOST is listening.',
+    bullet4: 'You start and stop each session yourself. While one runs — even with the app in the background — your phone shows that DOST is listening: a notification on Android, the microphone indicator on iPhone.',
     notice:
       'Please note: anyone speaking near your phone during a session may be captured. Only start a session when you’re comfortable with who’s around you.',
     continue: 'I understand — continue',
@@ -1046,7 +1046,7 @@ export const en = {
   },
   permissions: {
     notYetAvailable: 'Not yet available',
-    androidOnly: 'Listening sessions are Android-only for now.',
+    unavailableHere: 'Listening isn’t available here. It needs the latest DOST app on your phone.',
     micTitle: 'Microphone access',
     micBody:
       'DOST needs your microphone to hear what you say during a session. Recordings are never saved.',

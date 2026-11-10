@@ -173,8 +173,8 @@ export default function HearingSettingsSection() {
         </View>
       </View>
 
-      {/* Recording controls only where listening can run (the Android
-          service). Elsewhere they lead to a flow that cannot finish; the
+      {/* Recording controls only where listening can run (the native
+          module). Elsewhere they lead to a flow that cannot finish; the
           totals and the delete buttons stay everywhere. */}
       {canListen && (
         <>

@@ -62,9 +62,10 @@ export default function ListeningSessionScreen({ navigation }: Props) {
   const [pipelineState, setPipelineState] = useState<PipelineState>(getPipelineState());
   const [summary, setSummary] = useState<SessionSummary | null>(null);
   const startingRef = useRef(false);
-  // Listening needs the Android foreground service. Anywhere else — web,
-  // iOS, a build without the native module — say so up front instead of
-  // walking the person through disclosure and enrollment to an error.
+  // Listening needs the native module (the Android foreground service or
+  // the iOS audio session). Where it is missing — web, or an older build —
+  // say so up front instead of walking the person through disclosure and
+  // enrollment to an error.
   const available = isHearingAvailable();
 
   // Redirect to disclosure if the user has never acknowledged it.
@@ -319,7 +320,7 @@ function UnavailableView() {
   return (
     <View style={styles.centerColumn}>
       <Text style={styles.title}>{t('permissions.notYetAvailable')}</Text>
-      <Text style={styles.subtitle}>{t('permissions.androidOnly')}</Text>
+      <Text style={styles.subtitle}>{t('permissions.unavailableHere')}</Text>
     </View>
   );
 }

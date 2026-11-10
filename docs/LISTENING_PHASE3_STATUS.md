@@ -103,9 +103,9 @@ segments, each transcribed to about one word, each labelled
 | Low-confidence labels were counted as feelings | Only labels with `semantic_confidence >= 0.5` count (`isCountable` in `sessionSummary.ts`); acoustics are kept either way |
 | No way to say "no feeling here", so ordinary talk was forced into a feeling | New hidden `neutral` label: stored on `voice_signals`, never counted or shown (device, Journey, chat lens) |
 | Invented tokens became "detachment" with the model's own confidence | `hearing-extract-emotions/classification.ts`: invented → low-confidence `neutral`; invented need → `null` |
-| Consent copy said audio never leaves the phone | Disclosure, settings and permission copy rewritten in all 8 locales; disclosure ack bumped to `v2` so everyone sees it again |
-| The notification's Stop left the session open and blocked a new one | The service's stop event now finishes the session; the screen follows the pipeline to the summary |
-| Listening tile and recording settings shown on web/iOS | Shown only where the native module exists |
+| Consent copy said audio never leaves the phone | Disclosure, settings and permission copy rewritten in all 8 locales, describing Android's notification and the iPhone's microphone indicator; disclosure ack bumped to `v2` so everyone sees it again |
+| The notification's Stop left the session open and blocked a new one | Any stop the app didn't ask for (Android's notification Stop, an iOS interruption) now finishes the session; the screen follows the pipeline to the summary |
+| Listening tile and recording settings shown where listening can't run | Shown only where the native module exists (Android, and iOS builds that include it — see `LISTENING_IOS.md`) |
 
 **Deploy order matters.** Ship the Android build first, then deploy
 `hearing-extract-emotions`. The new client already ignores the old
