@@ -224,8 +224,9 @@ export async function startHearingSession(
     onStopped: (s) => {
       if (!ctx) return;
       ctx.lastSummary = s;
-      // The service stopped without being asked from here: the
-      // notification's Stop action, or Android ending it. Finish the
+      // The service stopped without being asked from here: Android's
+      // notification Stop action or the OS ending the service, or on iOS a
+      // phone call or another app taking the microphone. Finish the
       // session now — otherwise its row stays open, no summary is
       // written, and the screen keeps showing a session that is no
       // longer listening, which also blocks starting a new one.

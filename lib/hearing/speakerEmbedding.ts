@@ -1,5 +1,5 @@
-import { NativeModules, Platform } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
+import { hearingBackend } from './nativeHearing';
 import { computeFbank, subtractFeatureMean } from './fbank';
 
 /**
@@ -64,10 +64,7 @@ type NativeEmbedder = {
 };
 
 function nativeEmbedder(): NativeEmbedder | null {
-  if (Platform.OS !== 'android') return null;
-  const mod = (NativeModules as Record<string, unknown>).HearingModule as
-    | Partial<NativeEmbedder>
-    | undefined;
+  const mod = hearingBackend()?.module as Partial<NativeEmbedder> | undefined;
   if (!mod || typeof mod.computeSpeakerEmbedding !== 'function') return null;
   return mod as NativeEmbedder;
 }
