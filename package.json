@@ -55,5 +55,10 @@
   "overrides": {
     "react-native-worklets": "0.5.1"
   },
-  "private": true
+  "private": true,
+  "expo": {
+    "autolinking": {
+      "nativeModulesDir": "./plugins"
+    }
+  }
 }

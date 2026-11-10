@@ -1,4 +1,3 @@
-import { NativeModules, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { t as translate, tn } from '../i18n';
 import { recordApiError } from '../diagnostics';
@@ -29,6 +28,7 @@ import {
   speechStats,
   type Embedding,
 } from './speakerEmbedding';
+import { hearingBackend } from './nativeHearing';
 import { VOICEPRINT_MODEL_VERSION } from './voiceprintModel';
 
 /**
@@ -372,9 +372,8 @@ type HearingNativeModule = {
 };
 
 function nativeModule(): HearingNativeModule | null {
-  if (Platform.OS !== 'android') return null;
-  const mod = (NativeModules as any).HearingModule;
-  if (!mod) return null;
+  const mod = hearingBackend()?.module;
+  if (!mod || typeof mod.captureEnrollmentClip !== 'function') return null;
   return mod as HearingNativeModule;
 }
 

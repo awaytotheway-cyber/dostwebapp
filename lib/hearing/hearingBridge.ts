@@ -1,28 +1,16 @@
-import {
-  DeviceEventEmitter,
-  EmitterSubscription,
-  NativeModules,
-  Platform,
-} from 'react-native';
+import type { Subscription } from './hearingBackend';
+import { hearingBackend } from './nativeHearing';
 
 /**
- * JS-side interface to the native HearingModule / HearingService.
+ * JS-side interface to the native listening module: HearingService.kt on
+ * Android, HearingSession.swift on iOS.
  *
- * Contract mirrors the events emitted by HearingService.kt. See that
- * file for the source of truth on shapes and units.
+ * Both emit the same events with the same shapes. HearingService.kt is the
+ * source of truth for shapes and units; the Swift port matches it.
  */
 
-type HearingNativeModule = {
-  startSession: () => Promise<boolean>;
-  stopSession: () => Promise<boolean>;
-  isSessionActive: () => Promise<boolean>;
-};
-
-function getNativeModule(): HearingNativeModule | null {
-  if (Platform.OS !== 'android') return null;
-  const mod = (NativeModules as any).HearingModule;
-  if (!mod) return null;
-  return mod as HearingNativeModule;
+function getNativeModule() {
+  return hearingBackend()?.module ?? null;
 }
 
 export type HearingSessionStarted = {
@@ -101,32 +89,28 @@ export async function isSessionActive(): Promise<boolean> {
  * subscription — call it on unmount.
  */
 export function subscribeHearing(handlers: HearingEventHandlers): () => void {
-  if (Platform.OS !== 'android') return () => {};
+  const backend = hearingBackend();
+  if (!backend) return () => {};
+  const listen = backend.listen;
 
-  const subs: EmitterSubscription[] = [];
+  const subs: Subscription[] = [];
 
   if (handlers.onStarted) {
-    subs.push(
-      DeviceEventEmitter.addListener('HearingSessionStarted', handlers.onStarted),
-    );
+    subs.push(listen('HearingSessionStarted', handlers.onStarted));
   }
   if (handlers.onStopped) {
-    subs.push(
-      DeviceEventEmitter.addListener('HearingSessionStopped', handlers.onStopped),
-    );
+    subs.push(listen('HearingSessionStopped', handlers.onStopped));
   }
   if (handlers.onTick) {
-    subs.push(DeviceEventEmitter.addListener('HearingTick', handlers.onTick));
+    subs.push(listen('HearingTick', handlers.onTick));
   }
   if (handlers.onStartError) {
-    subs.push(
-      DeviceEventEmitter.addListener('HearingStartError', handlers.onStartError),
-    );
+    subs.push(listen('HearingStartError', handlers.onStartError));
   }
   if (handlers.onSegment) {
     const onSegment = handlers.onSegment;
     subs.push(
-      DeviceEventEmitter.addListener(
+      listen(
         'HearingSpeechSegment',
         (raw: RawSegmentPayload) => {
           const pcm = decodePcm16Base64ToFloat32(raw.pcmBase64);

@@ -5,6 +5,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import theme from '../lib/theme';
 import { supabase } from '../lib/supabase';
 import { deleteEnrollment, isEnrolled } from '../lib/hearing/enrollment';
+import { isHearingAvailable } from '../lib/hearing/hearingBridge';
 import { getSensitivity, setSensitivity } from '../lib/hearing/sensitivity';
 import type { Sensitivity } from '../lib/hearing/speakerVerification';
 import { getCloudTranscription, setCloudTranscription } from '../lib/hearing/transcription';
@@ -31,6 +32,7 @@ export default function HearingSettingsSection() {
   const [sensitivity, setLocalSensitivity] = useState<Sensitivity>('balanced');
   const [cloud, setLocalCloud] = useState(false);
   const [busy, setBusy] = useState(false);
+  const canListen = isHearingAvailable();
 
   const loadTotals = useCallback(async () => {
     const { data, error } = await supabase
@@ -171,80 +173,88 @@ export default function HearingSettingsSection() {
         </View>
       </View>
 
-      <Text style={styles.subheading}>{t('hearingSettings.sensitivity')}</Text>
-      <View style={styles.sensRow}>
-        {(['strict', 'balanced', 'lenient'] as Sensitivity[]).map((s) => (
-          <Pressable
-            key={s}
-            onPress={() => onSelectSensitivity(s)}
-            accessibilityRole="button"
-            accessibilityLabel={t('hearingSettings.sensitivityA11y', {
-              level: t(`hearingSettings.level.${s}` as TKey),
-            })}
-            style={({ pressed }) => [
-              styles.sensChip,
-              sensitivity === s && styles.sensChipActive,
-              pressed && { opacity: 0.7 },
-            ]}
-          >
-            <Text
-              style={[
-                styles.sensChipText,
-                sensitivity === s && styles.sensChipTextActive,
+      {/* Recording controls only where listening can run (the native
+          module). Elsewhere they lead to a flow that cannot finish; the
+          totals and the delete buttons stay everywhere. */}
+      {canListen && (
+        <>
+        <Text style={styles.subheading}>{t('hearingSettings.sensitivity')}</Text>
+        <View style={styles.sensRow}>
+          {(['strict', 'balanced', 'lenient'] as Sensitivity[]).map((s) => (
+            <Pressable
+              key={s}
+              onPress={() => onSelectSensitivity(s)}
+              accessibilityRole="button"
+              accessibilityLabel={t('hearingSettings.sensitivityA11y', {
+                level: t(`hearingSettings.level.${s}` as TKey),
+              })}
+              style={({ pressed }) => [
+                styles.sensChip,
+                sensitivity === s && styles.sensChipActive,
+                pressed && { opacity: 0.7 },
               ]}
             >
-              {t(`hearingSettings.level.${s}` as TKey)}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
-      <Text style={styles.sensHint}>{sensitivityHint(sensitivity)}</Text>
-
-      <Text style={styles.subheading}>{t('hearingSettings.cloudTranscription')}</Text>
-      <View style={styles.sensRow}>
-        {[false, true].map((on) => (
-          <Pressable
-            key={on ? 'on' : 'off'}
-            onPress={() => onSelectCloud(on)}
-            accessibilityRole="button"
-            accessibilityState={{ selected: cloud === on }}
-            accessibilityLabel={t('hearingSettings.cloudTranscription')}
-            style={({ pressed }) => [
-              styles.sensChip,
-              cloud === on && styles.sensChipActive,
-              pressed && { opacity: 0.7 },
-            ]}
-          >
-            <Text style={[styles.sensChipText, cloud === on && styles.sensChipTextActive]}>
-              {on ? t('hearingSettings.cloudOn') : t('hearingSettings.cloudOff')}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
-      <Text style={styles.sensHint}>
-        {cloud ? t('hearingSettings.cloudOnHint') : t('hearingSettings.cloudOffHint')}
-      </Text>
-
-      <Pressable
-        onPress={() => navigation.navigate('SpeakerEnrollment', { returnTo: undefined })}
-        accessibilityRole="button"
-        accessibilityLabel={
-          enrolled ? t('hearingSettings.rerecordA11y') : t('hearingSettings.setupA11y')
-        }
-        style={({ pressed }) => [styles.enrollRow, pressed && { opacity: 0.7 }]}
-      >
-        <View style={{ flex: 1 }}>
-          <Text style={styles.enrollTitle}>
-            {enrolled === false ? t('hearingSettings.setup') : t('hearingSettings.rerecord')}
-          </Text>
-          <Text style={styles.enrollHint}>
-            {enrolled === false
-              ? t('hearingSettings.setupHint')
-              : t('hearingSettings.rerecordHint')}
-          </Text>
+              <Text
+                style={[
+                  styles.sensChipText,
+                  sensitivity === s && styles.sensChipTextActive,
+                ]}
+              >
+                {t(`hearingSettings.level.${s}` as TKey)}
+              </Text>
+            </Pressable>
+          ))}
         </View>
-        <Text style={styles.enrollChevron}>›</Text>
-      </Pressable>
+        <Text style={styles.sensHint}>{sensitivityHint(sensitivity)}</Text>
+
+        <Text style={styles.subheading}>{t('hearingSettings.cloudTranscription')}</Text>
+        <View style={styles.sensRow}>
+          {[false, true].map((on) => (
+            <Pressable
+              key={on ? 'on' : 'off'}
+              onPress={() => onSelectCloud(on)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: cloud === on }}
+              accessibilityLabel={t('hearingSettings.cloudTranscription')}
+              style={({ pressed }) => [
+                styles.sensChip,
+                cloud === on && styles.sensChipActive,
+                pressed && { opacity: 0.7 },
+              ]}
+            >
+              <Text style={[styles.sensChipText, cloud === on && styles.sensChipTextActive]}>
+                {on ? t('hearingSettings.cloudOn') : t('hearingSettings.cloudOff')}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+        <Text style={styles.sensHint}>
+          {cloud ? t('hearingSettings.cloudOnHint') : t('hearingSettings.cloudOffHint')}
+        </Text>
+
+        <Pressable
+          onPress={() => navigation.navigate('SpeakerEnrollment', { returnTo: undefined })}
+          accessibilityRole="button"
+          accessibilityLabel={
+            enrolled ? t('hearingSettings.rerecordA11y') : t('hearingSettings.setupA11y')
+          }
+          style={({ pressed }) => [styles.enrollRow, pressed && { opacity: 0.7 }]}
+        >
+          <View style={{ flex: 1 }}>
+            <Text style={styles.enrollTitle}>
+              {enrolled === false ? t('hearingSettings.setup') : t('hearingSettings.rerecord')}
+            </Text>
+            <Text style={styles.enrollHint}>
+              {enrolled === false
+                ? t('hearingSettings.setupHint')
+                : t('hearingSettings.rerecordHint')}
+            </Text>
+          </View>
+          <Text style={styles.enrollChevron}>›</Text>
+        </Pressable>
+
+        </>
+      )}
 
       {enrolled && (
         <Pressable

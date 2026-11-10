@@ -5,6 +5,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Line, Path } from 'react-native-svg';
 import { useI18n, type TKey } from '../lib/i18n';
+import { isHearingAvailable } from '../lib/hearing/hearingBridge';
 import { loadMyProfile } from '../lib/profile';
 import { colors, radius, spacing, type as typography } from '../lib/theme';
 import type { ChatStackParamList } from './chatTypes';
@@ -183,37 +184,41 @@ export default function HomeScreen({ navigation }: Props) {
           </GentlePressable>
         </View>
 
-        {/* â”€â”€ Listening session â”€â”€ */}
-        <GentlePressable
-          accessibilityRole="button"
-          accessibilityLabel={t('home.listeningSessionA11y')}
-          onPress={() => navigation.navigate('ListeningSession')}
-          style={({ pressed }) => [styles.journeyRow, pressed && styles.cardPressed]}
-        >
-          <View style={styles.journeyLeft}>
-            <Svg width={22} height={22} viewBox="0 0 28 28" accessible={false} focusable={false}>
-              <Path
-                d="M14 6c-2 0-3.6 1.6-3.6 3.6v6.8c0 2 1.6 3.6 3.6 3.6s3.6-1.6 3.6-3.6V9.6C17.6 7.6 16 6 14 6Z"
-                fill="none"
-                stroke={home.muted}
-                strokeWidth={1.5}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <Path
-                d="M8 14a6 6 0 0 0 12 0"
-                fill="none"
-                stroke={home.muted}
-                strokeWidth={1.5}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <Line x1="14" y1="20" x2="14" y2="23" stroke={home.muted} strokeWidth={1.5} strokeLinecap="round" />
-            </Svg>
-            <Text style={styles.journeyLabel}>{t('home.listeningSession')}</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color={home.muted} />
-        </GentlePressable>
+        {/* Listening session — only where the native listening module
+            exists (Android, and iOS builds that include it). On web it
+            could never start. */}
+        {isHearingAvailable() && (
+          <GentlePressable
+            accessibilityRole="button"
+            accessibilityLabel={t('home.listeningSessionA11y')}
+            onPress={() => navigation.navigate('ListeningSession')}
+            style={({ pressed }) => [styles.journeyRow, pressed && styles.cardPressed]}
+          >
+            <View style={styles.journeyLeft}>
+              <Svg width={22} height={22} viewBox="0 0 28 28" accessible={false} focusable={false}>
+                <Path
+                  d="M14 6c-2 0-3.6 1.6-3.6 3.6v6.8c0 2 1.6 3.6 3.6 3.6s3.6-1.6 3.6-3.6V9.6C17.6 7.6 16 6 14 6Z"
+                  fill="none"
+                  stroke={home.muted}
+                  strokeWidth={1.5}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <Path
+                  d="M8 14a6 6 0 0 0 12 0"
+                  fill="none"
+                  stroke={home.muted}
+                  strokeWidth={1.5}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <Line x1="14" y1="20" x2="14" y2="23" stroke={home.muted} strokeWidth={1.5} strokeLinecap="round" />
+              </Svg>
+              <Text style={styles.journeyLabel}>{t('home.listeningSession')}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={home.muted} />
+          </GentlePressable>
+        )}
 
         {/* Three Voices Pause */}
         <GentlePressable

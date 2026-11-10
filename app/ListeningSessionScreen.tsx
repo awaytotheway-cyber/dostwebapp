@@ -13,7 +13,9 @@ import theme from '../lib/theme';
 import GentlePressable from './GentlePressable';
 import type { ChatStackParamList } from './chatTypes';
 import { HEARING_DISCLOSURE_ACK_KEY } from './HearingDisclosureScreen';
+import { isHearingAvailable } from '../lib/hearing/hearingBridge';
 import { requestHearingPermissions } from '../lib/hearing/permissions';
+import { countLabels } from '../lib/hearing/sessionSummary';
 import { isEnrolled } from '../lib/hearing/enrollment';
 import {
   ensureModelDownloaded,
@@ -60,9 +62,15 @@ export default function ListeningSessionScreen({ navigation }: Props) {
   const [pipelineState, setPipelineState] = useState<PipelineState>(getPipelineState());
   const [summary, setSummary] = useState<SessionSummary | null>(null);
   const startingRef = useRef(false);
+  // Listening needs the native module (the Android foreground service or
+  // the iOS audio session). Where it is missing — web, or an older build —
+  // say so up front instead of walking the person through disclosure and
+  // enrollment to an error.
+  const available = isHearingAvailable();
 
   // Redirect to disclosure if the user has never acknowledged it.
   useEffect(() => {
+    if (!available) return;
     (async () => {
       try {
         const ack = await AsyncStorage.getItem(HEARING_DISCLOSURE_ACK_KEY);
@@ -73,7 +81,7 @@ export default function ListeningSessionScreen({ navigation }: Props) {
         // ignore
       }
     })();
-  }, [navigation]);
+  }, [available, navigation]);
 
   // Observe pipeline state.
   useEffect(() => {
@@ -156,19 +164,29 @@ export default function ListeningSessionScreen({ navigation }: Props) {
   }, [batteryMode, navigation]);
 
   const onStop = useCallback(async () => {
-    const sessionId =
-      pipelineState.status === 'active' ? pipelineState.sessionId : null;
     try {
       await stopHearingSession();
     } catch {
-      // ignore — surface via state
+      // ignore — the pipeline still goes idle, and the effect below
+      // moves to the summary
+    }
+  }, []);
+
+  // A session can end here or from the notification's Stop action, so
+  // the summary follows the pipeline going idle rather than the button.
+  useEffect(() => {
+    if (phase !== 'active' || pipelineState.status !== 'idle') return;
+    const sessionId = pipelineState.lastSessionId;
+    if (!sessionId) {
+      // Native capture failed to start and the session was rolled back.
+      setPhase('idle');
+      return;
     }
     setPhase('summary');
-    if (sessionId) {
-      const s = await loadSessionSummary(sessionId);
-      setSummary(s);
-    }
-  }, [pipelineState]);
+    void loadSessionSummary(sessionId)
+      .then(setSummary)
+      .catch(() => setPhase('idle'));
+  }, [phase, pipelineState]);
 
   const onNewSession = useCallback(() => {
     setSummary(null);
@@ -185,7 +203,9 @@ export default function ListeningSessionScreen({ navigation }: Props) {
     >
       <Header onBack={() => navigation.goBack()} />
 
-      {phase === 'idle' && (
+      {!available && <UnavailableView />}
+
+      {available && phase === 'idle' && (
         <IdleView
           batteryMode={batteryMode}
           onSelectMode={setBatteryMode}
@@ -291,6 +311,16 @@ function IdleView({
       >
         <Text style={styles.linkText}>{t('listening.howItWorksLink')}</Text>
       </GentlePressable>
+    </View>
+  );
+}
+
+function UnavailableView() {
+  const { t } = useI18n();
+  return (
+    <View style={styles.centerColumn}>
+      <Text style={styles.title}>{t('permissions.notYetAvailable')}</Text>
+      <Text style={styles.subtitle}>{t('permissions.unavailableHere')}</Text>
     </View>
   );
 }
@@ -402,7 +432,6 @@ function SummaryView({
             value={t('listening.hz', { value: Math.round(summary.avgPitchHz) })}
           />
         )}
-        <Text style={styles.summaryDisclaimer}>{t('listening.stressDisclaimer')}</Text>
       </View>
 
       <View style={styles.summaryCard}>
@@ -519,7 +548,7 @@ async function loadSessionSummary(sessionId: string): Promise<SessionSummary> {
   const { data: signals } = await supabase
     .from('voice_signals')
     .select(
-      'primary_emotion, speaking_rate_wpm, pitch_mean_hz, pitch_variability, inference_source',
+      'primary_emotion, secondary_emotions, underlying_need, semantic_confidence, speaking_rate_wpm, pitch_mean_hz, pitch_variability, inference_source',
     )
     .eq('session_id', sessionId);
 
@@ -535,17 +564,11 @@ async function loadSessionSummary(sessionId: string): Promise<SessionSummary> {
     .map((r) => Number(r.pitch_variability))
     .filter((n) => Number.isFinite(n) && n >= 0);
 
-  const emotionCounts = new Map<string, number>();
-  for (const r of rows) {
-    if (typeof r.primary_emotion === 'string' && r.primary_emotion) {
-      emotionCounts.set(
-        r.primary_emotion,
-        (emotionCounts.get(r.primary_emotion) ?? 0) + 1,
-      );
-    }
-  }
-  const emotions = [...emotionCounts.entries()]
-    .sort((a, b) => b[1] - a[1])
+  // The same rule as the stored summary Journey reads: only confident,
+  // non-neutral labels count, primary and secondary alike.
+  const { emotion_counts } = countLabels(rows);
+  const emotions = Object.entries(emotion_counts)
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
     .slice(0, 6)
     .map(([emotion, count]) => ({ emotion, count }));
 
@@ -751,12 +774,6 @@ const styles = StyleSheet.create({
   },
   summaryLabel: { ...theme.type.body, color: theme.colors.sand },
   summaryValue: { ...theme.type.label, color: theme.colors.cream, fontSize: 15 },
-  summaryDisclaimer: {
-    ...theme.type.caption,
-    color: theme.colors.clay,
-    fontStyle: 'italic',
-    marginTop: theme.spacing.md,
-  },
   summarySubheading: {
     ...theme.type.label,
     color: theme.colors.cream,

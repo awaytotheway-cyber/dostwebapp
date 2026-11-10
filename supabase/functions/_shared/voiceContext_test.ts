@@ -1,4 +1,4 @@
-import { assertEquals, assertStringIncludes } from "jsr:@std/assert@1";
+import { assert, assertEquals, assertStringIncludes } from "jsr:@std/assert@1";
 import { formatVoiceContext, type VoiceSummaryRow } from "./voiceContext.ts";
 
 const mockRow: VoiceSummaryRow = {
@@ -77,4 +77,17 @@ Deno.test("rows with nothing usable yield no block", () => {
     ]),
     "",
   );
+});
+
+Deno.test("neutral never reaches the prompt as a theme", () => {
+  const block = formatVoiceContext([
+    { emotion_counts: { neutral: 7, grief: 1 }, need_counts: { neutral: 3 } },
+  ]);
+  assert(!block.includes("neutral"), block);
+  assert(block.includes("Themes heard most often: grief."), block);
+  assert(!block.includes("Needs that surfaced"), block);
+});
+
+Deno.test("a summary holding only neutral yields no block", () => {
+  assertEquals(formatVoiceContext([{ emotion_counts: { neutral: 4 } }]), "");
 });

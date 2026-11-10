@@ -8,7 +8,7 @@ import GentlePressable from './GentlePressable';
 import type { ChatStackParamList } from './chatTypes';
 import { useI18n } from '../lib/i18n';
 
-export const HEARING_DISCLOSURE_ACK_KEY = 'dost.hearing.disclosure.ack.v1';
+export const HEARING_DISCLOSURE_ACK_KEY = 'dost.hearing.disclosure.ack.v2';
 
 type Props = NativeStackScreenProps<ChatStackParamList, 'HearingDisclosure'>;
 

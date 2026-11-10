@@ -15,10 +15,13 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.dost.app",
+      "bundleIdentifier": "com.dostapp.app",
+      "buildNumber": "2",
       "infoPlist": {
         "NSSpeechRecognitionUsageDescription": "DOST uses your device to convert speech to text. Nothing is recorded or stored.",
-        "NSMicrophoneUsageDescription": "DOST uses your device to convert speech to text. Nothing is recorded or stored."
+        "NSMicrophoneUsageDescription": "DOST uses the microphone to turn your speech into text, for voice notes and during listening sessions you start yourself. DOST never saves the audio.",
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSPhotoLibraryUsageDescription": "DOST does not use your photos and never asks to. This is required only because a file component built into the app includes photo-library support."
       }
     },
     "androidNavigationBar": {
@@ -53,7 +56,7 @@
       [
         "expo-speech-recognition",
         {
-          "microphonePermission": "DOST uses your device to convert speech to text. Nothing is recorded or stored.",
+          "microphonePermission": "DOST uses the microphone to turn your speech into text, for voice notes and during listening sessions you start yourself. DOST never saves the audio.",
           "speechRecognitionPermission": "DOST uses your device to convert speech to text. Nothing is recorded or stored."
         }
       ],
