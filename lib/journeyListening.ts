@@ -23,6 +23,11 @@
  *   measurements that mean nothing useful to a person reading them, and
  *   invite self-measurement where the app is trying to offer presence.
  *
+ *   neutral — the classifier's label for speech that carries no feeling
+ *   (and, since the hearing pipeline counts only confident labels, never
+ *   written into new summaries). Older builds counted it, so it is
+ *   dropped here too: ordinary talk is not an emotion.
+ *
  * What is left is what the words themselves carried: the feelings and
  * needs heard, and an honest account of how much was listened to.
  *
@@ -72,6 +77,9 @@ const REAL_SOURCES = new Set(['acoustic_v1', 'fused_v1']);
 /** Below this many labels, a pattern claim would be noise. */
 const SPARSE_THRESHOLD = 3;
 
+/** Kept in step with HIDDEN_EMOTIONS in lib/hearing/sessionSummary.ts. */
+const HIDDEN_TOKENS = new Set(['neutral']);
+
 function addCounts(
   into: Record<string, number>,
   counts: Record<string, unknown> | null | undefined,
@@ -79,7 +87,7 @@ function addCounts(
   if (!counts || typeof counts !== 'object' || Array.isArray(counts)) return;
   for (const [rawToken, rawCount] of Object.entries(counts)) {
     const token = typeof rawToken === 'string' ? rawToken.trim().toLowerCase() : '';
-    if (!token) continue;
+    if (!token || HIDDEN_TOKENS.has(token)) continue;
     const n = typeof rawCount === 'number' ? rawCount : Number(rawCount);
     // Counts arrive from jsonb, so anything could be in there. Negative
     // and non-finite values are dropped rather than clamped: a bad row

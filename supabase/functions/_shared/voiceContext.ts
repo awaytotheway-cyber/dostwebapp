@@ -39,6 +39,13 @@ export type VoiceSummaryRow = {
 
 const REAL_INFERENCE_SOURCES = new Set(["acoustic_v1", "fused_v1"]);
 
+/**
+ * "neutral" is the classifier's label for speech carrying no feeling.
+ * Current builds never count it into a summary; older ones did. Ordinary
+ * talk is not a theme, so it never reaches the prompt either way.
+ */
+const HIDDEN_LABELS = new Set(["neutral"]);
+
 /** Labels are model output; keep prompt-injection surface closed. */
 function safeLabel(value: string): string {
   return value.replace(/[{}]/g, "").trim().slice(0, 40);
@@ -56,7 +63,8 @@ function topLabels(
     for (const [rawLabel, rawCount] of Object.entries(counts)) {
       const label = safeLabel(rawLabel);
       const count = typeof rawCount === "number" ? rawCount : Number(rawCount);
-      if (!label || !Number.isFinite(count) || count <= 0) continue;
+      if (!label || HIDDEN_LABELS.has(label.toLowerCase())) continue;
+      if (!Number.isFinite(count) || count <= 0) continue;
       totals[label] = (totals[label] ?? 0) + count;
     }
   }

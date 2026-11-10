@@ -88,6 +88,35 @@ made only in the dashboard can be lost by the next deploy.
 - Acoustic emotion remains mocked — that is Phase 4, which is gated on
   a validation spike.
 
+## Accuracy fixes — 2026-11-10
+
+An end-to-end review against the live project found that what the
+listening pipeline showed people was not an accurate read of how they
+felt. The only real session (2026-11-08, ~42 s of speech) produced four
+segments, each transcribed to about one word, each labelled
+"detachment / understanding" at confidence 0.2–0.3 — the classifier's
+"unclear" fallback — and that summary was what Journey and chat read.
+
+| Problem | Fix |
+|---|---|
+| On-device Whisper was given Float32 bytes; whisper.rn reads Int16 PCM, so it heard noise | `lib/hearing/pcm.ts` converts first; Whisper's `[BLANK_AUDIO]`-style tags are stripped |
+| Low-confidence labels were counted as feelings | Only labels with `semantic_confidence >= 0.5` count (`isCountable` in `sessionSummary.ts`); acoustics are kept either way |
+| No way to say "no feeling here", so ordinary talk was forced into a feeling | New hidden `neutral` label: stored on `voice_signals`, never counted or shown (device, Journey, chat lens) |
+| Invented tokens became "detachment" with the model's own confidence | `hearing-extract-emotions/classification.ts`: invented → low-confidence `neutral`; invented need → `null` |
+| Consent copy said audio never leaves the phone | Disclosure, settings and permission copy rewritten in all 8 locales; disclosure ack bumped to `v2` so everyone sees it again |
+| The notification's Stop left the session open and blocked a new one | The service's stop event now finishes the session; the screen follows the pipeline to the summary |
+| Listening tile and recording settings shown on web/iOS | Shown only where the native module exists |
+
+**Deploy order matters.** Ship the Android build first, then deploy
+`hearing-extract-emotions`. The new client already ignores the old
+function's low-confidence fallback, but an old build talking to the new
+function would count `neutral` into its summaries. `chat` (for the
+`voiceContext` filter) can be redeployed any time.
+
+Still true: acoustic emotion stays mocked (Phase 4 NO-GO), and the
+classifier's taxonomy has no positive states — whether to add any is a
+product decision.
+
 ## Tests
 
 - `supabase/functions/_shared/voiceContext_test.ts` — the prompt block:
@@ -96,6 +125,14 @@ made only in the dashboard can be lost by the next deploy.
 - `lib/hearing/sessionSummary_test.ts` — the aggregate: counting,
   averaging, null handling, and the pessimistic provenance rule.
 
-Run them with `deno test supabase/functions/_shared/` and
-`deno test lib/hearing/`. The app has no JavaScript test runner, so
-these are Deno tests and are excluded from `tsc` via `tsconfig.json`.
+Also `lib/hearing/pcm_test.ts` (Whisper's input format, transcript
+cleanup), `supabase/functions/hearing-extract-emotions/classification_test.ts`
+(neutral and invented-token handling) and
+`lib/i18n/listeningDisclosureCopy_test.ts` (the consent copy).
+
+Run them with `deno test supabase/functions/_shared/`,
+`deno test supabase/functions/hearing-extract-emotions/`,
+`deno test lib/hearing/ lib/journeyListening_test.ts` and
+`deno test --allow-import --sloppy-imports lib/i18n/`. The app has no
+JavaScript test runner, so these are Deno tests and are excluded from
+`tsc` via `tsconfig.json`.

@@ -12,6 +12,7 @@ import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system/legacy';
 import { supabase } from '../supabase';
+import { cleanTranscript, encodeWav, floatToPcm16 } from './pcm';
 
 /**
  * Transcription for hearing sessions.
@@ -192,54 +193,19 @@ async function transcribeInCloud(
       },
     );
     if (error || typeof data?.transcript !== 'string') return '';
-    return data.transcript.trim();
+    return cleanTranscript(data.transcript);
   } catch (err) {
     if (__DEV__) console.warn('[hearing] cloud transcription failed:', err);
     return '';
   }
 }
 
-/** 16-bit PCM mono WAV. */
-export function encodeWav(pcm: Float32Array, sampleRate: number): ArrayBuffer {
-  const buffer = new ArrayBuffer(44 + pcm.length * 2);
-  const view = new DataView(buffer);
-  const ascii = (offset: number, text: string) => {
-    for (let i = 0; i < text.length; i++) view.setUint8(offset + i, text.charCodeAt(i));
-  };
-  ascii(0, 'RIFF');
-  view.setUint32(4, 36 + pcm.length * 2, true);
-  ascii(8, 'WAVE');
-  ascii(12, 'fmt ');
-  view.setUint32(16, 16, true);
-  view.setUint16(20, 1, true); // PCM
-  view.setUint16(22, 1, true); // mono
-  view.setUint32(24, sampleRate, true);
-  view.setUint32(28, sampleRate * 2, true);
-  view.setUint16(32, 2, true);
-  view.setUint16(34, 16, true);
-  ascii(36, 'data');
-  view.setUint32(40, pcm.length * 2, true);
-  for (let i = 0; i < pcm.length; i++) {
-    const v = Math.max(-1, Math.min(1, pcm[i]));
-    view.setInt16(44 + i * 2, v < 0 ? v * 0x8000 : v * 0x7fff, true);
-  }
-  return buffer;
-}
-
 async function transcribeOnDevice(pcm: Float32Array, language?: string): Promise<string> {
   try {
     const ctx = whisperContext ?? (await initTranscription());
-    // whisper.rn accepts a base64-encoded Float32 string OR an ArrayBuffer.
-    // Slice to a clean ArrayBuffer view — a Float32Array from a Base64
-    // decode may carry a byteOffset otherwise.
-    // pcm.buffer is ArrayBufferLike in TS 5.9's typed-array typings, but
-    // our Float32Array is always backed by a plain ArrayBuffer in the
-    // bridge — cast to satisfy whisper.rn's ArrayBuffer parameter.
-    const buf = pcm.buffer.slice(
-      pcm.byteOffset,
-      pcm.byteOffset + pcm.byteLength,
-    ) as ArrayBuffer;
-    const { promise } = ctx.transcribeData(buf, {
+    // transcribeData() reads its ArrayBuffer as signed 16-bit PCM, never
+    // as Float32 — the Float32Array's own bytes would be heard as noise.
+    const { promise } = ctx.transcribeData(floatToPcm16(pcm), {
       // With one enrolled language, say so — detection on short clips
       // often mislabels Hindi/Marathi. With several, 'auto' detects per
       // segment so a mixed session keeps each segment's own language.
@@ -247,7 +213,7 @@ async function transcribeOnDevice(pcm: Float32Array, language?: string): Promise
       maxThreads: 2,
     });
     const res = await promise;
-    return (res?.result ?? '').trim();
+    return cleanTranscript(res?.result ?? '');
   } catch (err) {
     // Deliberately soft — a transcription failure never aborts a session.
     if (__DEV__) console.warn('[hearing] transcribeSegment failed:', err);

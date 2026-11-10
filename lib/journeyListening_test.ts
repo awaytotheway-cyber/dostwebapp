@@ -175,3 +175,14 @@ Deno.test("duration reads in minutes, then switches to hours", () => {
   // Never "0 minutes" for a session that really happened.
   assertEquals(describeListenedDuration(3).amount, 1);
 });
+
+Deno.test("neutral is never shown as something heard, and does not lift sparseness", () => {
+  // Rows written by builds that counted it, and the classifier's own
+  // "no feeling here" label, must not read as a feeling.
+  const r = aggregateListeningSummaries([
+    row({ emotion_counts: { neutral: 9, grief: 1 }, need_counts: { neutral: 2, support: 1 } }),
+  ])!;
+  assertEquals(r.topEmotions.map((t) => t.token), ["grief"]);
+  assertEquals(r.topNeeds.map((t) => t.token), ["support"]);
+  assertEquals(r.sparse, true);
+});

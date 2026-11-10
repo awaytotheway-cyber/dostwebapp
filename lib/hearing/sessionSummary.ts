@@ -21,6 +21,15 @@
  * arousal untrusted. Readers must show arousal/valence only for
  * 'acoustic_v1' / 'fused_v1'. Until Phase 4 validates a real model that
  * means never — so no fabricated number can reach a user or a prompt.
+ *
+ * WHAT COUNTS AS A FEELING HEARD. A segment's labels are counted only
+ * when the classifier was reasonably sure (semantic_confidence >= 0.5)
+ * and actually heard a feeling. "neutral" — everyday talk, logistics, or
+ * a passage too short to read — is stored on the signal row but never
+ * counted: ordinary speech must not be turned into an emotion. Below the
+ * threshold the classifier's answer is its "unclear" fallback, and
+ * counting it is how four unreadable segments became "Detachment" on the
+ * Journey screen. The segment's acoustic measurements are kept either way.
  */
 
 export type InferenceSource = 'mock' | 'acoustic_v1' | 'fused_v1';
@@ -36,6 +45,7 @@ export type VoiceSignalRow = {
   primary_emotion: string | null;
   secondary_emotions: string[] | null;
   underlying_need: string | null;
+  semantic_confidence: number | null;
   acoustic_arousal: number | null;
   acoustic_valence: number | null;
   inference_source: string | null;
@@ -78,6 +88,50 @@ export type ListeningSummaryDraft = {
 
 const REAL_SOURCES = new Set<InferenceSource>(['acoustic_v1', 'fused_v1']);
 
+/** Below this the classifier's labels are a guess, not a reading. */
+export const MIN_SEMANTIC_CONFIDENCE = 0.5;
+
+/** Stored on signal rows, never counted or shown as a feeling. */
+export const HIDDEN_EMOTIONS: ReadonlySet<string> = new Set(['neutral']);
+
+type SemanticFields = Pick<
+  VoiceSignalRow,
+  'primary_emotion' | 'secondary_emotions' | 'underlying_need' | 'semantic_confidence'
+>;
+
+/** Whether this segment's emotion and need labels may be counted at all. */
+export function isCountable(row: SemanticFields): boolean {
+  const primary = typeof row.primary_emotion === 'string' ? row.primary_emotion.trim() : '';
+  if (!primary || HIDDEN_EMOTIONS.has(primary)) return false;
+  // Numeric columns can come back as strings; null means "not recorded",
+  // which is not trusted.
+  if (row.semantic_confidence === null || row.semantic_confidence === undefined) return false;
+  const confidence = Number(row.semantic_confidence);
+  return Number.isFinite(confidence) && confidence >= MIN_SEMANTIC_CONFIDENCE;
+}
+
+/**
+ * Emotion and need counts over the countable segments. The one counting
+ * rule, shared by the stored summary and the end-of-session screen so the
+ * two can never disagree.
+ */
+export function countLabels(rows: SemanticFields[]): {
+  emotion_counts: Record<string, number>;
+  need_counts: Record<string, number>;
+} {
+  const emotion_counts: Record<string, number> = {};
+  const need_counts: Record<string, number> = {};
+  for (const row of rows) {
+    if (!isCountable(row)) continue;
+    addCount(emotion_counts, row.primary_emotion);
+    for (const secondary of row.secondary_emotions ?? []) {
+      addCount(emotion_counts, secondary);
+    }
+    addCount(need_counts, row.underlying_need);
+  }
+  return { emotion_counts, need_counts };
+}
+
 function isRealSource(value: string | null): boolean {
   return value !== null && REAL_SOURCES.has(value as InferenceSource);
 }
@@ -103,7 +157,7 @@ function round3(n: number): number {
 function addCount(counts: Record<string, number>, label: unknown): void {
   if (typeof label !== 'string') return;
   const key = label.trim();
-  if (!key) return;
+  if (!key || HIDDEN_EMOTIONS.has(key)) return;
   counts[key] = (counts[key] ?? 0) + 1;
 }
 
@@ -132,16 +186,7 @@ export function summariseSignals(
   rows: VoiceSignalRow[],
   totals: SessionTotals,
 ): ListeningSummaryDraft {
-  const emotion_counts: Record<string, number> = {};
-  const need_counts: Record<string, number> = {};
-
-  for (const row of rows) {
-    addCount(emotion_counts, row.primary_emotion);
-    for (const secondary of row.secondary_emotions ?? []) {
-      addCount(emotion_counts, secondary);
-    }
-    addCount(need_counts, row.underlying_need);
-  }
+  const { emotion_counts, need_counts } = countLabels(rows);
 
   return {
     session_started_at: new Date(totals.startedAt).toISOString(),

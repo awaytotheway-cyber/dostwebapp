@@ -53,14 +53,18 @@ import {
  *   → transcribe: cloud if the user opted in, else on-device Whisper
  *     (both fail soft)
  *   → redact PII from the transcript
- *   → call hearing-extract-emotions (fails soft)
+ *   → call hearing-extract-emotions (fails soft). Its labels are stored
+ *     as given; only confident, non-neutral ones are ever counted
+ *     (sessionSummary.ts)
  *   → compute mock acoustic inference, stamped inference_source='mock'
  *   → insert one voice_signals row
  *   → drop the PCM buffer and transcript from the local scope
  *
- * Session stop
+ * Session stop — from the Stop button, or from the service itself (the
+ * notification's Stop action, or Android ending it)
  *   → stop the native service
  *   → update the voice_sessions row with totals
+ *   → write the listening_summaries row
  *
  * Battery modes only change how much work may wait: the queue holds
  * 8 / 4 / 2 segments (attentive / balanced / light) and light mode skips
@@ -75,7 +79,9 @@ import {
 export type BatteryMode = 'attentive' | 'balanced' | 'light';
 
 export type PipelineState =
-  | { status: 'idle' }
+  // lastSessionId: the session that just finished, so the screen can show
+  // its summary however it was stopped.
+  | { status: 'idle'; lastSessionId?: string }
   | {
       status: 'active';
       sessionId: string;
@@ -144,6 +150,9 @@ type SessionCtx = {
   queue: HearingSpeechSegment[];
   draining: boolean;
   stopped: boolean;
+  // Set once when finishing starts, so the Stop button and the service's
+  // own stop event can't finish the same session twice.
+  stopping: boolean;
   segmentsMatched: number;
   segmentsDiscardedOtherSpeaker: number;
   segmentsDiscardedAmbiguous: number;
@@ -213,7 +222,16 @@ export async function startHearingSession(
       });
     },
     onStopped: (s) => {
-      if (ctx) ctx.lastSummary = s;
+      if (!ctx) return;
+      ctx.lastSummary = s;
+      // The service stopped without being asked from here: the
+      // notification's Stop action, or Android ending it. Finish the
+      // session now — otherwise its row stays open, no summary is
+      // written, and the screen keeps showing a session that is no
+      // longer listening, which also blocks starting a new one.
+      if (!ctx.stopping) {
+        void finishSession(ctx, { nativeAlreadyStopped: true }).catch(() => {});
+      }
     },
     onStartError: (e: HearingStartError) => {
       // Native side couldn't start capture. Roll back the session row.
@@ -233,6 +251,7 @@ export async function startHearingSession(
     queue: [],
     draining: false,
     stopped: false,
+    stopping: false,
     segmentsMatched: 0,
     segmentsDiscardedOtherSpeaker: 0,
     segmentsDiscardedAmbiguous: 0,
@@ -276,13 +295,35 @@ export async function startHearingSession(
 }
 
 export async function stopHearingSession(): Promise<void> {
-  if (!ctx) return;
-  const active = ctx;
+  if (!ctx || ctx.stopping) return;
+  await finishSession(ctx, { nativeAlreadyStopped: false });
+}
 
+async function finishSession(
+  active: SessionCtx,
+  { nativeAlreadyStopped }: { nativeAlreadyStopped: boolean },
+): Promise<void> {
+  if (active.stopping) return;
+  active.stopping = true;
   try {
-    await nativeStopSession();
-  } catch {
-    // fall through and still update the DB
+    await finishSessionWork(active, nativeAlreadyStopped);
+  } finally {
+    active.unsubscribe();
+    if (ctx === active) ctx = null;
+    setState({ status: 'idle', lastSessionId: active.sessionId });
+  }
+}
+
+async function finishSessionWork(
+  active: SessionCtx,
+  nativeAlreadyStopped: boolean,
+): Promise<void> {
+  if (!nativeAlreadyStopped) {
+    try {
+      await nativeStopSession();
+    } catch {
+      // fall through and still update the DB
+    }
   }
 
   // Give queued and in-flight segments a brief chance to finish so their
@@ -314,10 +355,6 @@ export async function stopHearingSession(): Promise<void> {
 
   // Phase 3: fold this session's signals into the one row DOST reads.
   await writeListeningSummary(active, endedAt, totalMs, speechMs);
-
-  active.unsubscribe();
-  ctx = null;
-  setState({ status: 'idle' });
 }
 
 /**
@@ -342,7 +379,7 @@ async function writeListeningSummary(
       .select(
         'rms_energy, pitch_mean_hz, pitch_variability, speaking_rate_wpm, silence_ratio, ' +
           'vocal_stress_index, primary_emotion, secondary_emotions, underlying_need, ' +
-          'acoustic_arousal, acoustic_valence, inference_source',
+          'semantic_confidence, acoustic_arousal, acoustic_valence, inference_source',
       )
       .eq('session_id', active.sessionId);
 
@@ -697,9 +734,10 @@ function computeWpm(text: string, durationSeconds: number): number {
 // ─── semantic emotions leg ────────────────────────────────────────
 
 type SemanticTags = {
+  // A feeling from the taxonomy, or 'neutral' for speech that carries none.
   primary_emotion: string;
   secondary_emotions: string[];
-  underlying_need: string;
+  underlying_need: string | null;
   semantic_confidence: number;
 };
 
