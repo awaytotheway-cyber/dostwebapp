@@ -977,6 +977,9 @@ export const zh: Messages<typeof en> = {
     listeningCountdown: '正在聆听… {seconds} 秒',
     preparingTitle: '正在准备语音识别…',
     preparingBody: 'DOST 正在下载语音识别模型（约 {mb} MB）。只需下载一次。',
+    modelFailedTitle: '无法下载语音模型',
+    modelFailedBody:
+      'DOST 需要它来识别你的声音。请检查网络连接（最好使用 Wi‑Fi），然后点按“开始”重试。',
     processingTitle: '正在读取你的声音…',
     processingBody:
       'DOST 正在把这段录音转换成一个小小的数字指纹。除此之外什么也没发生。',

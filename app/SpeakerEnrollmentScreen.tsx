@@ -108,12 +108,23 @@ export default function SpeakerEnrollmentScreen({ navigation, route }: Props) {
       return;
     }
     voiceprints.current = [];
-    // One-time model download on first enrollment; falls back to the
-    // basic voiceprint rather than blocking if it can't be fetched.
+    // One-time model download on first enrollment. If no source delivers
+    // it, stop and say so — enrolling on the basic voiceprint instead
+    // would leave a gate that drops the person's own speech. Begin is
+    // the retry.
     setPhase({ kind: 'preparing', progress: 0 });
-    engine.current = await prepareEnrollmentEngine((progress) =>
+    const chosen = await prepareEnrollmentEngine((progress) =>
       setPhase({ kind: 'preparing', progress }),
     );
+    if (chosen === null) {
+      setPhase({ kind: 'intro' });
+      Alert.alert(
+        translate('enrollment.modelFailedTitle'),
+        translate('enrollment.modelFailedBody'),
+      );
+      return;
+    }
+    engine.current = chosen;
     setPhase({ kind: 'prompt', index: 0 });
   }, []);
 

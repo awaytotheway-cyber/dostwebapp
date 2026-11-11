@@ -1,5 +1,6 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import { hearingBackend } from './nativeHearing';
+import { SPEAKER_MODEL_URLS, tryInOrder } from './speakerModelSource';
 import { computeFbank, subtractFeatureMean } from './fbank';
 
 /**
@@ -39,8 +40,8 @@ export const SPEAKER_MODEL_VERSION = 'wespeaker-resnet34-v1';
 export const EMBEDDING_LENGTH = 256;
 
 const MODEL_FILENAME = 'wespeaker_en_voxceleb_resnet34.onnx';
-const MODEL_URL =
-  'https://github.com/k2-fsa/sherpa-onnx/releases/download/speaker-recongition-models/wespeaker_en_voxceleb_resnet34.onnx';
+// Downloaded from SPEAKER_MODEL_URLS (speakerModelSource.ts), GitHub
+// first, then an identical Hugging Face copy.
 const MODEL_BYTES = 26_534_365;
 export const SPEAKER_MODEL_APPROX_MB = 27;
 
@@ -93,8 +94,9 @@ export async function isSpeakerModelReady(): Promise<boolean> {
 let inFlightDownload: Promise<boolean> | null = null;
 
 /**
- * Download the model if needed. Resolves true when the neural path is
- * usable on this device, false otherwise (never throws).
+ * Download the model if needed, trying each source in turn. Resolves
+ * true when the neural path is usable on this device, false otherwise
+ * (never throws).
  */
 export async function ensureSpeakerModel(
   onProgress?: (fraction: number) => void,
@@ -105,23 +107,26 @@ export async function ensureSpeakerModel(
 
   inFlightDownload = (async () => {
     const path = modelPath();
-    try {
-      // A partial file from an interrupted download would fail the size
-      // check forever; start clean.
-      await FileSystem.deleteAsync(path, { idempotent: true });
-      const resumable = FileSystem.createDownloadResumable(MODEL_URL, path, {}, (p) => {
-        if (onProgress && p.totalBytesExpectedToWrite > 0) {
-          onProgress(p.totalBytesWritten / p.totalBytesExpectedToWrite);
-        }
-      });
-      await resumable.downloadAsync();
-      if (await isSpeakerModelReady()) return true;
-      await FileSystem.deleteAsync(path, { idempotent: true });
+    const source = await tryInOrder(SPEAKER_MODEL_URLS, async (url) => {
+      try {
+        // A partial file from an interrupted download would fail the
+        // size check forever; every attempt starts clean.
+        await FileSystem.deleteAsync(path, { idempotent: true });
+        if (onProgress) onProgress(0);
+        const resumable = FileSystem.createDownloadResumable(url, path, {}, (p) => {
+          if (onProgress && p.totalBytesExpectedToWrite > 0) {
+            onProgress(p.totalBytesWritten / p.totalBytesExpectedToWrite);
+          }
+        });
+        await resumable.downloadAsync();
+        if (await isSpeakerModelReady()) return true;
+      } catch (err) {
+        if (__DEV__) console.warn(`[hearing] speaker model download failed from ${url}:`, err);
+      }
+      await FileSystem.deleteAsync(path, { idempotent: true }).catch(() => {});
       return false;
-    } catch (err) {
-      if (__DEV__) console.warn('[hearing] speaker model download failed:', err);
-      return false;
-    }
+    });
+    return source !== null;
   })();
 
   try {

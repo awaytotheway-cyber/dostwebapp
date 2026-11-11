@@ -981,6 +981,9 @@ export const de: Messages<typeof en> = {
     listeningCountdown: 'Hört zu… {seconds} s',
     preparingTitle: 'Spracherkennung wird vorbereitet…',
     preparingBody: 'DOST lädt sein Stimmerkennungsmodell herunter (etwa {mb} MB). Das passiert nur einmal.',
+    modelFailedTitle: 'Das Stimmmodell konnte nicht geladen werden',
+    modelFailedBody:
+      'DOST braucht es, um deine Stimme zu erkennen. Prüfe deine Verbindung – WLAN ist am besten – und tippe dann auf „Beginnen“, um es erneut zu versuchen.',
     processingTitle: 'Deine Stimme wird gelesen…',
     processingBody:
       'DOST verwandelt diesen Clip in einen kleinen numerischen Fingerabdruck. Sonst passiert nichts.',

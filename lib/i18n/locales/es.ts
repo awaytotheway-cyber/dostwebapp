@@ -982,6 +982,9 @@ export const es: Messages<typeof en> = {
     listeningCountdown: 'Escuchando… {seconds} s',
     preparingTitle: 'Preparando el reconocimiento de voz…',
     preparingBody: 'DOST está descargando su modelo de reconocimiento de voz (unos {mb} MB). Solo ocurre una vez.',
+    modelFailedTitle: 'No se pudo descargar el modelo de voz',
+    modelFailedBody:
+      'DOST lo necesita para reconocer tu voz. Revisa tu conexión (lo mejor es wifi) y toca «Empezar» para intentarlo de nuevo.',
     processingTitle: 'Leyendo tu voz…',
     processingBody:
       'DOST está convirtiendo ese fragmento en una pequeña huella numérica. No pasa nada más.',

@@ -982,6 +982,9 @@ export const mr: Messages<typeof en> = {
     listeningCountdown: 'ऐकत आहे… {seconds} से.',
     preparingTitle: 'आवाज ओळख तयार होत आहे…',
     preparingBody: 'DOST आपले आवाज-ओळख मॉडेल डाउनलोड करत आहे (सुमारे {mb} MB). हे फक्त एकदाच होते.',
+    modelFailedTitle: 'आवाजाचं मॉडेल डाउनलोड होऊ शकलं नाही',
+    modelFailedBody:
+      'तुमचा आवाज ओळखण्यासाठी DOST ला याची गरज आहे. तुमचं कनेक्शन तपासा — Wi‑Fi सर्वोत्तम — मग पुन्हा प्रयत्न करण्यासाठी ‘सुरू करा’ दाबा.',
     processingTitle: 'तुमचा आवाज वाचत आहे…',
     processingBody:
       'DOST ती क्लिप एका छोट्या संख्यात्मक फिंगरप्रिंटमध्ये बदलत आहे. दुसरं काहीही होत नाही.',

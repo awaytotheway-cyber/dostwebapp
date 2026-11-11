@@ -978,6 +978,9 @@ export const ja: Messages<typeof en> = {
     listeningCountdown: '聞いています… {seconds} 秒',
     preparingTitle: '音声認識を準備しています…',
     preparingBody: 'DOST が音声認識モデルをダウンロードしています（約 {mb} MB）。これは一度だけです。',
+    modelFailedTitle: '音声モデルをダウンロードできませんでした',
+    modelFailedBody:
+      'DOST があなたの声を認識するために必要です。接続を確認し（Wi‑Fi がおすすめです）、「始める」をタップしてもう一度お試しください。',
     processingTitle: 'あなたの声を読み取っています…',
     processingBody:
       'DOST は、その音声を小さな数値の指紋に変換しています。それ以外のことは何もしていません。',

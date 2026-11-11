@@ -980,6 +980,9 @@ export const en = {
     listeningCountdown: 'Listening… {seconds}s',
     preparingTitle: 'Preparing voice recognition…',
     preparingBody: 'DOST is downloading its voice-recognition model (about {mb} MB). This happens only once.',
+    modelFailedTitle: 'Couldn’t download the voice model',
+    modelFailedBody:
+      'DOST needs it to recognise your voice. Check your connection — Wi‑Fi works best — then tap Begin to try again.',
     processingTitle: 'Reading your voice…',
     processingBody:
       'DOST is turning that clip into a small numeric fingerprint. Nothing else is happening.',
