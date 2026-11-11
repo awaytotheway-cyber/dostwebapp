@@ -29,6 +29,7 @@ import {
   type Embedding,
 } from './speakerEmbedding';
 import { hearingBackend } from './nativeHearing';
+import { enrollmentEngineFor } from './speakerModelSource';
 import { VOICEPRINT_MODEL_VERSION } from './voiceprintModel';
 
 /**
@@ -92,21 +93,28 @@ function neuralProfileKey(userId: string): string {
 
 /**
  * Pick the engine for a fresh enrollment, downloading the neural model
- * first if needed. Falls back to 'mfcc' rather than failing.
+ * first if needed.
+ *
+ * Null means stop: the model could run here but no source delivered it.
+ * Enrolling anyway on the basic voiceprint used to happen silently, and
+ * that gate then dropped the person's own speech as "unclear". The
+ * caller asks them to retry instead. Builds that cannot run the neural
+ * model at all still get the basic voiceprint.
  */
 export async function prepareEnrollmentEngine(
   onProgress?: (fraction: number) => void,
-): Promise<EnrollmentEngine> {
-  if (!isNeuralSpeakerSupported()) return 'mfcc';
-  const ready = await ensureSpeakerModel(onProgress);
-  if (!ready) {
+): Promise<EnrollmentEngine | null> {
+  const neuralSupported = isNeuralSpeakerSupported();
+  const modelReady = neuralSupported && (await ensureSpeakerModel(onProgress));
+  const engine = enrollmentEngineFor({ neuralSupported, modelReady });
+  if (engine === null) {
     await recordApiError({
       source: 'voice-pipeline',
       code: 'speaker_model_unavailable',
       step: 'download',
     });
   }
-  return ready ? 'neural' : 'mfcc';
+  return engine;
 }
 
 export type EnrollmentLanguage = 'en' | 'hi' | 'mr';

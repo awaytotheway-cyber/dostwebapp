@@ -105,6 +105,7 @@ segments, each transcribed to about one word, each labelled
 | Invented tokens became "detachment" with the model's own confidence | `hearing-extract-emotions/classification.ts`: invented → low-confidence `neutral`; invented need → `null` |
 | Consent copy said audio never leaves the phone | Disclosure, settings and permission copy rewritten in all 8 locales, describing Android's notification and the iPhone's microphone indicator; disclosure ack bumped to `v2` so everyone sees it again |
 | The notification's Stop left the session open and blocked a new one | Any stop the app didn't ask for (Android's notification Stop, an iOS interruption) now finishes the session; the screen follows the pipeline to the summary |
+| A failed speaker-model download silently enrolled the weak MFCC voiceprint, which then dropped the owner's own speech (2026-11-11: similarity 0.36–0.42, all "ambiguous") | The model downloads from GitHub, then an identical Hugging Face copy (`speakerModelSource.ts`); if both fail, enrollment stops and asks the person to retry. MFCC remains only for builds that can't run the neural model |
 | Listening tile and recording settings shown where listening can't run | Shown only where the native module exists (Android, and iOS builds that include it — see `LISTENING_IOS.md`) |
 
 **Deploy order matters.** Ship the Android build first, then deploy

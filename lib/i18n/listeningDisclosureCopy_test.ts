@@ -96,3 +96,15 @@ Deno.test("no locale still promises that nothing leaves the phone", async () => 
     for (const re of banned) assert(!re.test(v), `en: ${key} still says ${re}`);
   }
 });
+
+Deno.test("the model-download failure says how to retry, in every locale", async () => {
+  // The message tells the person to tap Begin again; it must name the
+  // button by the label they actually see in their language.
+  for (const lang of LANGS) {
+    const M = await messagesFor(lang);
+    text(M, lang, "enrollment.modelFailedTitle");
+    const body = text(M, lang, "enrollment.modelFailedBody");
+    const begin = text(M, lang, "enrollment.begin");
+    assert(body.includes(begin), `${lang}: modelFailedBody should name the "${begin}" button`);
+  }
+});

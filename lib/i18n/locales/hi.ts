@@ -982,6 +982,9 @@ export const hi: Messages<typeof en> = {
     listeningCountdown: 'सुन रहा है… {seconds} से.',
     preparingTitle: 'आवाज़ पहचान तैयार हो रही है…',
     preparingBody: 'DOST अपना आवाज़-पहचान मॉडल डाउनलोड कर रहा है (लगभग {mb} MB)। यह सिर्फ़ एक बार होता है।',
+    modelFailedTitle: 'आवाज़ का मॉडल डाउनलोड नहीं हो सका',
+    modelFailedBody:
+      'आपकी आवाज़ पहचानने के लिए DOST को इसकी ज़रूरत है। अपना कनेक्शन जाँचें — Wi‑Fi सबसे अच्छा रहता है — फिर दोबारा कोशिश करने के लिए ‘शुरू करें’ दबाएँ।',
     processingTitle: 'आपकी आवाज़ पढ़ी जा रही है…',
     processingBody:
       'DOST उस क्लिप को एक छोटे संख्यात्मक फ़िंगरप्रिंट में बदल रहा है। और कुछ नहीं हो रहा।',
