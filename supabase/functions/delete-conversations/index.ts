@@ -89,6 +89,20 @@ async function handleRequest(req: Request): Promise<Response> {
       }
     }
 
+    // Day reflections on Your Patterns are written from these
+    // conversations, so they go with them.
+    const { error: summaryError } = await admin
+      .from("daily_summaries")
+      .delete()
+      .eq("user_id", userId);
+
+    if (summaryError) {
+      logFnError("delete-conversations", "daily_summaries", summaryError);
+      if (!isInfraDbError(summaryError)) {
+        return json(502, { error: GENERIC_ERROR });
+      }
+    }
+
     return json(200, { status: "ok" });
   } catch (error) {
     logFnError("delete-conversations", "uncaught", error);

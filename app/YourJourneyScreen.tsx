@@ -29,19 +29,12 @@ import GentlePressable from './GentlePressable';
 import PaperGrain from './PaperGrain';
 import { useI18n } from '../lib/i18n';
 
+import { dawn } from './patterns/dawn';
+import DayView from './patterns/DayView';
+import SoftLoading from './patterns/SoftLoading';
+
 type Props = NativeStackScreenProps<ChatStackParamList, 'YourJourney'>;
 
-/** Dark home-family surface â€” matches Home / Past Reflections Dawn Earth. */
-const dawn = {
-  base: '#1A1614',
-  card: '#241E1B',
-  cream: '#EDE4D3',
-  sand: '#C9B79C',
-  gold: '#D9A857',
-  clay: '#B8A090',
-  border: 'rgba(201, 183, 156, 0.22)',
-  segmentIdle: 'rgba(36, 30, 27, 0.9)',
-} as const;
 
 function WeatherChart({
   points,
@@ -132,14 +125,6 @@ function WeatherChart({
   );
 }
 
-function SoftLoading({ label }: { label: string }) {
-  return (
-    <View style={styles.loadingRow} accessibilityLabel={label}>
-      <BreathingDot size={10} color={dawn.clay} />
-      <Text style={styles.loadingText}>{label}</Text>
-    </View>
-  );
-}
 
 export default function YourJourneyScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
@@ -281,6 +266,19 @@ export default function YourJourneyScreen({ navigation }: Props) {
         </Text>
       </View>
 
+      <ScrollView
+        contentContainerStyle={[
+          styles.scroll,
+          { paddingBottom: insets.bottom + spacing['4xl'] },
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
+        <DayView />
+
+        <View style={styles.section}>
+          <Text accessibilityRole="header" style={styles.sectionTitle}>
+            {t('journey.overTimeTitle')}
+          </Text>
       <View style={styles.segments}>
         {JOURNEY_RANGES.map(({ key, labelKey }) => {
           const label = t(labelKey);
@@ -307,23 +305,13 @@ export default function YourJourneyScreen({ navigation }: Props) {
         })}
       </View>
 
-      {loading ? (
-        <View style={styles.centered}>
+        </View>
+
+        {loading ? (
           <SoftLoading label={t('journey.gathering')} />
-        </View>
-      ) : error ? (
-        <View style={styles.centered}>
+        ) : error ? (
           <Text style={styles.empty}>{error}</Text>
-        </View>
-      ) : (
-        <ScrollView
-          contentContainerStyle={[
-            styles.scroll,
-            { paddingBottom: insets.bottom + spacing['4xl'] },
-          ]}
-          showsVerticalScrollIndicator={false}
-        >
-          {empty ? (
+        ) : empty ? (
             <View style={styles.emptyWrap}>
               <Text style={styles.empty}>{t('journey.empty')}</Text>
             </View>
@@ -445,8 +433,7 @@ export default function YourJourneyScreen({ navigation }: Props) {
               ) : null}
             </>
           )}
-        </ScrollView>
-      )}
+      </ScrollView>
     </View>
   );
 }
@@ -486,8 +473,6 @@ const styles = StyleSheet.create({
   pressed: { opacity: 0.7 },
   segments: {
     flexDirection: 'row',
-    marginHorizontal: spacing.xl,
-    marginBottom: spacing.lg,
     padding: 3,
     borderRadius: radius.full,
     backgroundColor: dawn.segmentIdle,
@@ -582,23 +567,6 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     color: dawn.gold,
     textAlign: 'center',
-  },
-  loadingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  loadingText: {
-    ...typography.body,
-    color: dawn.sand,
-    fontStyle: 'italic',
-  },
-  centered: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: spacing['2xl'],
   },
   emptyWrap: {
     paddingTop: spacing['5xl'],

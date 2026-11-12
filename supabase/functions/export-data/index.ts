@@ -76,11 +76,12 @@ async function handleRequest(req: Request): Promise<Response> {
       return json(429, { error: GENERIC_RATE_LIMIT });
     }
 
-    const [profile, conversations, memory, intentions] = await Promise.all([
+    const [profile, conversations, memory, intentions, dailySummaries] = await Promise.all([
       loadProfile(admin, userId),
       loadConversations(admin, userId),
       loadMemory(admin, userId),
       loadIntentions(admin, userId),
+      loadDailySummaries(admin, userId),
     ]);
 
     return json(200, {
@@ -89,6 +90,7 @@ async function handleRequest(req: Request): Promise<Response> {
       conversations,
       memory,
       intentions,
+      daily_summaries: dailySummaries,
     });
   } catch (error) {
     logFnError("export-data", "uncaught", error);
@@ -228,6 +230,22 @@ async function loadMemory(admin: SupabaseClient, userId: string) {
     patterns: record.patterns ?? null,
     last_updated: record.last_updated ?? null,
   });
+}
+
+/** Your Patterns day reflections, oldest first. */
+async function loadDailySummaries(admin: SupabaseClient, userId: string) {
+  const { data, error } = await admin
+    .from("daily_summaries")
+    .select("day, language, tone, feelings, summary, generated_at")
+    .eq("user_id", userId)
+    .order("day", { ascending: true });
+
+  if (error) {
+    logFnError("export-data", "daily_summaries", error);
+    return [];
+  }
+  if (!Array.isArray(data)) return [];
+  return jsonSafe(data);
 }
 
 async function loadIntentions(admin: SupabaseClient, userId: string) {

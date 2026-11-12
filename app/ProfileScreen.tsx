@@ -520,6 +520,21 @@ export default function ProfileScreen({ navigation, onStartOver }: Props) {
           <CTAButton onPress={() => void onRefreshMemory()} disabled={busy} loading={refreshing} label={t('settings.refreshMemory')} />
         </View>
 
+        {/* App: Settings and the legal documents. Profile is the one place
+            for "you and the app"; Settings used to be reachable only from a
+            gear inside the chat header. */}
+        <SectionHeader title={t('profile.appTitle')} />
+        <View style={[styles.sectionCard, styles.navCard]}>
+          <NavRow label={t('profile.settingsRow')} onPress={() => navigation.navigate('Settings')} />
+          <View style={styles.navDivider} />
+          <NavRow
+            label={t('profile.privacyPolicyRow')}
+            onPress={() => navigation.navigate('Legal', { doc: 'privacy' })}
+          />
+          <View style={styles.navDivider} />
+          <NavRow label={t('profile.termsRow')} onPress={() => navigation.navigate('Legal', { doc: 'terms' })} />
+        </View>
+
         {/* â•â• Privacy & account â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
         <SectionHeader title={t('settings.privacyTitle')} intro={t('settings.privacyIntro')} />
         <View style={styles.sectionCard}>
@@ -638,6 +653,20 @@ function FieldLabel({ children }: { children: string }) {
 
 function Divider() {
   return <View style={styles.divider} />;
+}
+
+function NavRow({ label, onPress }: { label: string; onPress: () => void }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      style={({ pressed }) => [styles.navRow, pressed && styles.pressed]}
+    >
+      <Text style={styles.navRowLabel}>{label}</Text>
+      <Ionicons name="chevron-forward" size={18} color={dark.muted} />
+    </Pressable>
+  );
 }
 
 function CTAButton({ onPress, disabled, loading, label }: { onPress: () => void; disabled?: boolean; loading?: boolean; label: string }) {
@@ -780,6 +809,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: dark.border,
   },
+  navCard: { paddingVertical: spacing.xs },
+  navRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    minHeight: 48,
+    paddingVertical: spacing.md,
+  },
+  navRowLabel: { ...typography.body, color: dark.title },
+  navDivider: { height: StyleSheet.hairlineWidth, backgroundColor: dark.divider },
   memoryCard: { backgroundColor: dark.cardRaised },
 
   // Fields

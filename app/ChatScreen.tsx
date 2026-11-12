@@ -1354,13 +1354,6 @@ export default function ChatScreen({ navigation, route }: Props) {
             >
               <Text style={styles.headerLink}>{t('chat.eveningCheckIn')}</Text>
             </Pressable>
-            <Pressable
-              onPress={() => navigation.navigate('Settings')}
-              hitSlop={8}
-              accessibilityLabel={t('chat.settingsA11y')}
-            >
-              <Text style={styles.gear}>{'\u2699'}</Text>
-            </Pressable>
           </View>
         </View>
         <EmotionPicker
@@ -1543,7 +1536,6 @@ const styles = StyleSheet.create({
     marginLeft: spacing.sm,
   },
   headerLink: { ...typography.label, color: colors.gold, fontSize: 12 },
-  gear: { fontSize: 20, color: colors.gold },
   offlineBanner: {
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.sm,

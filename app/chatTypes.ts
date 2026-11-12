@@ -1,4 +1,5 @@
 import type { ConversationStage } from '../lib/emotionalStates';
+import type { LegalDocumentKey } from '../lib/legal';
 
 export type ChatStackParamList = {
   Home: undefined;
@@ -49,6 +50,7 @@ export type ChatStackParamList = {
   PastReflections: undefined;
   YourJourney: undefined;
   Profile: undefined;
+  Legal: { doc: LegalDocumentKey };
   HearingDisclosure: { returnTo?: 'ListeningSession' } | undefined;
   ListeningSession: undefined;
   SpeakerEnrollment: { returnTo?: 'ListeningSession' } | undefined;
