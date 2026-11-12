@@ -12,6 +12,7 @@ import VoiceNoteDetailScreen from './VoiceNoteDetailScreen';
 import PastReflectionsScreen from './PastReflectionsScreen';
 import YourJourneyScreen from './YourJourneyScreen';
 import ProfileScreen from './ProfileScreen';
+import LegalDocumentScreen from './LegalDocumentScreen';
 import PersonalityProfileScreen from './PersonalityProfileScreen';
 import HearingDisclosureScreen from './HearingDisclosureScreen';
 import ListeningSessionScreen from './ListeningSessionScreen';
@@ -125,6 +126,7 @@ export default function ChatNavigator({ onStartOver }: Props) {
             <ProfileScreen {...props} onStartOver={() => onStartOverRef.current()} />
           )}
         </Stack.Screen>
+        <Stack.Screen name="Legal" component={LegalDocumentScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

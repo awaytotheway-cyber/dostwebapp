@@ -108,3 +108,55 @@ Deno.test("the model-download failure says how to retry, in every locale", async
     assert(body.includes(begin), `${lang}: modelFailedBody should name the "${begin}" button`);
   }
 });
+
+Deno.test("the screen is called Your Patterns everywhere it is named", async () => {
+  // The old name must not linger in any string a person sees for it.
+  const keys = ["home.yourJourney", "journey.title", "journey.openFailed", "journey.loadFailed", "journey.empty"];
+  const en = await messagesFor("en");
+  for (const key of keys) {
+    assert(!/journey/i.test(text(en, "en", key)), `en: ${key} still says "journey"`);
+  }
+  assert(text(en, "en", "journey.title") === "Your Patterns");
+  for (const lang of LANGS) {
+    const M = await messagesFor(lang);
+    for (const key of keys) text(M, lang, key);
+    // Title and Home row name the same thing.
+    assert(
+      text(M, lang, "journey.title").toLowerCase() === text(M, lang, "home.yourJourney").toLowerCase(),
+      `${lang}: Home row and screen title disagree`,
+    );
+  }
+});
+
+Deno.test("Profile's new rows and the draft banner exist in every locale", async () => {
+  for (const lang of LANGS) {
+    const M = await messagesFor(lang);
+    for (const key of ["profile.appTitle", "profile.settingsRow", "profile.privacyPolicyRow", "profile.termsRow", "legal.draftBanner"]) {
+      text(M, lang, key);
+    }
+  }
+});
+
+Deno.test("the day view's sentences fill their placeholders in every locale", async () => {
+  const cases: Array<[string, Record<string, string>]> = [
+    ["journey.toneA11y", { tone: "X" }],
+    ["journey.feelingsA11y", { feelings: "X" }],
+    ["journey.cellA11y", { date: "D", state: "S" }],
+  ];
+  for (const lang of LANGS) {
+    const M = await messagesFor(lang);
+    for (const [key, params] of cases) {
+      const out = interpolate(text(M, lang, key), params);
+      assert(!/\{\w+\}/.test(out), `${lang}: ${key} left a placeholder: ${out}`);
+      for (const v of Object.values(params)) assert(out.includes(v), `${lang}: ${key} dropped ${v}`);
+    }
+  }
+});
+
+Deno.test("the day view's support line gives the helpline in every locale", async () => {
+  for (const lang of LANGS) {
+    const M = await messagesFor(lang);
+    const line = text(M, lang, "journey.daySupport");
+    assert(line.includes("14416") && line.includes("112"), `${lang}: daySupport must give 14416 and 112`);
+  }
+});
